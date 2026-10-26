@@ -7,7 +7,7 @@ export const PHASE_META: Record<PrPatrolPhase, { label: string; dot: string; chi
     dot: "bg-sky-400 animate-pulse",
     chip: "bg-sky-500/15 text-sky-400 border-sky-500/30",
   },
-  waiting: { label: "Waiting for CI", dot: "bg-amber-400", chip: "bg-amber-500/15 text-amber-500 border-amber-500/30" },
+  waiting: { label: "Waiting", dot: "bg-amber-400", chip: "bg-amber-500/15 text-amber-500 border-amber-500/30" },
   watching: { label: "Queued", dot: "bg-slate-400", chip: "bg-slate-500/15 text-slate-400 border-slate-500/30" },
   blocked: { label: "Needs you", dot: "bg-rose-500", chip: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
   ready: {

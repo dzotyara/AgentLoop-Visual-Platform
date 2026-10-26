@@ -125,15 +125,17 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory): D
     } else {
       notes.push(`review round cap (${cfg.maxReviewRounds}) reached: head ${head.slice(0, 7)} not re-reviewed`);
     }
-  }
-
-  if (s.reviewDecision === "CHANGES_REQUESTED") notes.push("a reviewer requested changes");
-  else if (s.reviewDecision === "REVIEW_REQUIRED") notes.push("waiting for a human approval");
+  } else if (s.reviewDecision === "REVIEW_REQUIRED") notes.push("waiting for a human approval");
   if (s.mergeStateStatus === "BEHIND") notes.push("branch is behind its base");
 
   if (blocked.length > 0) return { kind: "blocked", reasons: blocked, notes };
   const running = checks.filter((c) => c.state === "pending");
   if (running.length > 0) return { kind: "wait", reason: `CI running (${running.length} check(s))`, notes };
   if (s.mergeable === "UNKNOWN") return { kind: "wait", reason: "GitHub is still computing mergeability", notes };
+  // A standing "changes requested" review keeps the PR in work until the reviewer lifts it, even when the
+  // loop has handled every comment: only that reviewer can clear it.
+  if (s.reviewDecision === "CHANGES_REQUESTED") {
+    return { kind: "wait", reason: "a reviewer requested changes: waiting for them to re-review", notes };
+  }
   return { kind: "ready", notes };
 }

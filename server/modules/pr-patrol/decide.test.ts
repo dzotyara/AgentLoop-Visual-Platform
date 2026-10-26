@@ -98,6 +98,20 @@ describe("decide", () => {
     if (d.kind === "ready") expect(d.notes.join()).toContain("review round cap");
   });
 
+  it("keeps a PR with a standing changes-requested review in work", () => {
+    const d = decide(snap({ reviewDecision: "CHANGES_REQUESTED" }), cfg, mem());
+    expect(d.kind).toBe("wait");
+    if (d.kind === "wait") expect(d.reason).toContain("requested changes");
+    // feedback still gets addressed first
+    const fb = snap({
+      reviewDecision: "CHANGES_REQUESTED",
+      feedback: [
+        { id: "R1", kind: "review_body", author: "bob", body: "x", path: null, line: null, url: null, createdAt: "" },
+      ],
+    });
+    expect(decide(fb, cfg, mem())).toMatchObject({ kind: "run", action: "address_feedback" });
+  });
+
   it("ignores configured checks", () => {
     const gated = snap({
       checks: [{ name: "merge-gate", workflow: null, state: "failure", rawConclusion: "FAILURE", detailsUrl: null }],
