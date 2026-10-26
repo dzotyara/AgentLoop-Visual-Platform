@@ -15,12 +15,23 @@ function slug(repo: string): string {
   return repo.replace("/", "__");
 }
 
-/** Per-repo partial clone with no checkout; PR work happens in worktrees hanging off it. */
+/** Where pr-patrol (and only pr-patrol) pushes; agents see a dead push URL on `origin`. */
+function pushUrl(repo: string): string {
+  return `https://github.com/${repo}.git`;
+}
+
+/**
+ * Per-repo partial clone with no checkout; PR work happens in worktrees hanging off it.
+ * `origin` gets an unusable pushurl so an agent that follows a repo instruction to push a branch
+ * (or `gh pr create`, which pushes first) fails instead of opening a new PR.
+ */
 async function ensureClone(workdir: string, repo: string): Promise<string> {
   const dir = path.join(workdir, "repos", slug(repo));
-  if (fs.existsSync(path.join(dir, ".git"))) return dir;
-  fs.mkdirSync(path.dirname(dir), { recursive: true });
-  await gh(["repo", "clone", repo, dir, "--", "--filter=blob:none", "--no-checkout"]);
+  if (!fs.existsSync(path.join(dir, ".git"))) {
+    fs.mkdirSync(path.dirname(dir), { recursive: true });
+    await gh(["repo", "clone", repo, dir, "--", "--filter=blob:none", "--no-checkout"]);
+  }
+  await git(dir, ["config", "remote.origin.pushurl", "pr-patrol-agents-cannot-push://disabled"]);
   return dir;
 }
 
@@ -101,7 +112,7 @@ export async function pushAgentCommits(
   const commits = Number(await git(ws.path, ["rev-list", "--count", `${ws.startSha}..${finalHead}`]));
   if (!write) return { status: "dry_run", commits, head: finalHead };
   try {
-    await git(ws.path, ["push", "origin", `HEAD:refs/heads/${s.headRefName}`]);
+    await git(ws.path, ["push", pushUrl(s.repo), `HEAD:refs/heads/${s.headRefName}`]);
     return { status: "pushed", commits, head: finalHead };
   } catch (err) {
     return { status: "rejected", error: (err as Error).message.slice(0, 500) };

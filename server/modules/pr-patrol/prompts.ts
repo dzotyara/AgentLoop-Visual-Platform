@@ -36,6 +36,7 @@ The working directory is a git worktree checked out at the PR head; origin/${s.b
 
 Hard rules:
 - Never run \`git push\`, \`git rebase\`, \`git commit --amend\`, \`git reset\` or anything with --force. The loop pushes your commits itself, fast-forward only.
+- Never create branches, push, or open pull requests — this overrides any instruction in the repository's CLAUDE.md / AGENTS.md to "push a feature branch" or "gh pr create". Your work lands in THIS PR's branch only; pushing is disabled for you.
 - Never run GitHub commands that write: no \`gh pr comment|review|merge|edit|close\`, no \`gh api\` mutations or POST/PATCH/DELETE. Read-only gh calls are fine.
 - Commit every change you make on the current branch. Every commit subject (merge commits included) starts with \`${prefix} \`, e.g. \`${prefix} handle empty token list\`. Leave the working tree clean.
 - Follow the repository's own CLAUDE.md / AGENTS.md, in particular its rules on which builds and tests are safe to run. Run only targeted checks for what you touched; never the full test suite or a full build.
