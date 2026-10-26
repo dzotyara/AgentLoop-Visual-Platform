@@ -4,6 +4,7 @@ import type { Agent, Department, SubAgent, Task } from "../../types";
 import { buildSpriteMap } from "../AgentAvatar";
 import { type Delivery, MIN_OFFICE_W, findScrollContainer } from "./model";
 import { runOfficeTickerStep, type OfficeTickerContext } from "./officeTicker";
+import { PACK_SKIN_SPRITE_NUMS } from "../pack-sprite-skin";
 
 interface UseOfficePixiRuntimeParams {
   containerRef: MutableRefObject<HTMLDivElement | null>;
@@ -106,6 +107,7 @@ export function useOfficePixiRuntime({
       const spriteNums = new Set<number>();
 
       for (let i = 1; i <= 13; i++) spriteNums.add(i);
+      for (const num of PACK_SKIN_SPRITE_NUMS) spriteNums.add(num);
       for (const num of spriteMap.values()) spriteNums.add(num);
 
       for (const spriteNum of spriteNums) {

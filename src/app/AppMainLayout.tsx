@@ -37,6 +37,7 @@ import {
 } from "./office-workflow-pack";
 import { resolvePackAgentViews, resolvePackDepartmentsForDisplay } from "./office-pack-display";
 import { applyOfficePackToTaskInput, filterTasksByOfficePack, type TaskCreateInput } from "./task-workflow-pack";
+import { setPackSpriteSkin } from "../components/pack-sprite-skin";
 
 interface AppMainLayoutLabels {
   uiLanguage: string;
@@ -200,6 +201,8 @@ export default function AppMainLayout({
   const uiLanguage =
     labels.uiLanguage === "ko" || labels.uiLanguage === "ja" || labels.uiLanguage === "zh" ? labels.uiLanguage : "en";
   const officePackKey = normalizeOfficeWorkflowPack(activeOfficeWorkflowPack);
+  // Character skins follow the pack; set before any avatar or office scene below renders.
+  setPackSpriteSkin(officePackKey);
   // Agent/task/department scoping key: skin packs (tarkov) behave exactly like development.
   const officeScopeKey = packScopeKey(officePackKey);
   const officePackOptions = useMemo(() => listOfficePackOptions(uiLanguage), [uiLanguage]);

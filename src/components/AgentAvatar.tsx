@@ -1,13 +1,19 @@
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { Agent } from "../types";
+import { packSkinSpriteFor } from "./pack-sprite-skin";
 
 /** Map agent IDs to sprite numbers (stable order, same as OfficeView) */
 export function buildSpriteMap(agents: Agent[]): Map<string, number> {
   const map = new Map<string, number>();
+  // 0) the active office pack's character skin, if it has one
+  for (const a of agents) {
+    const skin = packSkinSpriteFor(a);
+    if (skin) map.set(a.id, skin);
+  }
   // 1) sprite_number가 DB에 지정된 에이전트 우선
   for (const a of agents) {
-    if (a.sprite_number != null && a.sprite_number > 0) map.set(a.id, a.sprite_number);
+    if (!map.has(a.id) && a.sprite_number != null && a.sprite_number > 0) map.set(a.id, a.sprite_number);
   }
   // 2) DORO fallback (sprite_number 미지정시)
   const doro = agents.find((a) => a.name === "DORO");
@@ -38,6 +44,8 @@ function hashIdToSprite(id: string): number {
 
 function resolveSpriteNum(agent: Agent | undefined, spriteMap: Map<string, number>): number | undefined {
   if (!agent) return undefined;
+  const skin = packSkinSpriteFor(agent);
+  if (skin) return skin;
   if (agent.sprite_number != null && agent.sprite_number > 0) return agent.sprite_number;
   const mapped = spriteMap.get(agent.id);
   if (mapped != null && mapped > 0) return mapped;
