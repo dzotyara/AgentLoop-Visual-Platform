@@ -12,8 +12,8 @@ It behaves like Claude's "Auto-fix PR" setting, with an extra review stage:
 | Merge conflict with the base                               | Weaver | `git merge origin/<base>`, resolves, commits the merge                        |
 | Failing CI check                                           | Medic  | reads the failed logs; fixes branch-caused failures, re-runs flaky/infra ones |
 | Unhandled review comments                                  | Patch  | judges each comment, fixes the valid ones, drafts replies                     |
-| New head commit not yet reviewed                           | Argus  | own review of the diff: correctness, silent failures, security                |
-| Blocking (critical/high) review findings                   | Patch  | verifies each finding, fixes or declines it                                   |
+| New head commit not yet reviewed                           | Argus  | own review of the diff, posted as a `[review]` PR comment with P0–P3 findings |
+| Blocking (P0/P1) review findings                           | Patch  | verifies each finding, fixes or declines it                                   |
 | Checks green, no conflicts, feedback handled, review clean | Gate   | posts a "Ready" task and notifies the CEO desk                                |
 
 The loop ticks every `PR_PATROL_INTERVAL_MS` and right after each run, takes one action per PR at a time
