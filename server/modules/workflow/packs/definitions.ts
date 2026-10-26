@@ -1,5 +1,6 @@
 export const WORKFLOW_PACK_KEYS = [
   "development",
+  "tarkov",
   "novel",
   "report",
   "video_preprod",
@@ -13,6 +14,21 @@ export const DEFAULT_WORKFLOW_PACK_KEY: WorkflowPackKey = "development";
 
 export function isWorkflowPackKey(value: unknown): value is WorkflowPackKey {
   return typeof value === "string" && (WORKFLOW_PACK_KEYS as readonly string[]).includes(value);
+}
+
+// Skin packs only re-theme the office; agents, tasks and departments stay in the development scope.
+const DEV_SCOPED_SKIN_PACK_KEYS: ReadonlySet<string> = new Set<WorkflowPackKey>(["tarkov"]);
+
+/** Maps a pack key to the key that owns its agents/tasks/departments (skin packs -> development). */
+export function packScopeKey(packKey: WorkflowPackKey): WorkflowPackKey;
+export function packScopeKey(packKey: string): string;
+export function packScopeKey(packKey: string): string {
+  return DEV_SCOPED_SKIN_PACK_KEYS.has(packKey) ? DEFAULT_WORKFLOW_PACK_KEY : packKey;
+}
+
+/** True for skin packs that must never get their own agent set or office_pack_departments rows. */
+export function isDevScopedSkinPack(packKey: string): boolean {
+  return DEV_SCOPED_SKIN_PACK_KEYS.has(packKey);
 }
 
 export type WorkflowPackSeed = {
@@ -54,6 +70,33 @@ export const DEFAULT_WORKFLOW_PACK_SEEDS: WorkflowPackSeed[] = [
       sections: ["summary", "changes", "verification", "next_steps"],
     },
     routingKeywords: ["fix", "bug", "refactor", "build", "api", "test", "개발", "버그", "수정", "코드"],
+    costProfile: {
+      ...COMMON_COST_PROFILE,
+      defaultReasoning: "high",
+    },
+  },
+  {
+    // Visual skin over the development office: same prompts/QA as development, never keyword-routed.
+    key: "tarkov",
+    name: "Tarkov Hideout",
+    inputSchema: {
+      required: ["project", "instruction"],
+      optional: ["constraints", "acceptance_criteria", "deadline"],
+    },
+    promptPreset: {
+      mode: "engineering",
+      style: "pragmatic",
+      enforceTests: true,
+    },
+    qaRules: {
+      requireTestEvidence: true,
+      requireRiskNotes: true,
+      maxAutoFixPasses: 1,
+    },
+    outputTemplate: {
+      sections: ["summary", "changes", "verification", "next_steps"],
+    },
+    routingKeywords: [],
     costProfile: {
       ...COMMON_COST_PROFILE,
       defaultReasoning: "high",

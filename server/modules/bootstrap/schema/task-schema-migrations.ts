@@ -1,5 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
-import { DEFAULT_WORKFLOW_PACK_KEY, WORKFLOW_PACK_KEYS, isWorkflowPackKey } from "../../workflow/packs/definitions.ts";
+import {
+  DEFAULT_WORKFLOW_PACK_KEY,
+  WORKFLOW_PACK_KEYS,
+  isDevScopedSkinPack,
+  isWorkflowPackKey,
+} from "../../workflow/packs/definitions.ts";
 
 type DbLike = Pick<DatabaseSync, "exec" | "prepare">;
 
@@ -198,7 +203,7 @@ function ensureOfficePackScopedDepartmentSchema(db: DbLike): void {
 
   // Seed-id based backfill for legacy rows before profile-based backfill.
   for (const packKey of WORKFLOW_PACK_KEYS) {
-    if (packKey === DEFAULT_WORKFLOW_PACK_KEY) continue;
+    if (packKey === DEFAULT_WORKFLOW_PACK_KEY || isDevScopedSkinPack(packKey)) continue;
     try {
       db.prepare(
         `
@@ -248,7 +253,7 @@ function ensureOfficePackScopedDepartmentSchema(db: DbLike): void {
   const now = Date.now();
   for (const [rawPackKey, rawProfile] of Object.entries(root)) {
     const packKey = normalizeText(rawPackKey);
-    if (!isWorkflowPackKey(packKey) || packKey === DEFAULT_WORKFLOW_PACK_KEY) continue;
+    if (!isWorkflowPackKey(packKey) || packKey === DEFAULT_WORKFLOW_PACK_KEY || isDevScopedSkinPack(packKey)) continue;
     const profile = asObject(rawProfile);
     if (!profile) continue;
 

@@ -93,6 +93,7 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
     subAgents,
     unreadAgentIds: unread,
     customDeptThemes: customThemes,
+    decorStyle = "default",
   } = dataRef.current;
 
   const previousSubSnapshot = subCloneSnapshotRef.current;
@@ -154,6 +155,7 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
     isDark,
     activeLocale,
     ceoTheme,
+    decorStyle,
     activeMeetingTaskId: activeMeetingTaskIdRef.current,
     onOpenActiveMeetingMinutes: meetingMinutesOpenRef.current,
     agents,
@@ -173,6 +175,7 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
     subAgents,
     unread,
     customThemes,
+    decorStyle,
     activeLocale,
     gridCols,
     roomStartX,
@@ -202,6 +205,7 @@ export function buildOfficeScene(context: BuildOfficeSceneContext): void {
     spriteMap,
     activeLocale,
     breakTheme,
+    decorStyle,
     isDark,
     breakRoomY,
     OFFICE_W,

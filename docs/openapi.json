@@ -4091,7 +4091,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["development", "novel", "report", "video_preprod", "web_research_report", "roleplay"]
+              "enum": ["development", "tarkov", "novel", "report", "video_preprod", "web_research_report", "roleplay"]
             },
             "description": "Filter by workflow pack key."
           }

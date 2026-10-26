@@ -314,6 +314,39 @@ const BREAK_CHAT_MESSAGES: Record<SupportedLocale, string[]> = {
   ],
 };
 
+/* ── Tarkov decor: room labels and hideout chatter (English reused for every locale) ── */
+const TARKOV_LOCALE_TEXT = {
+  ceoOffice: { ko: "COMMAND POST", en: "COMMAND POST", ja: "COMMAND POST", zh: "COMMAND POST" },
+  collabTable: { ko: "BRIEFING TABLE", en: "BRIEFING TABLE", ja: "BRIEFING TABLE", zh: "BRIEFING TABLE" },
+  breakRoom: { ko: "🔥 Hideout", en: "🔥 Hideout", ja: "🔥 Hideout", zh: "🔥 Hideout" },
+};
+
+const TARKOV_BREAK_CHAT_LINES = [
+  "Who ate my last ration?",
+  "Generator needs fuel again",
+  "Anyone seen the keycard?",
+  "Checking my stash...",
+  "Need more duct tape",
+  "Quiet on the perimeter",
+  "Radio's all static tonight",
+  "Instant coffee it is",
+  "Back in one piece!",
+  "Sorting loot, don't touch",
+  "Cleaning my gear",
+  "Map says left. Gut says right.",
+  "Five more minutes by the stove",
+  "Patching the sandbags later",
+  "Bulb's flickering again...",
+  "Supplies drop at dawn",
+];
+
+const TARKOV_BREAK_CHAT_MESSAGES: Record<SupportedLocale, string[]> = {
+  ko: TARKOV_BREAK_CHAT_LINES,
+  en: TARKOV_BREAK_CHAT_LINES,
+  ja: TARKOV_BREAK_CHAT_LINES,
+  zh: TARKOV_BREAK_CHAT_LINES,
+};
+
 function pickLocale<T>(locale: SupportedLocale, map: Record<SupportedLocale, T>): T {
   return map[locale] ?? map.ko;
 }
@@ -446,6 +479,8 @@ export {
   type SupportedLocale,
   LOCALE_TEXT,
   BREAK_CHAT_MESSAGES,
+  TARKOV_LOCALE_TEXT,
+  TARKOV_BREAK_CHAT_MESSAGES,
   pickLocale,
   inferReviewDecision,
   resolveMeetingDecision,

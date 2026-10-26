@@ -99,6 +99,7 @@ export type TaskStatus =
 export type TaskType = "general" | "development" | "design" | "analysis" | "presentation" | "documentation";
 export const WORKFLOW_PACK_KEYS = [
   "development",
+  "tarkov",
   "novel",
   "report",
   "video_preprod",

@@ -3,8 +3,16 @@ import { Container, Graphics, Sprite, Text, TextStyle, type Application, type Te
 import type { Agent } from "../../types";
 import { localeName } from "../../i18n";
 import type { CallbackSnapshot, BreakAnimItem } from "./buildScene-types";
-import { BREAK_ROOM_H, TARGET_CHAR_H, type RoomTheme, type WallClockVisual } from "./model";
-import { BREAK_CHAT_MESSAGES, BREAK_SPOTS, LOCALE_TEXT, type SupportedLocale, pickLocale } from "./themes-locale";
+import { BREAK_ROOM_H, TARGET_CHAR_H, type OfficeDecorStyle, type RoomTheme, type WallClockVisual } from "./model";
+import {
+  BREAK_CHAT_MESSAGES,
+  BREAK_SPOTS,
+  LOCALE_TEXT,
+  TARKOV_BREAK_CHAT_MESSAGES,
+  TARKOV_LOCALE_TEXT,
+  type SupportedLocale,
+  pickLocale,
+} from "./themes-locale";
 import {
   blendColor,
   contrastTextColor,
@@ -21,6 +29,7 @@ import {
 } from "./drawing-core";
 import { drawPlant } from "./drawing-furniture-a";
 import { drawCoffeeMachine, drawCoffeeTable, drawHighTable, drawSofa, drawVendingMachine } from "./drawing-furniture-b";
+import { drawTarkovHideoutDecor } from "./drawing-tarkov";
 
 interface BuildBreakRoomParams {
   app: Application;
@@ -29,6 +38,7 @@ interface BuildBreakRoomParams {
   spriteMap: Map<string, number>;
   activeLocale: SupportedLocale;
   breakTheme: RoomTheme;
+  decorStyle: OfficeDecorStyle;
   isDark: boolean;
   breakRoomY: number;
   OFFICE_W: number;
@@ -48,6 +58,7 @@ export function buildBreakRoom({
   spriteMap,
   activeLocale,
   breakTheme,
+  decorStyle,
   isDark,
   breakRoomY,
   OFFICE_W,
@@ -62,6 +73,7 @@ export function buildBreakRoom({
   const breakAgents = agents.filter((agent) => agent.status === "break");
   breakAnimItemsRef.current = [];
   breakBubblesRef.current = [];
+  const isTarkov = decorStyle === "tarkov";
 
   const breakRoom = new Container();
   const brx = 4;
@@ -80,34 +92,38 @@ export function buildBreakRoom({
   brBorder.roundRect(brx - 1, bry - 1, brw + 2, brh + 2, 4).stroke({ width: 1, color: breakTheme.accent, alpha: 0.25 });
   breakRoom.addChild(brBorder);
 
-  drawAmbientGlow(breakRoom, brx + brw / 2, bry + brh / 2, brw * 0.3, breakTheme.accent, 0.05);
-  drawCeilingLight(breakRoom, brx + brw / 3, bry + 6, breakTheme.accent);
-  drawCeilingLight(breakRoom, brx + (brw * 2) / 3, bry + 6, breakTheme.accent);
-  drawBunting(
-    breakRoom,
-    brx + 14,
-    bry + 16,
-    brw - 28,
-    blendColor(0xb5d6cf, 0xffffff, 0.18),
-    blendColor(0xdcb7bf, 0xffffff, 0.08),
-    0.64,
-  );
+  if (isTarkov) {
+    drawTarkovHideoutDecor(breakRoom, brx, bry, brw, brh, breakTheme.accent, wallClocksRef);
+  } else {
+    drawAmbientGlow(breakRoom, brx + brw / 2, bry + brh / 2, brw * 0.3, breakTheme.accent, 0.05);
+    drawCeilingLight(breakRoom, brx + brw / 3, bry + 6, breakTheme.accent);
+    drawCeilingLight(breakRoom, brx + (brw * 2) / 3, bry + 6, breakTheme.accent);
+    drawBunting(
+      breakRoom,
+      brx + 14,
+      bry + 16,
+      brw - 28,
+      blendColor(0xb5d6cf, 0xffffff, 0.18),
+      blendColor(0xdcb7bf, 0xffffff, 0.08),
+      0.64,
+    );
 
-  const furnitureBaseX = brx + 16;
-  drawCoffeeMachine(breakRoom, furnitureBaseX, bry + 20);
-  drawPlant(breakRoom, furnitureBaseX + 30, bry + 38, 1);
-  drawSofa(breakRoom, furnitureBaseX + 50, bry + 56, 0xc89da6);
-  drawCoffeeTable(breakRoom, furnitureBaseX + 140, bry + 58);
+    const furnitureBaseX = brx + 16;
+    drawCoffeeMachine(breakRoom, furnitureBaseX, bry + 20);
+    drawPlant(breakRoom, furnitureBaseX + 30, bry + 38, 1);
+    drawSofa(breakRoom, furnitureBaseX + 50, bry + 56, 0xc89da6);
+    drawCoffeeTable(breakRoom, furnitureBaseX + 140, bry + 58);
 
-  const furnitureRightX = brx + brw - 16;
-  drawVendingMachine(breakRoom, furnitureRightX - 26, bry + 20);
-  drawPlant(breakRoom, furnitureRightX - 36, bry + 38, 2);
-  drawSofa(breakRoom, furnitureRightX - 120, bry + 56, 0x91bcae);
-  drawHighTable(breakRoom, furnitureRightX - 170, bry + 24);
+    const furnitureRightX = brx + brw - 16;
+    drawVendingMachine(breakRoom, furnitureRightX - 26, bry + 20);
+    drawPlant(breakRoom, furnitureRightX - 36, bry + 38, 2);
+    drawSofa(breakRoom, furnitureRightX - 120, bry + 56, 0x91bcae);
+    drawHighTable(breakRoom, furnitureRightX - 170, bry + 24);
 
-  drawPictureFrame(breakRoom, brx + brw / 2 - 8, bry + 14);
-  wallClocksRef.current.push(drawWallClock(breakRoom, brx + brw / 2 + 30, bry + 18));
-  drawTrashCan(breakRoom, furnitureBaseX + 24, bry + brh - 14);
+    drawPictureFrame(breakRoom, brx + brw / 2 - 8, bry + 14);
+    wallClocksRef.current.push(drawWallClock(breakRoom, brx + brw / 2 + 30, bry + 18));
+    drawTrashCan(breakRoom, furnitureBaseX + 24, bry + brh - 14);
+  }
 
   const brSignW = 84;
   const brSignBg = new Graphics();
@@ -116,7 +132,7 @@ export function buildBreakRoom({
   breakRoom.addChild(brSignBg);
   const breakSignTextColor = isDark ? 0xffffff : contrastTextColor(breakTheme.accent);
   const brSignTxt = new Text({
-    text: pickLocale(activeLocale, LOCALE_TEXT.breakRoom),
+    text: pickLocale(activeLocale, isTarkov ? TARKOV_LOCALE_TEXT.breakRoom : LOCALE_TEXT.breakRoom),
     style: new TextStyle({
       fontSize: 9,
       fill: breakSignTextColor,
@@ -176,7 +192,7 @@ export function buildBreakRoom({
       baseY: spotY,
     });
 
-    const coffeeEmoji = new Text({ text: "☕", style: new TextStyle({ fontSize: 10 }) });
+    const coffeeEmoji = new Text({ text: isTarkov ? "🥫" : "☕", style: new TextStyle({ fontSize: 10 }) });
     coffeeEmoji.anchor.set(0.5, 0.5);
     coffeeEmoji.position.set(spotX + 14, spotY - 10);
     breakRoom.addChild(coffeeEmoji);
@@ -205,7 +221,8 @@ export function buildBreakRoom({
       const spotX = spot.x >= 0 ? brx + spot.x + ((seed % 7) - 3) : brx + brw - 16 + spot.x + ((seed % 7) - 3);
       const spotY = bry + spot.y + ((seed % 5) - 2) * 0.6;
 
-      const chatPool = BREAK_CHAT_MESSAGES[activeLocale] || BREAK_CHAT_MESSAGES.ko;
+      const chatMessages = isTarkov ? TARKOV_BREAK_CHAT_MESSAGES : BREAK_CHAT_MESSAGES;
+      const chatPool = chatMessages[activeLocale] || chatMessages.ko;
       const msg = chatPool[(seed + phase) % chatPool.length];
       const bubbleText = new Text({
         text: msg,

@@ -122,6 +122,8 @@ export function defaultWorkflowPackLabel(t: ChannelSettingsTabProps["t"], key: W
   switch (key) {
     case "development":
       return t({ ko: "개발", en: "Development", ja: "開発", zh: "开发" });
+    case "tarkov":
+      return t({ ko: "타르코프", en: "Tarkov Hideout", ja: "タルコフ", zh: "塔科夫" });
     case "novel":
       return t({ ko: "소설", en: "Novel", ja: "小説", zh: "小说" });
     case "report":

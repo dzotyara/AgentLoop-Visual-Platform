@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { MESSENGER_CHANNELS, isMessengerChannel, type MessengerChannel } from "./channels.ts";
 import { buildMessengerTokenKey } from "./token-hint.ts";
 import { decryptMessengerTokenForRuntime } from "./token-crypto.ts";
-import { isWorkflowPackKey, type WorkflowPackKey } from "../modules/workflow/packs/definitions.ts";
+import { isWorkflowPackKey, packScopeKey, type WorkflowPackKey } from "../modules/workflow/packs/definitions.ts";
 
 const MESSENGER_SETTINGS_KEY = "messengerChannels";
 
@@ -59,7 +59,7 @@ type ParsedSource = {
 
 function normalizeWorkflowPackKey(value: unknown): WorkflowPackKey | null {
   const normalized = normalizeText(value);
-  return isWorkflowPackKey(normalized) ? normalized : null;
+  return isWorkflowPackKey(normalized) ? packScopeKey(normalized) : null;
 }
 
 function normalizeText(value: unknown): string {

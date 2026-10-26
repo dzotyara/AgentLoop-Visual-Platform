@@ -3,6 +3,7 @@ import { resolveConstrainedAgentScopeForTask } from "../../core/tasks/execution-
 import {
   DEFAULT_WORKFLOW_PACK_KEY,
   isWorkflowPackKey,
+  packScopeKey,
   type WorkflowPackKey,
 } from "../../../workflow/packs/definitions.ts";
 import { resolveWorkflowPackKeyForTask } from "../../../workflow/packs/task-pack-resolver.ts";
@@ -26,7 +27,7 @@ function parsePackSetting(value: unknown): WorkflowPackKey | null {
     // keep raw text
   }
 
-  return isWorkflowPackKey(candidate) ? candidate : null;
+  return isWorkflowPackKey(candidate) ? packScopeKey(candidate) : null;
 }
 
 export function readActiveOfficePackKey(db: DbLike): WorkflowPackKey | null {

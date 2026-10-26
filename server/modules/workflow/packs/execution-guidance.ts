@@ -1,4 +1,4 @@
-import { DEFAULT_WORKFLOW_PACK_KEY, isWorkflowPackKey, type WorkflowPackKey } from "./definitions.ts";
+import { DEFAULT_WORKFLOW_PACK_KEY, isWorkflowPackKey, packScopeKey, type WorkflowPackKey } from "./definitions.ts";
 
 type SupportedLang = "ko" | "en" | "ja" | "zh";
 
@@ -13,7 +13,7 @@ function normalizeLang(raw: string | null | undefined): SupportedLang {
 }
 
 function normalizePackKey(raw: string | null | undefined): WorkflowPackKey {
-  if (isWorkflowPackKey(raw)) return raw;
+  if (isWorkflowPackKey(raw)) return packScopeKey(raw);
   return DEFAULT_WORKFLOW_PACK_KEY;
 }
 

@@ -2,6 +2,7 @@ import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import {
   DEFAULT_WORKFLOW_PACK_KEY,
   isWorkflowPackKey,
+  packScopeKey,
   type WorkflowPackKey,
 } from "../../../workflow/packs/definitions.ts";
 
@@ -42,6 +43,7 @@ export type AutoAssignSelectionResult = {
 
 const PACK_DEPARTMENT_PRIORITIES: Record<WorkflowPackKey, string[]> = {
   development: ["dev", "qa", "devsecops", "operations", "planning", "design"],
+  tarkov: ["dev", "qa", "devsecops", "operations", "planning", "design"],
   report: ["planning", "qa", "design", "dev", "operations", "devsecops"],
   web_research_report: ["dev", "planning", "qa", "design", "operations", "devsecops"],
   video_preprod: ["design", "planning", "dev", "operations", "qa", "devsecops"],
@@ -81,7 +83,8 @@ type OfficePackProfileDepartment = {
 };
 
 function normalizePackKey(raw: string | null | undefined): WorkflowPackKey {
-  if (isWorkflowPackKey(raw)) return raw;
+  // Skin packs (tarkov) auto-assign exactly like development.
+  if (isWorkflowPackKey(raw)) return packScopeKey(raw);
   return DEFAULT_WORKFLOW_PACK_KEY;
 }
 

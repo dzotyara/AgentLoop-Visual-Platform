@@ -27,9 +27,11 @@ import AppHeaderBar from "./AppHeaderBar";
 import {
   buildOfficePackStarterAgents,
   buildOfficePackPresentation,
+  getOfficePackDecorStyle,
   getOfficePackRoomThemes,
   listOfficePackOptions,
   normalizeOfficeWorkflowPack,
+  packScopeKey,
   resolveOfficePackSeedProvider,
 } from "./office-workflow-pack";
 import { resolvePackAgentViews, resolvePackDepartmentsForDisplay } from "./office-pack-display";
@@ -197,6 +199,8 @@ export default function AppMainLayout({
   const uiLanguage =
     labels.uiLanguage === "ko" || labels.uiLanguage === "ja" || labels.uiLanguage === "zh" ? labels.uiLanguage : "en";
   const officePackKey = normalizeOfficeWorkflowPack(activeOfficeWorkflowPack);
+  // Agent/task/department scoping key: skin packs (tarkov) behave exactly like development.
+  const officeScopeKey = packScopeKey(officePackKey);
   const officePackOptions = useMemo(() => listOfficePackOptions(uiLanguage), [uiLanguage]);
   const officePackLabel =
     labels.uiLanguage === "ko"
@@ -226,20 +230,20 @@ export default function AppMainLayout({
   );
 
   const activePackProfile =
-    officePackKey === "development" ? null : (settings.officePackProfiles?.[officePackKey] ?? null);
+    officeScopeKey === "development" ? null : (settings.officePackProfiles?.[officeScopeKey] ?? null);
 
   const seededPackAgents = useMemo(() => {
-    if (officePackKey === "development") return [] as Agent[];
+    if (officeScopeKey === "development") return [] as Agent[];
     if (activePackProfile?.agents?.length) return activePackProfile.agents;
     const drafts = buildOfficePackStarterAgents({
-      packKey: officePackKey,
+      packKey: officeScopeKey,
       departments: generatedOfficePresentation.departments,
       targetCount: 8,
       locale: uiLanguage,
     });
     const now = Date.now();
     return drafts.map((draft, index) => ({
-      id: `${officePackKey}-seed-${index + 1}`,
+      id: `${officeScopeKey}-seed-${index + 1}`,
       name: draft.name,
       name_ko: draft.name_ko,
       name_ja: draft.name_ja,
@@ -248,7 +252,7 @@ export default function AppMainLayout({
       role: draft.role,
       acts_as_planning_leader: draft.acts_as_planning_leader,
       cli_provider: resolveOfficePackSeedProvider({
-        packKey: officePackKey,
+        packKey: officeScopeKey,
         departmentId: draft.department_id,
         role: draft.role,
         seedIndex: index + 1,
@@ -263,58 +267,66 @@ export default function AppMainLayout({
       stats_xp: 0,
       created_at: now,
     }));
-  }, [activePackProfile?.agents, generatedOfficePresentation.departments, officePackKey, uiLanguage]);
+  }, [activePackProfile?.agents, generatedOfficePresentation.departments, officeScopeKey, uiLanguage]);
 
   const packProfileDepartments =
-    officePackKey === "development"
+    officeScopeKey === "development"
       ? null
       : (activePackProfile?.departments ?? generatedOfficePresentation.departments);
-  const packProfileAgents = officePackKey === "development" ? null : (activePackProfile?.agents ?? seededPackAgents);
+  const packProfileAgents = officeScopeKey === "development" ? null : (activePackProfile?.agents ?? seededPackAgents);
 
   const isHydratedOfficePack = useMemo(() => {
-    if (officePackKey === "development") return false;
+    if (officeScopeKey === "development") return false;
     const hydrated = settings.officePackHydratedPacks;
     if (!Array.isArray(hydrated)) return false;
-    return hydrated.map((value) => String(value ?? "").trim()).includes(officePackKey);
-  }, [officePackKey, settings.officePackHydratedPacks]);
+    return hydrated.map((value) => String(value ?? "").trim()).includes(officeScopeKey);
+  }, [officeScopeKey, settings.officePackHydratedPacks]);
 
   const displayDepartments = useMemo(
     () =>
       resolvePackDepartmentsForDisplay({
-        packKey: officePackKey,
-        globalDepartments: departments,
+        packKey: officeScopeKey,
+        // Skin packs (tarkov) show their renamed departments over the shared development set.
+        globalDepartments: officePackKey !== officeScopeKey ? generatedOfficePresentation.departments : departments,
         packDepartments: packProfileDepartments,
         preferPackProfile: !isHydratedOfficePack,
       }),
-    [departments, isHydratedOfficePack, officePackKey, packProfileDepartments],
+    [
+      departments,
+      generatedOfficePresentation.departments,
+      isHydratedOfficePack,
+      officePackKey,
+      officeScopeKey,
+      packProfileDepartments,
+    ],
   );
 
   const { scopedAgents: officeScopedAgents, mergedAgents: displayAgents } = useMemo(
     () =>
       resolvePackAgentViews({
-        packKey: officePackKey,
+        packKey: officeScopeKey,
         globalAgents: agents,
         packAgents: packProfileAgents,
       }),
-    [agents, officePackKey, packProfileAgents],
+    [agents, officeScopeKey, packProfileAgents],
   );
 
   const managerDepartments =
-    officePackKey === "development"
+    officeScopeKey === "development"
       ? departments
       : isHydratedOfficePack
         ? displayDepartments
         : (activePackProfile?.departments ?? generatedOfficePresentation.departments);
 
   const managerAgents =
-    officePackKey === "development"
+    officeScopeKey === "development"
       ? agents
       : isHydratedOfficePack
         ? officeScopedAgents
         : (activePackProfile?.agents ?? seededPackAgents);
 
   const officePresentation = useMemo(() => {
-    if (officePackKey === "development") return generatedOfficePresentation;
+    if (officeScopeKey === "development") return generatedOfficePresentation;
     return {
       departments: displayDepartments,
       agents: officeScopedAgents,
@@ -323,7 +335,14 @@ export default function AppMainLayout({
         ...getOfficePackRoomThemes(officePackKey),
       },
     };
-  }, [customRoomThemes, displayDepartments, generatedOfficePresentation, officePackKey, officeScopedAgents]);
+  }, [
+    customRoomThemes,
+    displayDepartments,
+    generatedOfficePresentation,
+    officePackKey,
+    officeScopeKey,
+    officeScopedAgents,
+  ]);
 
   const tasksForActivePack = useMemo(() => filterTasksByOfficePack(tasks, officePackKey), [tasks, officePackKey]);
   const handleCreateTaskForActivePack = useCallback(
@@ -484,6 +503,7 @@ export default function AppMainLayout({
                 onCeoOfficeCallProcessed={onCeoOfficeCallProcessed}
                 onOpenActiveMeetingMinutes={onOpenActiveMeetingMinutes}
                 customDeptThemes={officePresentation.roomThemes}
+                decorStyle={getOfficePackDecorStyle(officePackKey)}
                 themeHighlightTargetId={activeRoomThemeTargetId}
                 onSelectAgent={onSelectAgent}
                 onSelectDepartment={onSelectDepartment}
@@ -524,7 +544,7 @@ export default function AppMainLayout({
                 agents={managerAgents}
                 departments={managerDepartments}
                 onAgentsChange={onAgentsChange}
-                activeOfficeWorkflowPack={officePackKey}
+                activeOfficeWorkflowPack={officeScopeKey}
                 dbBackedOfficePack={isHydratedOfficePack}
                 onSaveOfficePackProfile={async (packKey, profile) => {
                   if (packKey === "development") return;

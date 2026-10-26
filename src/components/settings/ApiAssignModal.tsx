@@ -19,7 +19,7 @@ export default function ApiAssignModal({ t, localeTag, apiState }: ApiAssignModa
   const localName = (nameEn: string, nameKo: string) => (localeTag === "ko" ? nameKo || nameEn : nameEn || nameKo);
   const normalizeWorkflowPackKey = (value: unknown): WorkflowPackKey =>
     typeof value === "string" &&
-    ["development", "novel", "report", "video_preprod", "web_research_report", "roleplay"].includes(value)
+    ["development", "tarkov", "novel", "report", "video_preprod", "web_research_report", "roleplay"].includes(value)
       ? (value as WorkflowPackKey)
       : "development";
   const ROLE_LABELS: Record<string, Record<string, string>> = {

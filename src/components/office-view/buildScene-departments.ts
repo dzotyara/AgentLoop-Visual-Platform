@@ -10,12 +10,13 @@ import {
   SLOT_H,
   SLOT_W,
   TARGET_CHAR_H,
+  type OfficeDecorStyle,
   type RoomRect,
   type SubCloneBurstParticle,
   type WallClockVisual,
   emitSubCloneSmokeBurst,
 } from "./model";
-import { DEPT_THEME, LOCALE_TEXT, type SupportedLocale, pickLocale } from "./themes-locale";
+import { DEPT_THEME, LOCALE_TEXT, TARKOV_LOCALE_TEXT, type SupportedLocale, pickLocale } from "./themes-locale";
 import {
   blendColor,
   contrastTextColor,
@@ -33,6 +34,7 @@ import {
 import { drawChair, drawDesk, drawPlant, drawWhiteboard } from "./drawing-furniture-a";
 import { drawBookshelf } from "./drawing-furniture-b";
 import { renderDeskAgentAndSubClones } from "./buildScene-department-agent";
+import { TARKOV_PALETTE, drawTarkovDepartmentDecor } from "./drawing-tarkov";
 
 interface BuildDepartmentRoomsParams {
   app: Application;
@@ -43,6 +45,7 @@ interface BuildDepartmentRoomsParams {
   subAgents: SubAgent[];
   unread?: Set<string>;
   customThemes?: Record<string, { floor1: number; floor2: number; wall: number; accent: number }>;
+  decorStyle: OfficeDecorStyle;
   activeLocale: SupportedLocale;
   gridCols: number;
   roomStartX: number;
@@ -73,6 +76,7 @@ export function buildDepartmentRooms({
   subAgents,
   unread,
   customThemes,
+  decorStyle,
   activeLocale,
   gridCols,
   roomStartX,
@@ -114,7 +118,9 @@ export function buildDepartmentRooms({
     room.addChild(wallG);
 
     const doorG = new Graphics();
-    doorG.rect(rx + roomW / 2 - 16, ry - 2, 32, 5).fill(0xf5f0e8);
+    doorG
+      .rect(rx + roomW / 2 - 16, ry - 2, 32, 5)
+      .fill(decorStyle === "tarkov" ? TARKOV_PALETTE.concreteLight : 0xf5f0e8);
     room.addChild(doorG);
 
     const signW = 84;
@@ -139,7 +145,11 @@ export function buildDepartmentRooms({
     signTxt.position.set(rx + roomW / 2, ry + 5);
     room.addChild(signTxt);
 
-    drawCeilingAndDecor(room, rx, ry, roomW, roomH, theme, deptIdx, wallClocksRef);
+    if (decorStyle === "tarkov") {
+      drawTarkovDepartmentDecor(room, rx, ry, roomW, roomH, theme, deptIdx, wallClocksRef);
+    } else {
+      drawCeilingAndDecor(room, rx, ry, roomW, roomH, theme, deptIdx, wallClocksRef);
+    }
 
     if (deptAgents.length > 0) {
       drawRug(
@@ -189,7 +199,7 @@ export function buildDepartmentRooms({
       }
 
       if (isBreak) {
-        drawBreakAwayTag(room, ax, deskY, charFeetY, activeLocale, theme.accent);
+        drawBreakAwayTag(room, ax, deskY, charFeetY, activeLocale, theme.accent, decorStyle);
       } else {
         renderDeskAgentAndSubClones({
           room,
@@ -330,12 +340,13 @@ function drawBreakAwayTag(
   charFeetY: number,
   activeLocale: SupportedLocale,
   accent: number,
+  decorStyle: OfficeDecorStyle,
 ): void {
   drawDesk(room, ax - DESK_W / 2, deskY, false);
   const awayTagY = charFeetY - TARGET_CHAR_H / 2;
   const awayTagBgColor = blendColor(accent, 0x101826, 0.78);
   const awayTag = new Text({
-    text: pickLocale(activeLocale, LOCALE_TEXT.breakRoom),
+    text: pickLocale(activeLocale, decorStyle === "tarkov" ? TARKOV_LOCALE_TEXT.breakRoom : LOCALE_TEXT.breakRoom),
     style: new TextStyle({
       fontSize: 8,
       fill: contrastTextColor(awayTagBgColor),

@@ -1,9 +1,9 @@
 import type { MutableRefObject } from "react";
 import { type Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import type { Agent, Task } from "../../types";
-import type { Delivery, RoomTheme, WallClockVisual } from "./model";
+import type { Delivery, OfficeDecorStyle, RoomTheme, WallClockVisual } from "./model";
 import { CEO_ZONE_H, HALLWAY_H, TILE } from "./model";
-import { LOCALE_TEXT, type SupportedLocale, pickLocale } from "./themes-locale";
+import { LOCALE_TEXT, TARKOV_LOCALE_TEXT, type SupportedLocale, pickLocale } from "./themes-locale";
 import {
   blendColor,
   drawAmbientGlow,
@@ -17,6 +17,14 @@ import {
 } from "./drawing-core";
 import { drawChair, drawPlant } from "./drawing-furniture-a";
 import { formatPeopleCount, formatTaskCount } from "./drawing-furniture-b";
+import {
+  TARKOV_PALETTE,
+  drawAmmoCrate,
+  drawCommandDesk,
+  drawConcreteBackdrop,
+  drawHazardStripe,
+  drawTarkovCeoDecor,
+} from "./drawing-tarkov";
 
 interface BuildCeoAndHallwayParams {
   app: Application;
@@ -26,6 +34,7 @@ interface BuildCeoAndHallwayParams {
   isDark: boolean;
   activeLocale: SupportedLocale;
   ceoTheme: RoomTheme;
+  decorStyle: OfficeDecorStyle;
   activeMeetingTaskId: string | null;
   onOpenActiveMeetingMinutes?: (taskId: string) => void;
   agents: Agent[];
@@ -44,6 +53,7 @@ export function buildCeoAndHallway({
   isDark,
   activeLocale,
   ceoTheme,
+  decorStyle,
   activeMeetingTaskId,
   onOpenActiveMeetingMinutes,
   agents,
@@ -53,6 +63,7 @@ export function buildCeoAndHallway({
   wallClocksRef,
   ceoOfficeRectRef,
 }: BuildCeoAndHallwayParams): void {
+  const isTarkov = decorStyle === "tarkov";
   const bg = new Graphics();
   const bgFill = isDark ? 0x0e0e1c : 0xf5f0e8;
   const bgGradFrom = isDark ? 0x121222 : 0xf8f4ec;
@@ -60,14 +71,18 @@ export function buildCeoAndHallway({
   const bgStrokeInner = isDark ? 0x2a2a48 : 0xd8cfc0;
   const bgStrokeOuter = isDark ? 0x222240 : 0xe0d8cc;
   const bgDotColor = isDark ? 0x2a2a48 : 0xd0c8b8;
-  bg.roundRect(0, 0, OFFICE_W, totalH, 6).fill(bgFill);
-  drawBandGradient(bg, 2, 2, OFFICE_W - 4, totalH - 4, bgGradFrom, bgGradTo, 14, 0.82);
-  bg.roundRect(2, 2, OFFICE_W - 4, totalH - 4, 5).stroke({ width: 1.5, color: bgStrokeInner, alpha: 0.55 });
-  bg.roundRect(0, 0, OFFICE_W, totalH, 6).stroke({ width: 3, color: bgStrokeOuter });
-  for (let i = 0; i < 22; i++) {
-    const sx = 12 + ((i * 97) % Math.max(24, OFFICE_W - 24));
-    const sy = 12 + ((i * 131) % Math.max(24, totalH - 24));
-    bg.circle(sx, sy, i % 3 === 0 ? 1.1 : 0.8).fill({ color: bgDotColor, alpha: i % 2 === 0 ? 0.12 : 0.08 });
+  if (isTarkov) {
+    drawConcreteBackdrop(bg, OFFICE_W, totalH);
+  } else {
+    bg.roundRect(0, 0, OFFICE_W, totalH, 6).fill(bgFill);
+    drawBandGradient(bg, 2, 2, OFFICE_W - 4, totalH - 4, bgGradFrom, bgGradTo, 14, 0.82);
+    bg.roundRect(2, 2, OFFICE_W - 4, totalH - 4, 5).stroke({ width: 1.5, color: bgStrokeInner, alpha: 0.55 });
+    bg.roundRect(0, 0, OFFICE_W, totalH, 6).stroke({ width: 3, color: bgStrokeOuter });
+    for (let i = 0; i < 22; i++) {
+      const sx = 12 + ((i * 97) % Math.max(24, OFFICE_W - 24));
+      const sy = 12 + ((i * 131) % Math.max(24, totalH - 24));
+      bg.circle(sx, sy, i % 3 === 0 ? 1.1 : 0.8).fill({ color: bgDotColor, alpha: i % 2 === 0 ? 0.12 : 0.08 });
+    }
   }
   app.stage.addChild(bg);
 
@@ -87,7 +102,7 @@ export function buildCeoAndHallway({
   ceoLayer.addChild(ceoBorder);
 
   const ceoLabel = new Text({
-    text: pickLocale(activeLocale, LOCALE_TEXT.ceoOffice),
+    text: pickLocale(activeLocale, isTarkov ? TARKOV_LOCALE_TEXT.ceoOffice : LOCALE_TEXT.ceoOffice),
     style: new TextStyle({
       fontSize: 10,
       fill: 0xffffff,
@@ -106,30 +121,38 @@ export function buildCeoAndHallway({
   ceoLabel.position.set(12, 8);
   ceoLayer.addChild(ceoLabelBg);
   ceoLayer.addChild(ceoLabel);
-  drawBunting(
-    ceoLayer,
-    148,
-    11,
-    Math.max(120, OFFICE_W - 300),
-    blendColor(ceoTheme.accent, 0xffffff, 0.2),
-    blendColor(ceoTheme.wall, ceoTheme.accent, 0.45),
-    0.7,
-  );
+  if (isTarkov) {
+    drawTarkovCeoDecor(ceoLayer, OFFICE_W, ceoTheme.accent);
+  } else {
+    drawBunting(
+      ceoLayer,
+      148,
+      11,
+      Math.max(120, OFFICE_W - 300),
+      blendColor(ceoTheme.accent, 0xffffff, 0.2),
+      blendColor(ceoTheme.wall, ceoTheme.accent, 0.45),
+      0.7,
+    );
+  }
 
   const cdx = 50;
   const cdy = 28;
-  const cdg = new Graphics();
-  const deskEdge = isDark ? 0x3a2a18 : 0xb8925c;
-  const deskTop = isDark ? 0x4a3828 : 0xd0a870;
-  const monitorFrame = isDark ? 0x1a1a2a : 0x2a2a3a;
-  const monitorScreen = isDark ? 0x2255aa : 0x4488cc;
-  const namePlate = isDark ? 0x5a4820 : 0xe8c060;
-  cdg.roundRect(cdx, cdy, 64, 34, 3).fill(deskEdge);
-  cdg.roundRect(cdx + 1, cdy + 1, 62, 32, 2).fill(deskTop);
-  cdg.roundRect(cdx + 19, cdy + 2, 26, 16, 2).fill(monitorFrame);
-  cdg.roundRect(cdx + 20.5, cdy + 3.5, 23, 12, 1).fill(monitorScreen);
-  cdg.roundRect(cdx + 22, cdy + 24, 20, 7, 2).fill(namePlate);
-  ceoLayer.addChild(cdg);
+  if (isTarkov) {
+    drawCommandDesk(ceoLayer, cdx, cdy);
+  } else {
+    const cdg = new Graphics();
+    const deskEdge = isDark ? 0x3a2a18 : 0xb8925c;
+    const deskTop = isDark ? 0x4a3828 : 0xd0a870;
+    const monitorFrame = isDark ? 0x1a1a2a : 0x2a2a3a;
+    const monitorScreen = isDark ? 0x2255aa : 0x4488cc;
+    const namePlate = isDark ? 0x5a4820 : 0xe8c060;
+    cdg.roundRect(cdx, cdy, 64, 34, 3).fill(deskEdge);
+    cdg.roundRect(cdx + 1, cdy + 1, 62, 32, 2).fill(deskTop);
+    cdg.roundRect(cdx + 19, cdy + 2, 26, 16, 2).fill(monitorFrame);
+    cdg.roundRect(cdx + 20.5, cdy + 3.5, 23, 12, 1).fill(monitorScreen);
+    cdg.roundRect(cdx + 22, cdy + 24, 20, 7, 2).fill(namePlate);
+    ceoLayer.addChild(cdg);
+  }
   const ceoPlateText = new Text({
     text: "CEO",
     style: new TextStyle({ fontSize: 5, fill: 0x000000, fontWeight: "bold", fontFamily: "monospace" }),
@@ -137,19 +160,30 @@ export function buildCeoAndHallway({
   ceoPlateText.anchor.set(0.5, 0.5);
   ceoPlateText.position.set(cdx + 32, cdy + 27.5);
   ceoLayer.addChild(ceoPlateText);
-  drawChair(ceoLayer, cdx + 32, cdy + 46, 0xd4a860);
+  drawChair(ceoLayer, cdx + 32, cdy + 46, isTarkov ? TARKOV_PALETTE.oliveLight : 0xd4a860);
 
   const mtW = 220;
   const mtH = 28;
   const mtX = Math.floor((OFFICE_W - mtW) / 2);
   const mtY = 48;
   const mt = new Graphics();
-  const tableEdge = isDark ? 0x2a2018 : 0xb89060;
-  const tableTop = isDark ? 0x382818 : 0xd0a878;
-  const tableInlay = isDark ? 0x4a3828 : 0xf7e4c0;
-  mt.roundRect(mtX, mtY, mtW, mtH, 12).fill(tableEdge);
-  mt.roundRect(mtX + 3, mtY + 3, mtW - 6, mtH - 6, 10).fill(tableTop);
-  mt.roundRect(mtX + 64, mtY + 8, 92, 12, 5).fill({ color: tableInlay, alpha: isDark ? 0.3 : 0.45 });
+  if (isTarkov) {
+    // Plywood briefing table with an area map spread across it.
+    mt.roundRect(mtX, mtY, mtW, mtH, 2).fill(TARKOV_PALETTE.woodDark);
+    mt.roundRect(mtX + 2, mtY + 2, mtW - 4, mtH - 4, 1).fill(TARKOV_PALETTE.wood);
+    mt.rect(mtX + 56, mtY + 5, 108, 18).fill({ color: 0x8b8a5e, alpha: 0.9 });
+    mt.ellipse(mtX + 84, mtY + 14, 14, 6).stroke({ width: 0.5, color: TARKOV_PALETTE.oliveDark, alpha: 0.7 });
+    mt.moveTo(mtX + 60, mtY + 19)
+      .quadraticCurveTo(mtX + 110, mtY + 9, mtX + 160, mtY + 18)
+      .stroke({ width: 0.8, color: 0x5d7480, alpha: 0.8 });
+  } else {
+    const tableEdge = isDark ? 0x2a2018 : 0xb89060;
+    const tableTop = isDark ? 0x382818 : 0xd0a878;
+    const tableInlay = isDark ? 0x4a3828 : 0xf7e4c0;
+    mt.roundRect(mtX, mtY, mtW, mtH, 12).fill(tableEdge);
+    mt.roundRect(mtX + 3, mtY + 3, mtW - 6, mtH - 6, 10).fill(tableTop);
+    mt.roundRect(mtX + 64, mtY + 8, 92, 12, 5).fill({ color: tableInlay, alpha: isDark ? 0.3 : 0.45 });
+  }
   if (activeMeetingTaskId && onOpenActiveMeetingMinutes) {
     mt.eventMode = "static";
     mt.cursor = "pointer";
@@ -162,15 +196,16 @@ export function buildCeoAndHallway({
 
   const meetingSeatX = [mtX + 40, mtX + 110, mtX + 180];
   for (const sx of meetingSeatX) {
-    drawChair(ceoLayer, sx, mtY - 4, 0xc4a070);
-    drawChair(ceoLayer, sx, mtY + mtH + 10, 0xc4a070);
+    const seatColor = isTarkov ? TARKOV_PALETTE.olive : 0xc4a070;
+    drawChair(ceoLayer, sx, mtY - 4, seatColor);
+    drawChair(ceoLayer, sx, mtY + mtH + 10, seatColor);
   }
 
   const meetingLabel = new Text({
-    text: pickLocale(activeLocale, LOCALE_TEXT.collabTable),
+    text: pickLocale(activeLocale, isTarkov ? TARKOV_LOCALE_TEXT.collabTable : LOCALE_TEXT.collabTable),
     style: new TextStyle({
       fontSize: 7,
-      fill: 0x7a5c2a,
+      fill: isTarkov ? TARKOV_PALETTE.ink : 0x7a5c2a,
       fontWeight: "bold",
       fontFamily: "monospace",
       letterSpacing: 1,
@@ -205,7 +240,7 @@ export function buildCeoAndHallway({
     }
   }
 
-  drawPictureFrame(ceoLayer, 14, 14);
+  if (!isTarkov) drawPictureFrame(ceoLayer, 14, 14);
   wallClocksRef.current.push(drawWallClock(ceoLayer, OFFICE_W - 30, 18));
 
   const workingCount = agents.filter((agent) => agent.status === "working").length;
@@ -237,8 +272,12 @@ export function buildCeoAndHallway({
     const sx = OFFICE_W - 340 + index * 82;
     const sy = 12;
     const statCard = new Graphics();
-    statCard.roundRect(sx, sy, 74, 26, 4).fill({ color: 0xfff4d8, alpha: 0.85 });
-    statCard.roundRect(sx, sy, 74, 26, 4).stroke({ width: 1, color: 0xe8c870, alpha: 0.5 });
+    statCard
+      .roundRect(sx, sy, 74, 26, 4)
+      .fill({ color: isTarkov ? TARKOV_PALETTE.concreteDark : 0xfff4d8, alpha: 0.85 });
+    statCard
+      .roundRect(sx, sy, 74, 26, 4)
+      .stroke({ width: 1, color: isTarkov ? TARKOV_PALETTE.hazard : 0xe8c870, alpha: 0.5 });
     ceoLayer.addChild(statCard);
     const iconText = new Text({ text: stat.icon, style: new TextStyle({ fontSize: 10 }) });
     iconText.position.set(sx + 4, sy + 4);
@@ -247,7 +286,11 @@ export function buildCeoAndHallway({
       Object.assign(
         new Text({
           text: stat.label,
-          style: new TextStyle({ fontSize: 7, fill: 0x8b7040, fontFamily: "monospace" }),
+          style: new TextStyle({
+            fontSize: 7,
+            fill: isTarkov ? TARKOV_PALETTE.textMuted : 0x8b7040,
+            fontFamily: "monospace",
+          }),
         }),
         { x: sx + 18, y: sy + 2 },
       ),
@@ -256,7 +299,12 @@ export function buildCeoAndHallway({
       Object.assign(
         new Text({
           text: stat.val,
-          style: new TextStyle({ fontSize: 10, fill: 0x5a4020, fontWeight: "bold", fontFamily: "monospace" }),
+          style: new TextStyle({
+            fontSize: 10,
+            fill: isTarkov ? TARKOV_PALETTE.textLight : 0x5a4020,
+            fontWeight: "bold",
+            fontFamily: "monospace",
+          }),
         }),
         { x: sx + 18, y: sy + 13 },
       ),
@@ -268,7 +316,7 @@ export function buildCeoAndHallway({
     style: new TextStyle({
       fontSize: 10,
       fontWeight: "bold",
-      fill: 0x8b7040,
+      fill: isTarkov ? TARKOV_PALETTE.textMuted : 0x8b7040,
       fontFamily: "monospace",
     }),
   });
@@ -280,7 +328,7 @@ export function buildCeoAndHallway({
       text: pickLocale(activeLocale, LOCALE_TEXT.meetingTableHint),
       style: new TextStyle({
         fontSize: 12,
-        fill: 0x8b6b30,
+        fill: isTarkov ? TARKOV_PALETTE.hazard : 0x8b6b30,
         fontWeight: "bold",
         fontFamily: "system-ui, sans-serif",
       }),
@@ -291,9 +339,11 @@ export function buildCeoAndHallway({
   }
 
   drawAmbientGlow(ceoLayer, OFFICE_W / 2, CEO_ZONE_H / 2, OFFICE_W * 0.35, ceoTheme.accent, 0.08);
-  drawPlant(ceoLayer, 18, 62, 0);
-  drawPlant(ceoLayer, OFFICE_W - 22, 62, 2);
-  drawWaterCooler(ceoLayer, 28, 30);
+  if (!isTarkov) {
+    drawPlant(ceoLayer, 18, 62, 0);
+    drawPlant(ceoLayer, OFFICE_W - 22, 62, 2);
+    drawWaterCooler(ceoLayer, 28, 30);
+  }
 
   ceoLayer.addChild(ceoLabelBg);
   ceoLayer.addChild(ceoLabel);
@@ -301,12 +351,12 @@ export function buildCeoAndHallway({
 
   const hallY = CEO_ZONE_H;
   const hallG = new Graphics();
-  const hallBase = isDark ? 0x252535 : 0xe8dcc8;
-  const hallTile1 = isDark ? 0x2d2d40 : 0xf0e4d0;
-  const hallTile2 = isDark ? 0x1f1f30 : 0xe8dcc8;
-  const hallDash = isDark ? 0x3a3858 : 0xc8b898;
-  const hallTrim = isDark ? 0x3a3858 : 0xd4c4a8;
-  const hallGlow = isDark ? 0x3355bb : 0xfff8e0;
+  const hallBase = isTarkov ? TARKOV_PALETTE.concrete : isDark ? 0x252535 : 0xe8dcc8;
+  const hallTile1 = isTarkov ? TARKOV_PALETTE.concreteLight : isDark ? 0x2d2d40 : 0xf0e4d0;
+  const hallTile2 = isTarkov ? TARKOV_PALETTE.concreteDark : isDark ? 0x1f1f30 : 0xe8dcc8;
+  const hallDash = isTarkov ? TARKOV_PALETTE.hazard : isDark ? 0x3a3858 : 0xc8b898;
+  const hallTrim = isTarkov ? TARKOV_PALETTE.hazard : isDark ? 0x3a3858 : 0xd4c4a8;
+  const hallGlow = isTarkov ? TARKOV_PALETTE.lamp : isDark ? 0x3355bb : 0xfff8e0;
   hallG.rect(4, hallY, OFFICE_W - 8, HALLWAY_H).fill(hallBase);
   drawBandGradient(hallG, 4, hallY, OFFICE_W - 8, HALLWAY_H, hallTile1, hallTile2, 5, 0.38);
   for (let dx = 4; dx < OFFICE_W - 4; dx += TILE * 2) {
@@ -338,7 +388,20 @@ export function buildCeoAndHallway({
     .ellipse(OFFICE_W / 2, hall2Y + HALLWAY_H / 2 + 1, Math.max(120, OFFICE_W * 0.28), 6)
     .fill({ color: hallGlow, alpha: isDark ? 0.06 : 0.08 });
 
+  if (isTarkov) {
+    // Hazard bands along both hallway edges.
+    for (const bandY of [hallY, hall2Y]) {
+      drawHazardStripe(hallG, 4, bandY, OFFICE_W - 8, 3);
+      drawHazardStripe(hallG, 4, bandY + HALLWAY_H - 3, OFFICE_W - 8, 3);
+    }
+  }
+
   app.stage.addChild(hallG);
-  drawPlant(app.stage as Container, 30, hallY + HALLWAY_H - 6, 2);
-  drawPlant(app.stage as Container, OFFICE_W - 30, hallY + HALLWAY_H - 6, 1);
+  if (isTarkov) {
+    drawAmmoCrate(app.stage as Container, 20, hallY + HALLWAY_H - 18, 20, 11);
+    drawAmmoCrate(app.stage as Container, OFFICE_W - 40, hallY + HALLWAY_H - 18, 20, 11);
+  } else {
+    drawPlant(app.stage as Container, 30, hallY + HALLWAY_H - 6, 2);
+    drawPlant(app.stage as Container, OFFICE_W - 30, hallY + HALLWAY_H - 6, 1);
+  }
 }

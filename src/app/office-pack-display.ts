@@ -1,4 +1,5 @@
 import type { Agent, Department, WorkflowPackKey } from "../types";
+import { packScopeKey } from "./office-workflow-pack";
 
 function parseSeedPackKey(agentId: string): string | null {
   const normalized = String(agentId ?? "").trim();
@@ -33,7 +34,7 @@ export function resolvePackDepartmentsForDisplay(params: {
   preferPackProfile?: boolean;
 }): Department[] {
   const { packKey, globalDepartments, packDepartments, preferPackProfile = true } = params;
-  if (packKey === "development" || !packDepartments || packDepartments.length === 0) {
+  if (packScopeKey(packKey) === "development" || !packDepartments || packDepartments.length === 0) {
     return globalDepartments;
   }
 
@@ -55,7 +56,7 @@ export function resolvePackAgentViews(params: {
   packAgents?: Agent[] | null;
 }): { scopedAgents: Agent[]; mergedAgents: Agent[] } {
   const { packKey, globalAgents, packAgents } = params;
-  if (packKey === "development" || !packAgents || packAgents.length === 0) {
+  if (packScopeKey(packKey) === "development" || !packAgents || packAgents.length === 0) {
     return { scopedAgents: globalAgents, mergedAgents: globalAgents };
   }
 
