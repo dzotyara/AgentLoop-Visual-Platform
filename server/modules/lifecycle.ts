@@ -219,6 +219,8 @@ export function startLifecycle(ctx: RuntimeContext): void {
     SELECT id, title, assigned_agent_id, created_at, started_at, updated_at
     FROM tasks
     WHERE status = 'in_progress'
+      -- pr-patrol runs its own executor; replaying its tasks through the stock runner would merge/no-push them
+      AND (workflow_meta_json IS NULL OR workflow_meta_json NOT LIKE '%"source":"pr-patrol"%')
     ORDER BY updated_at ASC
   `,
       )

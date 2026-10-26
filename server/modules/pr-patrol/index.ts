@@ -1,0 +1,438 @@
+import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import type { RuntimeContext } from "../../types/runtime-context.ts";
+import { loadPrPatrolConfig } from "./config.ts";
+import { BLOCKING_SEVERITIES, decide, type ActionKind, type Decision, type ReviewFinding } from "./decide.ts";
+import {
+  fetchPrSnapshot,
+  listPatrolledPrs,
+  replyAndResolveThread,
+  rerunFailedRuns,
+  type PrSnapshot,
+} from "./github.ts";
+import { buildPatrolPrompt } from "./prompts.ts";
+import { createPrPatrolStore, ensurePrPatrolSchema, prKey } from "./store.ts";
+import { preparePrWorktree, pushAgentCommits, type PrWorkspace, type PushOutcome } from "./workspace.ts";
+
+export const PR_PATROL_SOURCE = "pr-patrol";
+
+type RunDecision = Extract<Decision, { kind: "run" }>;
+type AgentRole = "reviewer" | "fixer" | "ci" | "conflict" | "gate";
+
+/** The patrol's own staff: they sit in the pixel office and pick up the loop's tasks. */
+const PATROL_AGENTS: Record<
+  AgentRole,
+  { name: string; dept: string; role: string; emoji: string; sprite: number; personality: string }
+> = {
+  reviewer: {
+    name: "Argus",
+    dept: "qa",
+    role: "senior",
+    emoji: "🔍",
+    sprite: 7,
+    personality: "PR reviewer: correctness, silent failures, security",
+  },
+  fixer: {
+    name: "Patch",
+    dept: "dev",
+    role: "senior",
+    emoji: "🩹",
+    sprite: 3,
+    personality: "Applies review findings and reviewer comments",
+  },
+  ci: {
+    name: "Medic",
+    dept: "devsecops",
+    role: "senior",
+    emoji: "🚑",
+    sprite: 9,
+    personality: "Reads failing CI logs and fixes the branch",
+  },
+  conflict: {
+    name: "Weaver",
+    dept: "dev",
+    role: "junior",
+    emoji: "🧵",
+    sprite: 11,
+    personality: "Merges the base branch and resolves conflicts",
+  },
+  gate: {
+    name: "Gate",
+    dept: "operations",
+    role: "senior",
+    emoji: "✅",
+    sprite: 5,
+    personality: "Declares a PR ready once checks, threads and review are clean",
+  },
+};
+
+const ACTION_ROLE: Record<ActionKind, AgentRole> = {
+  review: "reviewer",
+  fix_review: "fixer",
+  address_feedback: "fixer",
+  fix_ci: "ci",
+  fix_conflict: "conflict",
+};
+
+const ACTION_LABEL: Record<ActionKind, string> = {
+  review: "Review",
+  fix_review: "Fix review findings",
+  address_feedback: "Address review comments",
+  fix_ci: "Fix CI",
+  fix_conflict: "Resolve merge conflict",
+};
+
+type Running = { taskId: string; action: ActionKind; agentId: string };
+
+export function createPrPatrol(ctx: RuntimeContext) {
+  const { app, db, broadcast, appendTaskLog, spawnCliAgent, activeProcesses, nowMs, logsDir, notifyCeo } = ctx as any;
+  const cfg = loadPrPatrolConfig();
+  ensurePrPatrolSchema(db);
+  const store = createPrPatrolStore(db, nowMs);
+  const running = new Map<string, Running>();
+  let timer: ReturnType<typeof setInterval> | null = null;
+  let ticking = false;
+  let lastTick: { at: number; error: string | null; prs: number } = { at: 0, error: null, prs: 0 };
+
+  function ensureAgents(): Record<AgentRole, string> {
+    const ids = {} as Record<AgentRole, string>;
+    for (const [role, a] of Object.entries(PATROL_AGENTS) as Array<[AgentRole, (typeof PATROL_AGENTS)[AgentRole]]>) {
+      const existing = db.prepare("SELECT id FROM agents WHERE name = ?").get(a.name) as { id: string } | undefined;
+      if (existing) {
+        ids[role] = existing.id;
+        continue;
+      }
+      const id = randomUUID();
+      db.prepare(
+        `INSERT INTO agents (id, name, name_ko, department_id, role, cli_provider, avatar_emoji, sprite_number, personality)
+         VALUES (?, ?, ?, ?, ?, 'claude', ?, ?, ?)`,
+      ).run(id, a.name, a.name, a.dept, a.role, a.emoji, a.sprite, a.personality);
+      broadcast("agent_created", db.prepare("SELECT * FROM agents WHERE id = ?").get(id));
+      ids[role] = id;
+    }
+    return ids;
+  }
+
+  let agentIds: Record<AgentRole, string> | null = null;
+  const agentId = (role: AgentRole) => (agentIds ??= ensureAgents())[role];
+
+  function setAgent(id: string, working: boolean, taskId: string | null, success = false): void {
+    if (working) {
+      db.prepare("UPDATE agents SET status = 'working', current_task_id = ? WHERE id = ?").run(taskId, id);
+    } else {
+      db.prepare(
+        `UPDATE agents SET status = 'idle', current_task_id = NULL,
+           stats_tasks_done = stats_tasks_done + ?, stats_xp = stats_xp + ? WHERE id = ?`,
+      ).run(success ? 1 : 0, success ? 10 : 0, id);
+    }
+    broadcast("agent_status", db.prepare("SELECT * FROM agents WHERE id = ?").get(id));
+  }
+
+  function createTask(
+    s: PrSnapshot,
+    title: string,
+    role: AgentRole,
+    status: "in_progress" | "done",
+    description: string,
+    action: string,
+  ): string {
+    const id = randomUUID();
+    const t = nowMs();
+    const a = PATROL_AGENTS[role];
+    db.prepare(
+      `INSERT INTO tasks (id, title, description, department_id, assigned_agent_id, status, priority, task_type,
+         workflow_meta_json, project_path, started_at, completed_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, 'development', ?, NULL, ?, ?, ?, ?)`,
+    ).run(
+      id,
+      title,
+      description,
+      a.dept,
+      agentId(role),
+      status,
+      JSON.stringify({ source: PR_PATROL_SOURCE, pr: prKey(s.repo, s.number), url: s.url, action }),
+      t,
+      status === "done" ? t : null,
+      t,
+      t,
+    );
+    appendTaskLog(id, "system", `${PR_PATROL_SOURCE}: ${title} — ${s.url}`);
+    broadcast("task_update", db.prepare("SELECT * FROM tasks WHERE id = ?").get(id));
+    return id;
+  }
+
+  function finishTask(taskId: string, ok: boolean, result: string): void {
+    const t = nowMs();
+    db.prepare("UPDATE tasks SET status = ?, result = ?, completed_at = ?, updated_at = ? WHERE id = ?").run(
+      ok ? "done" : "cancelled",
+      result.slice(0, 4000),
+      t,
+      t,
+      taskId,
+    );
+    db.prepare("UPDATE subtasks SET status = 'done' WHERE task_id = ? AND status != 'done'").run(taskId);
+    appendTaskLog(taskId, ok ? "system" : "error", result.slice(0, 2000));
+    broadcast("task_update", db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId));
+  }
+
+  function readResult(resultPath: string): any {
+    try {
+      return JSON.parse(fs.readFileSync(resultPath, "utf8"));
+    } catch {
+      return null;
+    }
+  }
+
+  const pushNote = (p: PushOutcome): string =>
+    p.status === "pushed"
+      ? `pushed ${p.commits} commit(s), head ${p.head.slice(0, 7)}`
+      : p.status === "dry_run"
+        ? `${p.commits} commit(s) made locally, not pushed (dry run: PR_PATROL_WRITE=0)`
+        : p.status === "rejected"
+          ? `push rejected: ${p.error}`
+          : p.status === "dirty"
+            ? `agent left uncommitted changes:\n${p.files}`
+            : p.status === "rewrote_history"
+              ? "agent rewrote branch history; nothing pushed"
+              : "no changes";
+  const advanced = (p: PushOutcome) => p.status === "pushed" || p.status === "dry_run";
+
+  /** Applies one finished agent run to the PR: push, record review/feedback state, side effects. */
+  async function settle(
+    key: string,
+    s: PrSnapshot,
+    d: RunDecision,
+    ws: PrWorkspace,
+    result: any,
+    exitCode: number,
+  ): Promise<{ ok: boolean; note: string }> {
+    const summary = typeof result?.summary === "string" ? result.summary : "";
+    if (!result) return { ok: false, note: `agent exited with code ${exitCode} and wrote no result` };
+
+    if (d.action === "review") {
+      const findings: ReviewFinding[] = Array.isArray(result.findings) ? result.findings : [];
+      const blocking = findings.filter((f) => BLOCKING_SEVERITIES.has(String(f.severity)));
+      store.recordReview(key, ws.startSha, blocking);
+      const list = findings
+        .map((f) => `- [${f.severity}] ${f.file ?? ""}${f.line ? `:${f.line}` : ""} ${f.title}`)
+        .join("\n");
+      return {
+        ok: true,
+        note: `review: ${blocking.length} blocking of ${findings.length} finding(s). ${summary}\n${list}`,
+      };
+    }
+
+    const push = await pushAgentCommits(ws, s, cfg.write);
+    const items: any[] = Array.isArray(result.items) ? result.items : [];
+
+    if (d.action === "fix_ci") {
+      const infra = result.classification === "flaky" || result.classification === "infra";
+      if (push.status === "no_changes" && infra) {
+        const reruns = cfg.write ? await rerunFailedRuns(s.repo, d.failingChecks ?? []) : [];
+        return {
+          ok: true,
+          note: `${result.classification} failure; ${cfg.write ? `re-ran failed jobs of ${reruns.length} run(s)` : "rerun skipped (dry run)"}. ${summary}`,
+        };
+      }
+      return { ok: advanced(push), note: `${pushNote(push)}. ${summary}` };
+    }
+
+    if (d.action === "fix_conflict") return { ok: advanced(push), note: `${pushNote(push)}. ${summary}` };
+
+    if (d.action === "fix_review") {
+      const allDeclined = items.length > 0 && items.every((i) => i.verdict === "declined");
+      if (push.status === "no_changes" && allDeclined) {
+        store.recordReview(key, ws.startSha, []); // findings judged invalid: nothing left to block on
+        return { ok: true, note: `all findings declined. ${summary}` };
+      }
+      return { ok: advanced(push), note: `${pushNote(push)}. ${summary}` };
+    }
+
+    // address_feedback
+    if (!(advanced(push) || push.status === "no_changes")) return { ok: false, note: `${pushNote(push)}. ${summary}` };
+    const handled = items.filter((i) => i.verdict !== "blocked").map((i) => String(i.feedback_id));
+    store.addHandledFeedback(key, handled);
+    let replied = 0;
+    if (cfg.write && cfg.replyToThreads && push.status !== "dry_run") {
+      for (const i of items) {
+        const fb = d.feedback?.find((f) => f.id === i.feedback_id);
+        if (fb?.kind !== "review_thread" || !i.reply_text || !String(i.verdict).startsWith("fixed")) continue;
+        try {
+          await replyAndResolveThread(fb.id, i.reply_text);
+          replied++;
+        } catch (err) {
+          appendTaskLog(running.get(key)?.taskId, "error", `thread reply failed: ${(err as Error).message}`);
+        }
+      }
+    }
+    return {
+      ok: true,
+      note: `${pushNote(push)}; ${handled.length}/${d.feedback?.length ?? 0} item(s) handled${replied ? `, ${replied} thread(s) replied+resolved` : ""}. ${summary}`,
+    };
+  }
+
+  async function launch(key: string, s: PrSnapshot, d: RunDecision): Promise<void> {
+    const role = ACTION_ROLE[d.action];
+    const aId = agentId(role);
+    const title = `[${s.repo.split("/")[1]}#${s.number}] ${ACTION_LABEL[d.action]}: ${s.title}`.slice(0, 200);
+    const taskId = createTask(
+      s,
+      title,
+      role,
+      "in_progress",
+      `${s.url}\nhead ${s.headRefOid}\naction ${d.key}`,
+      d.action,
+    );
+    running.set(key, { taskId, action: d.action, agentId: aId });
+    store.startAction(key, d.key, d.action, taskId);
+    store.setPhase(key, "working", `${PATROL_AGENTS[role].name}: ${ACTION_LABEL[d.action]}`);
+    setAgent(aId, true, taskId);
+
+    const done = async (ok: boolean, note: string) => {
+      store.finishAction(key, d.key, ok ? "done" : "failed", { note });
+      finishTask(taskId, ok, note);
+      setAgent(aId, false, null, ok);
+      running.delete(key);
+      setTimeout(() => void tick(), 5_000); // keep the loop moving without waiting a full interval
+    };
+
+    let ws: PrWorkspace;
+    try {
+      ws = await preparePrWorktree(cfg.workdir, s);
+    } catch (err) {
+      await done(false, `worktree setup failed: ${(err as Error).message}`);
+      return;
+    }
+    db.prepare("UPDATE tasks SET project_path = ? WHERE id = ?").run(ws.path, taskId);
+
+    const resultDir = path.join(cfg.workdir, "results");
+    fs.mkdirSync(resultDir, { recursive: true });
+    const resultPath = path.join(resultDir, `${taskId}.json`);
+    const prompt = buildPatrolPrompt(s, d, resultPath);
+    const child = spawnCliAgent(taskId, "claude", prompt, ws.path, path.join(logsDir, `${taskId}.log`), cfg.model);
+    child.on("close", (code: number | null) => {
+      activeProcesses.delete(taskId);
+      settle(key, s, d, ws, readResult(resultPath), code ?? 1)
+        .then((r) => done(r.ok, r.note))
+        .catch((err) => done(false, `settle failed: ${(err as Error).message}`));
+    });
+  }
+
+  async function patrolOne(repo: string, number: number): Promise<void> {
+    const key = prKey(repo, number);
+    const s = await fetchPrSnapshot(repo, number, cfg);
+    store.upsertPr({ pr_key: key, repo, number, title: s.title, url: s.url, head_sha: s.headRefOid });
+    if (running.has(key)) return;
+
+    const d = decide(s, cfg, store.memory(key));
+    switch (d.kind) {
+      case "skip":
+        store.setPhase(key, "skipped", d.reason);
+        return;
+      case "wait":
+        store.setPhase(key, "waiting", d.reason, d.notes);
+        return;
+      case "blocked":
+        store.setPhase(key, "blocked", d.reasons.join("; "), d.notes);
+        return;
+      case "ready":
+        store.setPhase(key, "ready", "checks green, no conflicts, feedback handled, review clean", d.notes);
+        if (store.markReady(key, s.headRefOid)) {
+          const note = `Ready: ${s.url}${d.notes.length ? ` (${d.notes.join("; ")})` : ""}`;
+          createTask(
+            s,
+            `[${repo.split("/")[1]}#${number}] Ready: ${s.title}`.slice(0, 200),
+            "gate",
+            "done",
+            note,
+            "ready",
+          );
+          notifyCeo?.(`✅ ${repo}#${number} is ready — ${s.title}`);
+        }
+        return;
+      case "run":
+        if (running.size >= cfg.maxConcurrent) {
+          store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]}`);
+          return;
+        }
+        if ([...running.values()].some((r) => r.agentId === agentId(ACTION_ROLE[d.action]))) {
+          store.setPhase(key, "watching", `queued: ${PATROL_AGENTS[ACTION_ROLE[d.action]].name} is busy`);
+          return;
+        }
+        await launch(key, s, d);
+    }
+  }
+
+  async function tick(): Promise<void> {
+    if (ticking) return;
+    ticking = true;
+    try {
+      const prs = await listPatrolledPrs(cfg);
+      for (const pr of prs) {
+        try {
+          await patrolOne(pr.repo, pr.number);
+        } catch (err) {
+          const key = prKey(pr.repo, pr.number);
+          store.upsertPr({ pr_key: key, repo: pr.repo, number: pr.number, title: "", url: "", head_sha: "" });
+          store.setPhase(key, "error", (err as Error).message.slice(0, 500));
+        }
+      }
+      store.forgetMissing(new Set(prs.map((p) => prKey(p.repo, p.number))));
+      lastTick = { at: nowMs(), error: null, prs: prs.length };
+    } catch (err) {
+      lastTick = { at: nowMs(), error: (err as Error).message.slice(0, 500), prs: lastTick.prs };
+    } finally {
+      ticking = false;
+      broadcast("pr_patrol_update", status());
+    }
+  }
+
+  function status() {
+    return {
+      enabled: cfg.enabled,
+      write: cfg.write,
+      replyToThreads: cfg.replyToThreads,
+      review: cfg.review,
+      intervalMs: cfg.intervalMs,
+      maxConcurrent: cfg.maxConcurrent,
+      lastTick,
+      running: Object.fromEntries(running),
+      prs: store.listPrs().map((r) => ({ ...r, notes: JSON.parse(r.notes_json) as string[] })),
+    };
+  }
+
+  function registerRoutes(): void {
+    app.get("/api/pr-patrol/status", (_req: unknown, res: { json(v: unknown): void }) => res.json(status()));
+    app.post("/api/pr-patrol/tick", (_req: unknown, res: { json(v: unknown): void }) => {
+      void tick();
+      res.json({ ok: true });
+    });
+  }
+
+  function start(): void {
+    if (!cfg.enabled) {
+      console.log("[pr-patrol] disabled (PR_PATROL_ENABLED=0)");
+      return;
+    }
+    const interrupted = store.failInterruptedActions();
+    // Rows left in_progress by a crash: the stock orphan recovery skips patrol tasks, so close them here.
+    db.prepare(
+      "UPDATE tasks SET status = 'cancelled', updated_at = ? WHERE status = 'in_progress' AND workflow_meta_json LIKE ?",
+    ).run(nowMs(), `%"source":"${PR_PATROL_SOURCE}"%`);
+    agentIds = ensureAgents();
+    console.log(
+      `[pr-patrol] on: query "${cfg.searchQuery}", every ${cfg.intervalMs / 1000}s, write=${cfg.write}, review=${cfg.review}` +
+        (interrupted ? `, ${interrupted} interrupted action(s) will retry` : ""),
+    );
+    setTimeout(() => void tick(), 8_000);
+    timer = setInterval(() => void tick(), cfg.intervalMs);
+  }
+
+  function stop(): void {
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  return { registerRoutes, start, stop, tick, status };
+}

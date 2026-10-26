@@ -1,3 +1,7 @@
+> **AgentLoop Visual Platform** — this fork adds **pr-patrol**, a loop of Claude Code agents that reviews your open
+> GitHub PRs, fixes CI failures, merge conflicts and review comments, and declares each PR ready, all visible in the
+> pixel office. See [PR-PATROL.md](PR-PATROL.md).
+
 <p align="center">
   <img src="public/claw-empire.svg" width="80" alt="Claw-Empire" />
 </p>
