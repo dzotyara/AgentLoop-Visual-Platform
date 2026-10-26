@@ -222,10 +222,21 @@ export function runOfficeTickerStep(ctx: OfficeTickerContext): void {
     sprite.position.y = baseY;
 
     if (status === "working") {
-      if (tick % 10 === 0) {
-        const particle = new Graphics();
+      // Typing bob: a small hop on the keyboard rhythm instead of sitting still.
+      sprite.position.y = baseY - (Math.sin(tick * 0.55 + (agentId ? agentId.length : 0)) > 0.3 ? 0.9 : 0);
+      if (tick % 14 === 0) {
         const colors = [0x55aaff, 0x55ff88, 0xffaa33, 0xff5577, 0xaa77ff];
-        particle.star(0, 0, 4, 2, 1, 0).fill(colors[Math.floor(Math.random() * colors.length)]);
+        const glyphs = ["</>", "{ }", "✓", "( )", "#", "=>", "git"];
+        const particle = new Text({
+          text: glyphs[Math.floor(Math.random() * glyphs.length)],
+          style: new TextStyle({
+            fontSize: 6,
+            fontFamily: "monospace",
+            fontWeight: "bold",
+            fill: colors[Math.floor(Math.random() * colors.length)],
+          }),
+        });
+        particle.anchor.set(0.5);
         particle.position.set(baseX + (Math.random() - 0.5) * 24, baseY - 16 - Math.random() * 8);
         (particle as any)._vy = -0.4 - Math.random() * 0.3;
         (particle as any)._life = 0;

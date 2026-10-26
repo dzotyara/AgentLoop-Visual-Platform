@@ -31,6 +31,8 @@ interface OfficeViewProps {
   themeHighlightTargetId?: string | null;
   onSelectAgent: (agent: Agent) => void;
   onSelectDepartment: (dept: Department) => void;
+  /** Opens the Pull Requests page (from the office PR board). */
+  onOpenPrs?: () => void;
 }
 
 interface Delivery {

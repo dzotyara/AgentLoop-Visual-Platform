@@ -13,6 +13,7 @@ import {
 } from "./model";
 import { hashStr } from "./drawing-core";
 import { drawDesk } from "./drawing-furniture-a";
+import { getLiveAgentWork, liveVersion } from "../pr-patrol/live-store";
 
 interface RenderDeskAgentAndSubClonesParams {
   room: Container;
@@ -132,33 +133,61 @@ export function renderDeskAgentAndSubClones({
   });
 
   const activeTask = tasks.find((task) => task.assigned_agent_id === agent.id && task.status === "in_progress");
-  if (activeTask) {
-    const txt = activeTask.title.length > 16 ? `${activeTask.title.slice(0, 16)}...` : activeTask.title;
+  if (isWorking) addTypingKeys(room, ax, deskY);
+  if (activeTask || isWorking) {
+    // Live bubble: pr-patrol agents show their PR and current tool call; others keep the task title.
+    const fallback = activeTask
+      ? `💬 ${activeTask.title.length > 16 ? `${activeTask.title.slice(0, 16)}...` : activeTask.title}`
+      : "💬 working…";
+    const bubble = new Container();
+    const bubbleG = new Graphics();
     const bubbleText = new Text({
-      text: `💬 ${txt}`,
+      text: fallback,
       style: new TextStyle({
         fontSize: 6.5,
         fill: 0x333333,
         fontFamily: "system-ui, sans-serif",
         wordWrap: true,
-        wordWrapWidth: 85,
+        wordWrapWidth: 120,
+        align: "center",
       }),
     });
     bubbleText.anchor.set(0.5, 1);
-    const bw = Math.min(bubbleText.width + 8, 100);
-    const bh = bubbleText.height + 6;
-    const bubbleTop = charFeetY - TARGET_CHAR_H - bh - 6;
-    const bubbleG = new Graphics();
-    bubbleG.roundRect(ax - bw / 2, bubbleTop, bw, bh, 4).fill(0xffffff);
-    bubbleG.roundRect(ax - bw / 2, bubbleTop, bw, bh, 4).stroke({ width: 1.2, color: themeAccent, alpha: 0.4 });
-    bubbleG
-      .moveTo(ax - 3, bubbleTop + bh)
-      .lineTo(ax, bubbleTop + bh + 4)
-      .lineTo(ax + 3, bubbleTop + bh)
-      .fill(0xffffff);
-    room.addChild(bubbleG);
-    bubbleText.position.set(ax, bubbleTop + bh - 3);
-    room.addChild(bubbleText);
+    bubble.addChild(bubbleG, bubbleText);
+    room.addChild(bubble);
+    const drawBubble = (text: string, live: boolean) => {
+      bubbleText.text = text;
+      const bw = Math.min(bubbleText.width + 8, 130);
+      const bh = bubbleText.height + 6;
+      const bubbleTop = charFeetY - TARGET_CHAR_H - bh - 6;
+      bubbleG.clear();
+      bubbleG.roundRect(ax - bw / 2, bubbleTop, bw, bh, 4).fill(0xffffff);
+      bubbleG
+        .roundRect(ax - bw / 2, bubbleTop, bw, bh, 4)
+        .stroke({ width: live ? 1.4 : 1.2, color: live ? 0x38bdf8 : themeAccent, alpha: live ? 0.9 : 0.4 });
+      bubbleG
+        .moveTo(ax - 3, bubbleTop + bh)
+        .lineTo(ax, bubbleTop + bh + 4)
+        .lineTo(ax + 3, bubbleTop + bh)
+        .fill(0xffffff);
+      bubbleText.position.set(ax, bubbleTop + bh - 3);
+    };
+    drawBubble(fallback, false);
+    let seenVersion = -1;
+    let shown = fallback;
+    bubble.onRender = () => {
+      const v = liveVersion();
+      if (v === seenVersion) return;
+      seenVersion = v;
+      const live = getLiveAgentWork(agent.id);
+      const activity = live && live.activity.length > 34 ? `${live.activity.slice(0, 33)}…` : live?.activity;
+      const next = live
+        ? `🔀 ${live.prLabel} · ${live.action}\n▸ ${activity}${live.toolCalls ? ` · ${live.toolCalls} tools` : ""}`
+        : fallback;
+      if (next === shown) return;
+      shown = next;
+      drawBubble(next, Boolean(live));
+    };
   }
 
   const workingSubs = subAgents.filter((sub) => sub.parentAgentId === agent.id && sub.status === "working");
@@ -238,4 +267,22 @@ export function renderDeskAgentAndSubClones({
     zzz.position.set(ax + 20, charFeetY - TARGET_CHAR_H / 2);
     room.addChild(zzz);
   }
+}
+
+/** Keys lighting up on the desk keyboard while an agent works (positions mirror drawDesk's key grid). */
+function addTypingKeys(room: Container, ax: number, deskY: number): void {
+  const keys = new Graphics();
+  room.addChild(keys);
+  let last = 0;
+  keys.onRender = () => {
+    const now = performance.now();
+    if (now - last < 90) return;
+    last = now;
+    keys.clear();
+    for (let n = 0; n < 2; n++) {
+      const c = Math.floor(Math.random() * 6);
+      const r = Math.floor(Math.random() * 2);
+      keys.roundRect(ax - 8 + c * 2.8, deskY + 3.2 + r * 2.6, 2, 1.6, 0.3).fill({ color: 0x7dd3fc, alpha: 0.95 });
+    }
+  };
 }

@@ -56,7 +56,15 @@ export type PrPatrolPr = {
   review_rounds: number;
   updated_at: number;
   snapshot: PrPatrolSnapshot | null;
-  agent: { name: string; action: string; taskId: string } | null;
+  agent: {
+    id: string;
+    name: string;
+    action: string;
+    taskId: string;
+    activity: string;
+    activityAt: number;
+    toolCalls: number;
+  } | null;
   actions: PrPatrolAction[];
 };
 

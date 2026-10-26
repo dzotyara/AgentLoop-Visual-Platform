@@ -11,6 +11,7 @@ import {
 import { useI18n } from "../i18n";
 import { useTheme, type ThemeMode } from "../ThemeContext";
 import CliUsagePanel from "./office-view/CliUsagePanel";
+import PrPatrolOfficeBoard from "./pr-patrol/PrPatrolOfficeBoard";
 import VirtualPadOverlay from "./office-view/VirtualPadOverlay";
 import {
   type OfficeViewProps,
@@ -52,6 +53,7 @@ export default function OfficeView({
   themeHighlightTargetId,
   onSelectAgent,
   onSelectDepartment,
+  onOpenPrs,
 }: OfficeViewProps) {
   const { language, t } = useI18n();
   const { theme: currentTheme } = useTheme();
@@ -427,6 +429,8 @@ export default function OfficeView({
           onSetMoveDirectionPressed={setMoveDirectionPressed}
         />
       </div>
+
+      <PrPatrolOfficeBoard agents={agents} onOpenPrs={onOpenPrs} />
 
       <CliUsagePanel
         cliStatus={cliStatus}

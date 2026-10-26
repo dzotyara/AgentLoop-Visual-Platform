@@ -508,6 +508,7 @@ export default function AppMainLayout({
                 themeHighlightTargetId={activeRoomThemeTargetId}
                 onSelectAgent={onSelectAgent}
                 onSelectDepartment={onSelectDepartment}
+                onOpenPrs={() => setView("prs")}
               />
             )}
 
