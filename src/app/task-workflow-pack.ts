@@ -1,5 +1,5 @@
 import type { Task, WorkflowPackKey } from "../types";
-import { normalizeOfficeWorkflowPack } from "./office-workflow-pack";
+import { normalizeOfficeWorkflowPack, packScopeKey } from "./office-workflow-pack";
 
 export type TaskCreateInput = {
   title: string;
@@ -13,13 +13,15 @@ export type TaskCreateInput = {
   workflow_pack_key?: WorkflowPackKey;
 };
 
+// Skin packs (tarkov) share the development task scope in both directions.
 export function filterTasksByOfficePack(tasks: Task[], packKey: WorkflowPackKey): Task[] {
-  return tasks.filter((task) => normalizeOfficeWorkflowPack(task.workflow_pack_key) === packKey);
+  const scopeKey = packScopeKey(packKey);
+  return tasks.filter((task) => packScopeKey(normalizeOfficeWorkflowPack(task.workflow_pack_key)) === scopeKey);
 }
 
 export function applyOfficePackToTaskInput(input: TaskCreateInput, packKey: WorkflowPackKey): TaskCreateInput {
   return {
     ...input,
-    workflow_pack_key: packKey,
+    workflow_pack_key: packScopeKey(packKey),
   };
 }

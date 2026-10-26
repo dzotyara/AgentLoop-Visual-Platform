@@ -30,6 +30,7 @@ interface UseOfficePixiRuntimeParams {
   language: string;
   activeMeetingTaskId?: string | null;
   customDeptThemes?: Record<string, { floor1: number; floor2: number; wall: number; accent: number }>;
+  decorStyle?: string;
   currentTheme: string;
 }
 
@@ -58,6 +59,7 @@ export function useOfficePixiRuntime({
   language,
   activeMeetingTaskId,
   customDeptThemes,
+  decorStyle,
   currentTheme,
 }: UseOfficePixiRuntimeParams): void {
   useEffect(() => {
@@ -250,6 +252,7 @@ export function useOfficePixiRuntime({
     language,
     activeMeetingTaskId,
     customDeptThemes,
+    decorStyle,
     currentTheme,
     buildScene,
     initDoneRef,

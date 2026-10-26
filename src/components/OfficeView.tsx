@@ -48,6 +48,7 @@ export default function OfficeView({
   onCeoOfficeCallProcessed,
   onOpenActiveMeetingMinutes,
   customDeptThemes,
+  decorStyle = "default",
   themeHighlightTargetId,
   onSelectAgent,
   onSelectDepartment,
@@ -131,8 +132,26 @@ export default function OfficeView({
   themeHighlightTargetIdRef.current = themeHighlightTargetId ?? null;
 
   // Latest data via refs (avoids stale closures)
-  const dataRef = useRef({ departments, agents, tasks, subAgents, unreadAgentIds, meetingPresence, customDeptThemes });
-  dataRef.current = { departments, agents, tasks, subAgents, unreadAgentIds, meetingPresence, customDeptThemes };
+  const dataRef = useRef({
+    departments,
+    agents,
+    tasks,
+    subAgents,
+    unreadAgentIds,
+    meetingPresence,
+    customDeptThemes,
+    decorStyle,
+  });
+  dataRef.current = {
+    departments,
+    agents,
+    tasks,
+    subAgents,
+    unreadAgentIds,
+    meetingPresence,
+    customDeptThemes,
+    decorStyle,
+  };
   const cbRef = useRef({ onSelectAgent, onSelectDepartment });
   cbRef.current = { onSelectAgent, onSelectDepartment };
   const activeMeetingTaskIdRef = useRef<string | null>(activeMeetingTaskId ?? null);
@@ -350,6 +369,7 @@ export default function OfficeView({
     language,
     activeMeetingTaskId,
     customDeptThemes,
+    decorStyle,
     currentTheme,
   });
 

@@ -5,6 +5,7 @@ import {
   DEFAULT_WORKFLOW_PACK_KEY,
   DEFAULT_WORKFLOW_PACK_SEEDS,
   isWorkflowPackKey,
+  packScopeKey,
   type WorkflowPackKey,
 } from "../../workflow/packs/definitions.ts";
 
@@ -115,11 +116,12 @@ export function registerWorkflowPackRoutes(
       ORDER BY
         CASE key
           WHEN 'development' THEN 1
-          WHEN 'report' THEN 2
-          WHEN 'web_research_report' THEN 3
-          WHEN 'roleplay' THEN 4
-          WHEN 'novel' THEN 5
-          WHEN 'video_preprod' THEN 6
+          WHEN 'tarkov' THEN 2
+          WHEN 'report' THEN 3
+          WHEN 'web_research_report' THEN 4
+          WHEN 'roleplay' THEN 5
+          WHEN 'novel' THEN 6
+          WHEN 'video_preprod' THEN 7
           ELSE 99
         END,
         key
@@ -232,7 +234,9 @@ export function registerWorkflowPackRoutes(
   app.post("/api/workflow/route", (req, res) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const text = normalizeTextField(body.text) ?? "";
-    const explicitPackKey = normalizeTextField(body.workflow_pack_key ?? body.packKey);
+    // Skin packs (tarkov) route as development so tasks never land in a skin-only scope.
+    const explicitPackKeyRaw = normalizeTextField(body.workflow_pack_key ?? body.packKey);
+    const explicitPackKey = explicitPackKeyRaw ? packScopeKey(explicitPackKeyRaw) : explicitPackKeyRaw;
     const sessionKey = normalizeTextField(body.session_key ?? body.sessionKey);
     const projectId = normalizeTextField(body.project_id ?? body.projectId);
 
@@ -269,7 +273,8 @@ export function registerWorkflowPackRoutes(
       const row = db.prepare("SELECT default_pack_key FROM projects WHERE id = ?").get(projectId) as
         | { default_pack_key?: string | null }
         | undefined;
-      const projectPack = normalizeTextField(row?.default_pack_key);
+      const projectPackRaw = normalizeTextField(row?.default_pack_key);
+      const projectPack = projectPackRaw ? packScopeKey(projectPackRaw) : projectPackRaw;
       if (projectPack && isWorkflowPackKey(projectPack) && isEnabled(projectPack)) {
         return res.json({
           packKey: projectPack,

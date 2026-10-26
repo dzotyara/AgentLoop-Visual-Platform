@@ -21,6 +21,7 @@ const DEFAULT_API_FORM: ApiFormState = {
 
 const VALID_WORKFLOW_PACK_KEYS = new Set<WorkflowPackKey>([
   "development",
+  "tarkov",
   "novel",
   "report",
   "video_preprod",

@@ -47,6 +47,7 @@ import {
   buildOfficePackStarterAgents,
   getOfficePackMeta,
   normalizeOfficeWorkflowPack,
+  packScopeKey,
   resolveOfficePackSeedProvider,
 } from "./app/office-workflow-pack";
 
@@ -142,7 +143,7 @@ export default function App() {
     packKey: WorkflowPackKey,
     sourceSettings: CompanySettings,
   ): OfficePackProfile | null => {
-    if (packKey === "development") return null;
+    if (packScopeKey(packKey) === "development") return null;
 
     const existingProfile = sourceSettings.officePackProfiles?.[packKey];
     if (existingProfile?.departments?.length && existingProfile?.agents?.length) {
@@ -205,7 +206,9 @@ export default function App() {
     const previousPack = settings.officeWorkflowPack ?? "development";
     const previousProfiles = settings.officePackProfiles;
     const currentHydratedSet = readHydratedPackSet(settings);
-    const shouldShowBootstrap = packKey !== "development" && !currentHydratedSet.has(packKey);
+    // Skin packs (tarkov) reuse the development agents/departments: no seeding, no bootstrap notice.
+    const packScope = packScopeKey(packKey);
+    const shouldShowBootstrap = packScope !== "development" && !currentHydratedSet.has(packKey);
     const seedProfile = shouldShowBootstrap ? maybeBuildSeedProfileForPack(packKey, settings) : null;
     const nextOfficePackProfiles = seedProfile
       ? {
@@ -232,8 +235,8 @@ export default function App() {
       .saveSettingsPatch(patchPayload)
       .then(async () => {
         const [nextDepartments, nextAgents, nextSettingsRaw] = await Promise.all([
-          api.getDepartments({ workflowPackKey: packKey }),
-          api.getAgents({ includeSeed: packKey !== "development" }),
+          api.getDepartments({ workflowPackKey: packScope }),
+          api.getAgents({ includeSeed: packScope !== "development" }),
           api.getSettings(),
         ]);
         setDepartments(nextDepartments);
@@ -268,7 +271,7 @@ export default function App() {
 
   const { connected, on } = useWebSocket();
   const shouldIncludeSeedAgents = useCallback(
-    () => normalizeOfficeWorkflowPack(settings.officeWorkflowPack ?? "development") !== "development",
+    () => packScopeKey(normalizeOfficeWorkflowPack(settings.officeWorkflowPack ?? "development")) !== "development",
     [settings.officeWorkflowPack],
   );
   const scheduleLiveSync = useLiveSyncScheduler({
@@ -361,7 +364,7 @@ export default function App() {
     dismissedUpdateVersion,
   });
 
-  const activePackKey = normalizeOfficeWorkflowPack(settings.officeWorkflowPack ?? "development");
+  const activePackKey = packScopeKey(normalizeOfficeWorkflowPack(settings.officeWorkflowPack ?? "development"));
   const activePackProfile =
     activePackKey === "development" ? null : (settings.officePackProfiles?.[activePackKey] ?? null);
   const overlayDepartments = useMemo(
@@ -488,7 +491,7 @@ export default function App() {
         onReplyDecisionOption={actions.handleReplyDecisionOption}
         onOpenDecisionChat={actions.handleOpenDecisionChat}
         selectedAgent={selectedAgent}
-        activeOfficeWorkflowPack={settings.officeWorkflowPack ?? "development"}
+        activeOfficeWorkflowPack={activePackKey}
         departments={overlayDepartments}
         tasks={tasks}
         subAgents={subAgents}
@@ -511,7 +514,7 @@ export default function App() {
             .getSettings()
             .then(async (nextSettingsRaw) => {
               const nextSettings = mergeSettingsWithDefaults(nextSettingsRaw);
-              const activePack = nextSettings.officeWorkflowPack ?? "development";
+              const activePack = packScopeKey(normalizeOfficeWorkflowPack(nextSettings.officeWorkflowPack));
               const nextAgents = await api.getAgents({ includeSeed: activePack !== "development" });
               setAgents(nextAgents);
               setSettings(nextSettings);
@@ -523,7 +526,7 @@ export default function App() {
                 return;
               }
 
-              const profilePackKey = nextSettings.officeWorkflowPack ?? "development";
+              const profilePackKey = activePack;
               const fromPackProfile = nextSettings.officePackProfiles?.[profilePackKey]?.agents?.find(
                 (agent) => agent.id === selectedAgent.id,
               );

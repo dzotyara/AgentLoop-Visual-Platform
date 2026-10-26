@@ -29,7 +29,19 @@ type PackPreset = {
   roomThemes: Record<string, RoomTheme>;
   departments: Partial<Record<string, DeptPreset>>;
   staff?: StaffPreset;
+  /** Procedural office decor drawn by the Pixi scene; omitted = default office furniture. */
+  decorStyle?: OfficeDecorStyle;
 };
+
+export type OfficeDecorStyle = "default" | "tarkov";
+
+// Skin packs only re-theme the office: agents, tasks, departments and seeding stay in the development scope.
+const DEV_SCOPED_SKIN_PACKS: ReadonlySet<WorkflowPackKey> = new Set<WorkflowPackKey>(["tarkov"]);
+
+/** Maps an office pack to the pack key that owns its agents/tasks/departments (skin packs -> development). */
+export function packScopeKey(packKey: WorkflowPackKey): WorkflowPackKey {
+  return DEV_SCOPED_SKIN_PACKS.has(packKey) ? "development" : packKey;
+}
 
 type OfficePackPresentation = {
   departments: Department[];
@@ -182,6 +194,71 @@ const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
     },
     roomThemes: DEV_THEMES,
     departments: {},
+  },
+  tarkov: {
+    key: "tarkov",
+    slug: "TARKOV",
+    label: {
+      ko: "Tarkov Hideout",
+      en: "Tarkov Hideout",
+      ja: "Tarkov Hideout",
+      zh: "Tarkov Hideout",
+    },
+    summary: {
+      ko: "Development office dressed as a military hideout",
+      en: "Development office dressed as a military hideout",
+      ja: "Development office dressed as a military hideout",
+      zh: "Development office dressed as a military hideout",
+    },
+    roomThemes: {
+      ceoOffice: { floor1: 0x3a3b30, floor2: 0x33342a, wall: 0x5a5a44, accent: 0xb08a3e },
+      planning: { floor1: 0x35372c, floor2: 0x2e3026, wall: 0x55573f, accent: 0x9c8f5a },
+      dev: { floor1: 0x383630, floor2: 0x312f29, wall: 0x5c5546, accent: 0xc0763a },
+      design: { floor1: 0x34352d, floor2: 0x2d2e27, wall: 0x4f5a3e, accent: 0x7f9a4a },
+      qa: { floor1: 0x373431, floor2: 0x302d2a, wall: 0x5a4a44, accent: 0xb5523b },
+      devsecops: { floor1: 0x31332f, floor2: 0x2a2c28, wall: 0x4c5048, accent: 0x8a8f7a },
+      operations: { floor1: 0x36352b, floor2: 0x2f2e25, wall: 0x5a5638, accent: 0xc9a43c },
+      breakRoom: { floor1: 0x3b342b, floor2: 0x342d25, wall: 0x5e4e3c, accent: 0xd9903e },
+    },
+    departments: {
+      planning: {
+        name: { ko: "Intel Center", en: "Intel Center", ja: "Intel Center", zh: "Intel Center" },
+        icon: "🗺️",
+        agentPrefix: { ko: "Scout", en: "Scout", ja: "Scout", zh: "Scout" },
+        avatarPool: ["🗺️", "📡", "🧭"],
+      },
+      dev: {
+        name: { ko: "Workbench", en: "Workbench", ja: "Workbench", zh: "Workbench" },
+        icon: "🔧",
+        agentPrefix: { ko: "Mechanic", en: "Mechanic", ja: "Mechanic", zh: "Mechanic" },
+        avatarPool: ["🔧", "🛠️", "🔩"],
+      },
+      design: {
+        name: { ko: "Camo Workshop", en: "Camo Workshop", ja: "Camo Workshop", zh: "Camo Workshop" },
+        icon: "🎨",
+        agentPrefix: { ko: "Painter", en: "Painter", ja: "Painter", zh: "Painter" },
+        avatarPool: ["🎨", "🪖", "🧵"],
+      },
+      qa: {
+        name: { ko: "Medstation", en: "Medstation", ja: "Medstation", zh: "Medstation" },
+        icon: "🩺",
+        agentPrefix: { ko: "Medic", en: "Medic", ja: "Medic", zh: "Medic" },
+        avatarPool: ["🩺", "💉", "🩹"],
+      },
+      devsecops: {
+        name: { ko: "Security", en: "Security", ja: "Security", zh: "Security" },
+        icon: "🛡️",
+        agentPrefix: { ko: "Sentry", en: "Sentry", ja: "Sentry", zh: "Sentry" },
+        avatarPool: ["🛡️", "🔒", "🚨"],
+      },
+      operations: {
+        name: { ko: "Generator", en: "Generator", ja: "Generator", zh: "Generator" },
+        icon: "⚡",
+        agentPrefix: { ko: "Quartermaster", en: "Quartermaster", ja: "Quartermaster", zh: "Quartermaster" },
+        avatarPool: ["⚡", "⛽", "📦"],
+      },
+    },
+    decorStyle: "tarkov",
   },
   report: {
     key: "report",
@@ -542,7 +619,7 @@ function buildSeedPersonality(params: {
   defaultPrefix: Localized;
   departmentName: { ko: string; en: string; ja: string; zh: string };
 }): string | null {
-  if (params.packKey === "development") return null;
+  if (packScopeKey(params.packKey) === "development") return null;
   const tone = PACK_SEED_PROFILE[params.packKey]?.tone;
   if (!tone) return null;
   const locale = params.locale;
@@ -631,6 +708,10 @@ export function getOfficePackRoomThemes(packKey: WorkflowPackKey): Record<string
   return preset.roomThemes;
 }
 
+export function getOfficePackDecorStyle(packKey: WorkflowPackKey): OfficeDecorStyle {
+  return PACK_PRESETS[packKey]?.decorStyle ?? "default";
+}
+
 export function listOfficePackOptions(locale: UiLanguageLike): Array<{
   key: WorkflowPackKey;
   label: string;
@@ -664,6 +745,8 @@ export function buildOfficePackPresentation(params: {
   }
 
   const preset = PACK_PRESETS[packKey] ?? PACK_PRESETS.development;
+  // Skin packs rename/re-icon departments for display only; dev descriptions and prompts stay intact.
+  const isSkinPack = packScopeKey(packKey) !== packKey;
   const transformedDepartments = departments.map((dept) => {
     const deptPreset = preset.departments[dept.id];
     if (!deptPreset) return dept;
@@ -673,13 +756,17 @@ export function buildOfficePackPresentation(params: {
       ja: deptPreset.name.ja || dept.name_ja || dept.name,
       zh: deptPreset.name.zh || dept.name_zh || dept.name,
     };
-    return {
+    const renamed = {
       ...dept,
       icon: deptPreset.icon,
       name: deptPreset.name.en,
       name_ko: deptPreset.name.ko,
       name_ja: deptPreset.name.ja,
       name_zh: deptPreset.name.zh,
+    };
+    if (isSkinPack) return renamed;
+    return {
+      ...renamed,
       description: buildPackDepartmentDescription({
         locale,
         packSummary: preset.summary,
@@ -710,7 +797,7 @@ export function resolveOfficePackSeedProvider(params: {
   seedIndex: number;
   seedOrderInDepartment?: number;
 }): OfficePackSeedProvider {
-  if (params.packKey === "development") return "claude";
+  if (packScopeKey(params.packKey) === "development") return "claude";
   const dept = String(params.departmentId ?? "")
     .trim()
     .toLowerCase();
@@ -731,7 +818,7 @@ export function buildOfficePackStarterAgents(params: {
 }): OfficePackStarterAgentDraft[] {
   const { packKey, departments } = params;
   const locale = params.locale ?? "en";
-  if (packKey === "development") return [];
+  if (packScopeKey(packKey) === "development") return [];
   const preset = PACK_PRESETS[packKey] ?? PACK_PRESETS.development;
   const departmentById = new Map(departments.map((department) => [department.id, department]));
   const baseDeptOrder = ["planning", "dev", "design", "qa", "operations", "devsecops"].filter((deptId) =>

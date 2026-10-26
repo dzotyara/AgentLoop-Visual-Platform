@@ -4,6 +4,7 @@ import {
   encryptMessengerChannelsForStorage,
 } from "../../../messenger/token-crypto.ts";
 import { syncOfficePackAgentsForPack } from "../collab/office-pack-agent-hydration.ts";
+import { packScopeKey } from "../../workflow/packs/definitions.ts";
 
 const MESSENGER_SETTINGS_KEY = "messengerChannels";
 const OFFICE_PACK_PROFILES_KEY = "officePackProfiles";
@@ -80,7 +81,8 @@ export function registerOpsSettingsStatsRoutes(ctx: RuntimeContext): void {
 
   const maybeHydratePackOnFirstSelection = (selectedPackRaw: unknown, profilesOverride?: unknown): void => {
     const selectedPack = normalizePackKey(selectedPackRaw);
-    if (!selectedPack || selectedPack === "development") return;
+    // Skin packs (tarkov) reuse the development agent set: nothing to hydrate.
+    if (!selectedPack || packScopeKey(selectedPack) === "development") return;
 
     const hydratedPacks = readHydratedPackSet();
     if (hydratedPacks.has(selectedPack)) return;
@@ -218,7 +220,7 @@ export function registerOpsSettingsStatsRoutes(ctx: RuntimeContext): void {
     const activePackRow = db.prepare("SELECT value FROM settings WHERE key = 'officeWorkflowPack' LIMIT 1").get() as
       | { value?: unknown }
       | undefined;
-    const activePack = normalizePackKey(activePackRow?.value) ?? "development";
+    const activePack = packScopeKey(normalizePackKey(activePackRow?.value) ?? "development");
 
     let tasksByDept: unknown[];
     if (activePack !== "development") {

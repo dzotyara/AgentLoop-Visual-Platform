@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { AgentRow } from "./direct-chat-types.ts";
 import {
   DEFAULT_WORKFLOW_PACK_KEY,
+  isDevScopedSkinPack,
   isWorkflowPackKey,
   type WorkflowPackKey,
 } from "../../workflow/packs/definitions.ts";
@@ -149,7 +150,7 @@ function findOfficePackProfileAgentById(
   nowMs: number,
 ): { packKey: WorkflowPackKey; agent: OfficePackProfileAgent; department: OfficePackProfileDepartment | null } | null {
   for (const [rawPackKey, profileRaw] of Object.entries(root)) {
-    if (!isWorkflowPackKey(rawPackKey)) continue;
+    if (!isWorkflowPackKey(rawPackKey) || isDevScopedSkinPack(rawPackKey)) continue;
     const profile = asObject(profileRaw);
     if (!profile) continue;
 
@@ -516,7 +517,7 @@ export function syncOfficePackAgentsFromProfiles(
   const now = nowMs();
 
   for (const [rawPackKey, profileRaw] of Object.entries(root)) {
-    if (!isWorkflowPackKey(rawPackKey)) continue;
+    if (!isWorkflowPackKey(rawPackKey) || isDevScopedSkinPack(rawPackKey)) continue;
     const profile = asObject(profileRaw);
     if (!profile) continue;
 
@@ -553,6 +554,8 @@ export function syncOfficePackAgentsForPack(
   const root = asObject(parseJsonSafe(profilesRaw));
   const normalizedPackKey = normalizeText(packKey);
   if (!root || !normalizedPackKey) return { departmentsSynced: 0, agentsSynced: 0 };
+  // Skin packs (tarkov) never get their own agent set or department rows.
+  if (isDevScopedSkinPack(normalizedPackKey)) return { departmentsSynced: 0, agentsSynced: 0 };
 
   const profile = asObject(root[normalizedPackKey]);
   if (!profile) return { departmentsSynced: 0, agentsSynced: 0 };

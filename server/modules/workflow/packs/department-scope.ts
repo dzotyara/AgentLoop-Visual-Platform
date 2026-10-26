@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { DEFAULT_WORKFLOW_PACK_KEY, isWorkflowPackKey, type WorkflowPackKey } from "./definitions.ts";
+import { DEFAULT_WORKFLOW_PACK_KEY, isWorkflowPackKey, packScopeKey, type WorkflowPackKey } from "./definitions.ts";
 
 type DbLike = Pick<DatabaseSync, "prepare">;
 
@@ -32,7 +32,8 @@ export function parseWorkflowPackKeyInput(value: unknown): WorkflowPackKey | nul
   } catch {
     // keep raw string
   }
-  return isWorkflowPackKey(candidate) ? candidate : null;
+  // Skin packs (tarkov) share the development scope for departments/agents.
+  return isWorkflowPackKey(candidate) ? packScopeKey(candidate) : null;
 }
 
 export function normalizeWorkflowPackKeyInput(value: unknown): WorkflowPackKey {

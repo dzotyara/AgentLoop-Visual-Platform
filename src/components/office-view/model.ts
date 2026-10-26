@@ -10,6 +10,9 @@ import type {
   CeoOfficeCall,
 } from "../../types";
 
+/** Procedural decor set for the office scene; "default" keeps the stock office furniture. */
+type OfficeDecorStyle = "default" | "tarkov";
+
 interface OfficeViewProps {
   departments: Department[];
   agents: Agent[];
@@ -24,6 +27,7 @@ interface OfficeViewProps {
   onCeoOfficeCallProcessed?: (id: string) => void;
   onOpenActiveMeetingMinutes?: (taskId: string) => void;
   customDeptThemes?: Record<string, { floor1: number; floor2: number; wall: number; accent: number }>;
+  decorStyle?: OfficeDecorStyle;
   themeHighlightTargetId?: string | null;
   onSelectAgent: (agent: Agent) => void;
   onSelectDepartment: (dept: Department) => void;
@@ -258,6 +262,7 @@ function emitSubCloneFireworkBurst(target: Container, particles: SubCloneBurstPa
 
 export {
   type OfficeViewProps,
+  type OfficeDecorStyle,
   type Delivery,
   type RoomRect,
   type WallClockVisual,

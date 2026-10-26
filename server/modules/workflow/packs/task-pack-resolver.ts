@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { DEFAULT_WORKFLOW_PACK_KEY, isWorkflowPackKey, type WorkflowPackKey } from "./definitions.ts";
+import { DEFAULT_WORKFLOW_PACK_KEY, isWorkflowPackKey, packScopeKey, type WorkflowPackKey } from "./definitions.ts";
 
 type DbLike = Pick<DatabaseSync, "prepare">;
 
@@ -9,7 +9,8 @@ function normalizeText(value: unknown): string {
 
 function normalizePackKey(value: unknown): WorkflowPackKey | null {
   const text = normalizeText(value);
-  return isWorkflowPackKey(text) ? text : null;
+  // Tasks created under a skin pack (tarkov) are stored as development tasks.
+  return isWorkflowPackKey(text) ? packScopeKey(text) : null;
 }
 
 export function resolveProjectDefaultPackKey(db: DbLike, projectId: string | null | undefined): WorkflowPackKey | null {

@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import type { SQLInputValue } from "node:sqlite";
 import type { RuntimeContext } from "../../../../types/runtime-context.ts";
 import type { MeetingMinuteEntryRow, MeetingMinutesRow } from "../../shared/types.ts";
-import { isWorkflowPackKey } from "../../../workflow/packs/definitions.ts";
+import { isWorkflowPackKey, packScopeKey } from "../../../workflow/packs/definitions.ts";
 import { resolveWorkflowPackKeyForTask } from "../../../workflow/packs/task-pack-resolver.ts";
 
 export type TaskCrudRouteDeps = Pick<
@@ -102,7 +102,7 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
     }
     if (workflowPackFilter) {
       conditions.push("t.workflow_pack_key = ?");
-      params.push(workflowPackFilter);
+      params.push(packScopeKey(workflowPackFilter));
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -411,7 +411,8 @@ export function registerTaskCrudRoutes(deps: TaskCrudRouteDeps): void {
       if (!workflowPackKey || !isWorkflowPackKey(workflowPackKey)) {
         return res.status(400).json({ error: "invalid_workflow_pack_key" });
       }
-      body.workflow_pack_key = workflowPackKey;
+      // Skin packs (tarkov) never own tasks; store them in the development scope.
+      body.workflow_pack_key = packScopeKey(workflowPackKey);
     }
     if ("workflow_meta_json" in body) {
       const rawWorkflowMeta = body.workflow_meta_json;
