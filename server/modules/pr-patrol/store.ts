@@ -162,6 +162,30 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     );
   }
 
+  /**
+   * Dry-run fixes only ever lived in local worktrees, which are reset before each run. When the loop
+   * starts in write mode after a dry run, forget those results so the fixes are redone and pushed to
+   * their PRs: dry-run actions become retryable and comments handled only locally become unhandled.
+   */
+  function syncWriteMode(write: boolean): number {
+    db.exec("CREATE TABLE IF NOT EXISTS pr_patrol_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+    const row = db.prepare("SELECT value FROM pr_patrol_meta WHERE key = 'write_mode'").get() as
+      | { value: string }
+      | undefined;
+    db.prepare(
+      "INSERT INTO pr_patrol_meta (key, value) VALUES ('write_mode', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    ).run(write ? "1" : "0");
+    if (!write || row?.value === "1") return 0;
+    const reset = db
+      .prepare(
+        `UPDATE pr_patrol_actions SET status = 'failed', attempts = 0, updated_at = ?
+         WHERE status = 'done' AND action != 'review' AND result_json LIKE '%dry run%'`,
+      )
+      .run(nowMs());
+    db.prepare("UPDATE pr_patrol_prs SET handled_feedback_json = '[]', ready_sha = NULL").run();
+    return Number(reset.changes ?? 0);
+  }
+
   /** Runs interrupted by a restart never report back; let the loop retry them. */
   function failInterruptedActions(): number {
     const r = db
@@ -197,6 +221,7 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     recordReview,
     addHandledFeedback,
     failInterruptedActions,
+    syncWriteMode,
     listPrs,
     forgetMissing,
   };

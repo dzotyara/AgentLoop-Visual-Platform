@@ -547,6 +547,8 @@ export function createPrPatrol(ctx: RuntimeContext) {
       return;
     }
     const interrupted = store.failInterruptedActions();
+    const redo = store.syncWriteMode(cfg.write);
+    if (redo) console.log(`[pr-patrol] write mode on: ${redo} dry-run fix(es) will be redone and pushed`);
     // Rows left in_progress by a crash: the stock orphan recovery skips patrol tasks, so close them here.
     db.prepare(
       "UPDATE tasks SET status = 'cancelled', updated_at = ? WHERE status = 'in_progress' AND workflow_meta_json LIKE ?",
