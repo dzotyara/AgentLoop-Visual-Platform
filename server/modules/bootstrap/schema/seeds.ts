@@ -7,6 +7,7 @@ type DbLike = Pick<DatabaseSync, "exec" | "prepare">;
 export function applyDefaultSeeds(db: DbLike): void {
   // AgentLoop staffs the office with pr-patrol's own agents; the stock Claw-Empire crew is opt-in.
   const seedDefaultAgents = process.env.SEED_DEFAULT_AGENTS === "1";
+  migrateSeededClaudeModels(db);
   seedDefaultWorkflowPacks(db);
 
   const deptCount = (db.prepare("SELECT COUNT(*) as cnt FROM departments").get() as { cnt: number }).cnt;
@@ -94,7 +95,7 @@ export function applyDefaultSeeds(db: DbLike): void {
       insertSetting.run(
         "providerModelConfig",
         JSON.stringify({
-          claude: { model: "claude-opus-4-6", subModel: "claude-sonnet-4-6" },
+          claude: { model: "claude-opus-5-5", subModel: "claude-sonnet-5-5" },
           codex: {
             model: "gpt-5.3-codex",
             reasoningLevel: "xhigh",
@@ -266,5 +267,21 @@ export function applyDefaultSeeds(db: DbLike): void {
       }
     }
     if (added > 0) console.log(`[Claw-Empire] Added ${added} new agents`);
+  }
+}
+
+/** Installs still on the old seeded Claude defaults move to the current generation; a user's own pick is kept. */
+function migrateSeededClaudeModels(db: DbLike): void {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'providerModelConfig'").get() as
+    | { value: string }
+    | undefined;
+  if (!row) return;
+  try {
+    const cfg = JSON.parse(row.value) as { claude?: { model?: string; subModel?: string } };
+    if (cfg.claude?.model !== "claude-opus-4-6" || cfg.claude.subModel !== "claude-sonnet-4-6") return;
+    cfg.claude = { ...cfg.claude, model: "claude-opus-5-5", subModel: "claude-sonnet-5-5" };
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'providerModelConfig'").run(JSON.stringify(cfg));
+  } catch {
+    // malformed setting: leave it for the settings UI to overwrite
   }
 }

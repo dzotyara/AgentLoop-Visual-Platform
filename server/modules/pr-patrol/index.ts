@@ -281,6 +281,24 @@ export function createPrPatrol(ctx: RuntimeContext) {
     };
   }
 
+  /** Model for a run: the agent's own pick, then Settings → Claude main model, then PR_PATROL_MODEL; none = CLI default. */
+  function resolveModel(agentId: string): string | undefined {
+    const agent = db.prepare("SELECT cli_model FROM agents WHERE id = ?").get(agentId) as
+      | { cli_model: string | null }
+      | undefined;
+    if (agent?.cli_model) return agent.cli_model;
+    try {
+      const row = db.prepare("SELECT value FROM settings WHERE key = 'providerModelConfig'").get() as
+        | { value: string }
+        | undefined;
+      const model = row ? (JSON.parse(row.value) as { claude?: { model?: string } }).claude?.model : undefined;
+      if (model) return model;
+    } catch {
+      // malformed settings row: fall through to the env default
+    }
+    return cfg.model;
+  }
+
   /** Live "what is the agent doing" line, pushed to the office and the PR page. Throttled per PR. */
   const lastActivityBroadcast = new Map<string, number>();
   function setActivity(key: string, activity: string): void {
@@ -350,7 +368,9 @@ export function createPrPatrol(ctx: RuntimeContext) {
     fs.mkdirSync(resultDir, { recursive: true });
     const resultPath = path.join(resultDir, `${taskId}.json`);
     const prompt = buildPatrolPrompt(s, d, resultPath);
-    const child = spawnCliAgent(taskId, "claude", prompt, ws.path, path.join(logsDir, `${taskId}.log`), cfg.model);
+    const model = resolveModel(aId);
+    if (model) appendTaskLog(taskId, "system", `${PR_PATROL_SOURCE}: model ${model}`);
+    const child = spawnCliAgent(taskId, "claude", prompt, ws.path, path.join(logsDir, `${taskId}.log`), model);
     setActivity(key, "Starting Claude Code");
     child.stdout?.on(
       "data",

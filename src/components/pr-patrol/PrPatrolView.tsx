@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import type { Agent } from "../../types";
-import { getPrPatrolStatus, triggerPrPatrolTick, type PrPatrolPhase, type PrPatrolPr } from "../../api";
+import {
+  formatUsd,
+  getClaudeCosts,
+  getPrPatrolStatus,
+  triggerPrPatrolTick,
+  type PrPatrolPhase,
+  type PrPatrolPr,
+} from "../../api";
 import { usePolling } from "../../hooks/usePolling";
 import PrDetail from "./PrDetail";
 import { PHASE_META, TONE_TEXT, checksSummary, timeAgo } from "./pr-ui";
@@ -46,6 +53,7 @@ export default function PrPatrolView({
   onOpenTerminal: (taskId: string) => void;
 }) {
   const { data, error, loading, refresh } = usePolling(getPrPatrolStatus, 4000);
+  const { data: costs } = usePolling(getClaudeCosts, 15000);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [ticking, setTicking] = useState(false);
@@ -111,6 +119,11 @@ export default function PrPatrolView({
           >
             {data.write ? "Auto-fix: pushing" : "Auto-fix: dry run"}
           </span>
+          {costs && (
+            <span title="Claude spend today, all runs (API list prices)" style={{ color: "var(--th-text-secondary)" }}>
+              💸 today {formatUsd(costs.today.costUsd)}
+            </span>
+          )}
           <span style={{ color: "var(--th-text-muted)" }}>
             checked {timeAgo(data.lastTick.at)}
             {data.lastTick.error ? ` · error: ${data.lastTick.error}` : ""}
@@ -163,7 +176,12 @@ export default function PrPatrolView({
 
         {/* Detail */}
         {selected ? (
-          <PrDetail pr={selected} agents={agents} onOpenTerminal={onOpenTerminal} />
+          <PrDetail
+            pr={selected}
+            agents={agents}
+            onOpenTerminal={onOpenTerminal}
+            spend={costs?.byPr.find((b) => b.key === selected.pr_key)}
+          />
         ) : (
           <div className="text-sm" style={{ color: "var(--th-text-muted)" }}>
             Select a pull request.

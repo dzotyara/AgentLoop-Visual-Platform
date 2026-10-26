@@ -4,6 +4,25 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import type { RuntimeContext } from "../../../types/runtime-context.ts";
 
+/** `claude --model` values: CLI aliases first, then every current model ID (newest first per family). */
+export const CLAUDE_CLI_MODELS = [
+  "opus",
+  "sonnet",
+  "haiku",
+  "claude-fable-5-1",
+  "claude-fable-5",
+  "claude-opus-5-5",
+  "claude-opus-5",
+  "claude-opus-4-8",
+  "claude-opus-4-7",
+  "claude-opus-4-6",
+  "claude-sonnet-5-5",
+  "claude-sonnet-5",
+  "claude-sonnet-4-6",
+  "claude-haiku-5-5",
+  "claude-haiku-4-5",
+];
+
 interface CliModelInfoServer {
   slug: string;
   displayName?: string;
@@ -205,6 +224,8 @@ export function registerModelRoutes(ctx: RuntimeContext): void {
         return res.json({ models: cachedCliModels.data });
       }
       const dbCached = readModelCache("cli_models_cache");
+      // The Claude list is static and versioned with this code: never serve a stale cached copy of it.
+      if (dbCached) dbCached.claude = CLAUDE_CLI_MODELS.map(toModelInfo);
       if (dbCached) {
         cachedCliModels = { data: dbCached, loadedAt: Date.now() };
         return res.json({ models: dbCached });
@@ -212,15 +233,7 @@ export function registerModelRoutes(ctx: RuntimeContext): void {
     }
 
     const models: Record<string, CliModelInfoServer[]> = {
-      claude: [
-        "opus",
-        "sonnet",
-        "haiku",
-        "claude-opus-4-6",
-        "claude-sonnet-4-6",
-        "claude-sonnet-4-5",
-        "claude-haiku-4-5",
-      ].map(toModelInfo),
+      claude: CLAUDE_CLI_MODELS.map(toModelInfo),
       gemini: fetchGeminiModels(),
       opencode: [],
     };

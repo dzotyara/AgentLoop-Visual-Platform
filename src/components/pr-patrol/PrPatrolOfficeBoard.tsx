@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import type { Agent } from "../../types";
-import { getPrPatrolStatus, type PrPatrolPhase } from "../../api";
+import { formatUsd, getClaudeCosts, getPrPatrolStatus, type PrPatrolPhase } from "../../api";
 import { usePolling } from "../../hooks/usePolling";
 import AgentAvatar from "../AgentAvatar";
 import { setLiveFromStatus } from "./live-store";
@@ -14,6 +14,7 @@ const ORDER: PrPatrolPhase[] = ["working", "blocked", "waiting", "watching", "re
  */
 export default function PrPatrolOfficeBoard({ agents, onOpenPrs }: { agents: Agent[]; onOpenPrs?: () => void }) {
   const { data } = usePolling(getPrPatrolStatus, 2500);
+  const { data: costs } = usePolling(getClaudeCosts, 30_000);
 
   useEffect(() => {
     if (data) setLiveFromStatus(data);
@@ -40,6 +41,7 @@ export default function PrPatrolOfficeBoard({ agents, onOpenPrs }: { agents: Age
         </h3>
         <span className="text-xs" style={{ color: "var(--th-text-muted)" }}>
           {working} agent{working === 1 ? "" : "s"} working · {prs.length} open PRs
+          {costs ? ` · 💸 today ${formatUsd(costs.today.costUsd)}` : ""}
         </span>
         <span
           className={`rounded-full border px-2 py-0.5 text-[11px] ${

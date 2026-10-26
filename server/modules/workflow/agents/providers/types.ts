@@ -47,6 +47,8 @@ export interface CliUsageWindow {
 export interface CliUsageEntry {
   windows: CliUsageWindow[];
   error: string | null;
+  /** Set when the latest refresh failed (e.g. "http_429") and these windows are the last good ones. */
+  stale?: string;
 }
 
 export interface CliToolStatus {

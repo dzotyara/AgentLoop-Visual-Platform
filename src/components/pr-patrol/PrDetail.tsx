@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Agent } from "../../types";
-import type { PrPatrolPr } from "../../api";
+import { formatUsd, type ClaudeCostBreakdown, type PrPatrolPr } from "../../api";
 import AgentAvatar from "../AgentAvatar";
 import { ACTION_LABEL, CheckIcon, ExternalLink, PhaseChip, Section, TONE_TEXT, checksSummary, timeAgo } from "./pr-ui";
 
@@ -32,10 +32,12 @@ export default function PrDetail({
   pr,
   agents,
   onOpenTerminal,
+  spend,
 }: {
   pr: PrPatrolPr;
   agents: Agent[];
   onOpenTerminal: (taskId: string) => void;
+  spend?: ClaudeCostBreakdown;
 }) {
   const [showPassing, setShowPassing] = useState(false);
   const snap = pr.snapshot;
@@ -133,6 +135,12 @@ export default function PrDetail({
           label="Own review"
           value={pr.review_rounds ? `${pr.review_rounds} round(s)` : "Not yet"}
           tone="text-slate-400"
+        />
+        <StatusRow
+          icon="💸"
+          label="Agent spend"
+          value={spend ? `${formatUsd(spend.costUsd)} · ${spend.runs} run(s)` : "No runs yet"}
+          tone="text-violet-400"
         />
       </Section>
 

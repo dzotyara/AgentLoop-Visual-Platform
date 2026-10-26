@@ -80,6 +80,8 @@ export interface CliUsageWindow {
 export interface CliUsageEntry {
   windows: CliUsageWindow[];
   error: string | null; // "unauthenticated" | "unavailable" | "not_implemented" | null
+  /** Set when the latest refresh failed (e.g. "http_429") and these windows are the last good ones. */
+  stale?: string;
 }
 
 export async function getCliUsage(): Promise<{ ok: boolean; usage: Record<string, CliUsageEntry> }> {

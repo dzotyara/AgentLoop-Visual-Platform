@@ -22,6 +22,7 @@ import { assertRuntimeFunctionsResolved, createDeferredRuntimeProxy } from "./mo
 import { ROUTE_RUNTIME_HELPER_KEYS } from "./modules/runtime-helper-keys.ts";
 import { startLifecycle } from "./modules/lifecycle.ts";
 import { createPrPatrol } from "./modules/pr-patrol/index.ts";
+import { startClaudeCostTracking } from "./modules/claude-costs/index.ts";
 import { registerApiRoutes } from "./modules/routes.ts";
 import { initializeWorkflow } from "./modules/workflow.ts";
 import {
@@ -129,6 +130,7 @@ assertRuntimeFunctionsResolved(runtimeContext, ROUTE_RUNTIME_HELPER_KEYS, "route
 
 const prPatrol = createPrPatrol(runtimeContext as RuntimeContext);
 prPatrol.registerRoutes();
+startClaudeCostTracking(runtimeContext as never);
 
 startLifecycle(runtimeContext as RuntimeContext);
 prPatrol.start();

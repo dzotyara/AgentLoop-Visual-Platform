@@ -395,7 +395,7 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   defaultProvider: "claude",
   officeWorkflowPack: "development",
   providerModelConfig: {
-    claude: { model: "claude-opus-4-6", subModel: "claude-sonnet-4-6" },
+    claude: { model: "claude-opus-5-5", subModel: "claude-sonnet-5-5" },
     codex: {
       model: "gpt-5.3-codex",
       reasoningLevel: "xhigh",

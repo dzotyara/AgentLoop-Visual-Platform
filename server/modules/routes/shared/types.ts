@@ -93,4 +93,6 @@ export interface CliUsageEntry {
   windows: Array<Record<string, unknown>>;
   error?: string | null;
   [key: string]: unknown;
+  /** Set when the latest refresh failed (e.g. "http_429") and these windows are the last good ones. */
+  stale?: string;
 }

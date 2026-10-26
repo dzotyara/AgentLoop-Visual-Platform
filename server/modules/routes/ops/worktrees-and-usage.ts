@@ -363,6 +363,16 @@ export function registerWorktreeAndUsageRoutes(ctx: RuntimeContext): {
 
     await Promise.all(fetches);
 
+    // A failed refresh (rate limit, timeout) keeps the last good windows instead of blanking the card.
+    const previous = readCliUsageFromDb();
+    for (const [p, entry] of Object.entries(usage)) {
+      const prev = previous[p];
+      const transient = entry.error && entry.error !== "unauthenticated" && entry.error !== "not_implemented";
+      if (transient && prev && prev.windows.length > 0) {
+        usage[p] = { windows: prev.windows, error: null, stale: entry.error ?? "unavailable" };
+      }
+    }
+
     const upsert = db.prepare(
       "INSERT INTO cli_usage_cache (provider, data_json, updated_at) VALUES (?, ?, ?) ON CONFLICT(provider) DO UPDATE SET data_json = excluded.data_json, updated_at = excluded.updated_at",
     );

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { CliUsageEntry, CliUsageWindow } from "../../api";
 import type { UiLanguage } from "../../i18n";
 import type { CliStatusMap } from "../../types";
+import ClaudeSpend from "./ClaudeSpend";
 import { formatReset } from "./drawing-furniture-b";
 import { LOCALE_TEXT } from "./themes-locale";
 
@@ -167,6 +168,14 @@ export default function CliUsagePanel({
                   </div>
                 </div>
 
+                {cli.key === "claude" && <ClaudeSpend />}
+
+                {usage?.stale && (
+                  <p className="mb-1 text-[10px] text-slate-500 italic">
+                    Limits from the last good refresh (latest: {usage.stale})
+                  </p>
+                )}
+
                 {usage?.error === "unauthenticated" && (
                   <p className="text-[11px] text-slate-500 italic">{t(LOCALE_TEXT.cliNotSignedIn)}</p>
                 )}
@@ -174,7 +183,10 @@ export default function CliUsagePanel({
                   <p className="text-[11px] text-slate-500 italic">{t(LOCALE_TEXT.cliNoApi)}</p>
                 )}
                 {usage?.error && usage.error !== "unauthenticated" && usage.error !== "not_implemented" && (
-                  <p className="text-[11px] text-slate-500 italic">{t(LOCALE_TEXT.cliUnavailable)}</p>
+                  <p className="text-[11px] text-slate-500 italic">
+                    {t(LOCALE_TEXT.cliUnavailable)}
+                    {cli.key === "claude" ? ` — plan limits (${usage.error})` : ""}
+                  </p>
                 )}
 
                 {!usage && <p className="text-[11px] text-slate-500 italic">{t(LOCALE_TEXT.cliLoading)}</p>}
