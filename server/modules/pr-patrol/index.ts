@@ -11,7 +11,8 @@ import {
   rerunFailedRuns,
   type PrSnapshot,
 } from "./github.ts";
-import { buildPatrolPrompt } from "./prompts.ts";
+import { activityFromStreamLines, createLineSplitter } from "./activity.ts";
+import { ACTION_PREFIX, buildPatrolPrompt } from "./prompts.ts";
 import { createPrPatrolStore, ensurePrPatrolSchema, prKey } from "./store.ts";
 import { preparePrWorktree, pushAgentCommits, type PrWorkspace, type PushOutcome } from "./workspace.ts";
 
@@ -83,7 +84,15 @@ const ACTION_LABEL: Record<ActionKind, string> = {
   fix_conflict: "Resolve merge conflict",
 };
 
-type Running = { taskId: string; action: ActionKind; agentId: string };
+type Running = {
+  taskId: string;
+  action: ActionKind;
+  agentId: string;
+  /** What the agent is doing right now, from its tool calls ("Editing foo.ts"). */
+  activity: string;
+  activityAt: number;
+  toolCalls: number;
+};
 
 export function createPrPatrol(ctx: RuntimeContext) {
   const { app, db, broadcast, appendTaskLog, spawnCliAgent, activeProcesses, nowMs, logsDir, notifyCeo } = ctx as any;
@@ -223,7 +232,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
       };
     }
 
-    const push = await pushAgentCommits(ws, s, cfg.write);
+    const push = await pushAgentCommits(ws, s, cfg.write, ACTION_PREFIX[d.action]);
     const items: any[] = Array.isArray(result.items) ? result.items : [];
 
     if (d.action === "fix_ci") {
@@ -259,7 +268,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
         const fb = d.feedback?.find((f) => f.id === i.feedback_id);
         if (fb?.kind !== "review_thread" || !i.reply_text || !String(i.verdict).startsWith("fixed")) continue;
         try {
-          await replyAndResolveThread(fb.id, i.reply_text);
+          await replyAndResolveThread(fb.id, `${ACTION_PREFIX[d.action]} ${i.reply_text}`);
           replied++;
         } catch (err) {
           appendTaskLog(running.get(key)?.taskId, "error", `thread reply failed: ${(err as Error).message}`);
@@ -272,10 +281,34 @@ export function createPrPatrol(ctx: RuntimeContext) {
     };
   }
 
+  /** Live "what is the agent doing" line, pushed to the office and the PR page. Throttled per PR. */
+  const lastActivityBroadcast = new Map<string, number>();
+  function setActivity(key: string, activity: string): void {
+    const run = running.get(key);
+    if (!run) return;
+    run.activity = activity;
+    run.activityAt = nowMs();
+    const last = lastActivityBroadcast.get(key) ?? 0;
+    if (run.activityAt - last < 800) return;
+    lastActivityBroadcast.set(key, run.activityAt);
+    broadcast("pr_patrol_activity", {
+      pr: key,
+      agentId: run.agentId,
+      action: run.action,
+      activity,
+      toolCalls: run.toolCalls,
+      at: run.activityAt,
+    });
+  }
+
   async function launch(key: string, s: PrSnapshot, d: RunDecision): Promise<void> {
     const role = ACTION_ROLE[d.action];
     const aId = agentId(role);
-    const title = `[${s.repo.split("/")[1]}#${s.number}] ${ACTION_LABEL[d.action]}: ${s.title}`.slice(0, 200);
+    const title =
+      `${ACTION_PREFIX[d.action]} [${s.repo.split("/")[1]}#${s.number}] ${ACTION_LABEL[d.action]}: ${s.title}`.slice(
+        0,
+        200,
+      );
     const taskId = createTask(
       s,
       title,
@@ -284,7 +317,14 @@ export function createPrPatrol(ctx: RuntimeContext) {
       `${s.url}\nhead ${s.headRefOid}\naction ${d.key}`,
       d.action,
     );
-    running.set(key, { taskId, action: d.action, agentId: aId });
+    running.set(key, {
+      taskId,
+      action: d.action,
+      agentId: aId,
+      activity: "Preparing the worktree",
+      activityAt: nowMs(),
+      toolCalls: 0,
+    });
     store.startAction(key, d.key, d.action, taskId);
     store.setPhase(key, "working", `${PATROL_AGENTS[role].name}: ${ACTION_LABEL[d.action]}`);
     setAgent(aId, true, taskId);
@@ -311,6 +351,16 @@ export function createPrPatrol(ctx: RuntimeContext) {
     const resultPath = path.join(resultDir, `${taskId}.json`);
     const prompt = buildPatrolPrompt(s, d, resultPath);
     const child = spawnCliAgent(taskId, "claude", prompt, ws.path, path.join(logsDir, `${taskId}.log`), cfg.model);
+    setActivity(key, "Starting Claude Code");
+    child.stdout?.on(
+      "data",
+      createLineSplitter((lines) => {
+        const acts = activityFromStreamLines(lines);
+        const run = running.get(key);
+        if (run && acts.length) run.toolCalls += acts.length;
+        if (acts.length) setActivity(key, acts[acts.length - 1]);
+      }),
+    );
     // A spawn failure emits "error" and may or may not emit "close": settle exactly once either way.
     let settled = false;
     child.on("error", (err: Error) => {
@@ -372,7 +422,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
           const note = `Ready: ${s.url}${d.notes.length ? ` (${d.notes.join("; ")})` : ""}`;
           createTask(
             s,
-            `[${repo.split("/")[1]}#${number}] Ready: ${s.title}`.slice(0, 200),
+            `[ready] [${repo.split("/")[1]}#${number}] ${s.title}`.slice(0, 200),
             "gate",
             "done",
             note,
@@ -440,7 +490,15 @@ export function createPrPatrol(ctx: RuntimeContext) {
           notes: JSON.parse(r.notes_json) as string[],
           snapshot: r.snapshot_json ? JSON.parse(r.snapshot_json) : null,
           agent: run
-            ? { name: PATROL_AGENTS[ACTION_ROLE[run.action]].name, action: run.action, taskId: run.taskId }
+            ? {
+                id: run.agentId,
+                name: PATROL_AGENTS[ACTION_ROLE[run.action]].name,
+                action: run.action,
+                taskId: run.taskId,
+                activity: run.activity,
+                activityAt: run.activityAt,
+                toolCalls: run.toolCalls,
+              }
             : null,
           actions: store.listActions(r.pr_key).map((a) => ({
             action: a.action,

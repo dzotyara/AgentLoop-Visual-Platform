@@ -5,6 +5,8 @@ import { seedDefaultWorkflowPacks } from "./workflow-pack-seeds.ts";
 type DbLike = Pick<DatabaseSync, "exec" | "prepare">;
 
 export function applyDefaultSeeds(db: DbLike): void {
+  // AgentLoop staffs the office with pr-patrol's own agents; the stock Claw-Empire crew is opt-in.
+  const seedDefaultAgents = process.env.SEED_DEFAULT_AGENTS === "1";
   seedDefaultWorkflowPacks(db);
 
   const deptCount = (db.prepare("SELECT COUNT(*) as cnt FROM departments").get() as { cnt: number }).cnt;
@@ -34,7 +36,7 @@ export function applyDefaultSeeds(db: DbLike): void {
 
   const agentCount = (db.prepare("SELECT COUNT(*) as cnt FROM agents").get() as { cnt: number }).cnt;
 
-  if (agentCount === 0) {
+  if (agentCount === 0 && seedDefaultAgents) {
     const insertAgent = db.prepare(
       `INSERT INTO agents (id, name, name_ko, department_id, role, cli_provider, avatar_emoji, personality)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -249,7 +251,7 @@ export function applyDefaultSeeds(db: DbLike): void {
     ];
 
     let added = 0;
-    for (const [name, nameKo, dept, role, provider, emoji, personality] of newAgents) {
+    for (const [name, nameKo, dept, role, provider, emoji, personality] of seedDefaultAgents ? newAgents : []) {
       if (!existingNames.has(name)) {
         if (!existingDeptIds.has(dept)) {
           console.warn(`[Claw-Empire] Skip adding agent "${name}": missing department "${dept}"`);

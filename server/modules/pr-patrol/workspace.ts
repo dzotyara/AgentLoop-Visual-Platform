@@ -59,8 +59,30 @@ export type PushOutcome =
   | { status: "pushed"; commits: number; head: string }
   | { status: "rejected"; error: string };
 
+/**
+ * Makes every new commit subject start with `prefix`. Only rewrites commits that were never pushed
+ * (startSha..HEAD); a linear range is reworded via rebase --exec, a range with merges only at its tip.
+ */
+export async function ensureCommitPrefix(ws: PrWorkspace, prefix: string): Promise<void> {
+  const range = `${ws.startSha}..HEAD`;
+  const subjects = (await git(ws.path, ["log", "--format=%s", range])).split("\n").filter(Boolean);
+  if (subjects.every((subj) => subj.startsWith(prefix))) return;
+  const merges = await git(ws.path, ["rev-list", "--merges", range]);
+  const amendHead = `subj=$(git log -1 --format=%s); case "$subj" in "${prefix}"*) ;; *) git commit --amend --no-verify -q -m "${prefix} $(git log -1 --format=%B)" ;; esac`;
+  if (!merges) {
+    await git(ws.path, ["-c", "core.hooksPath=/dev/null", "rebase", "-q", ws.startSha, "--exec", amendHead]);
+  } else {
+    await execFileAsync("sh", ["-c", amendHead], { cwd: ws.path });
+  }
+}
+
 /** Fast-forward-only push of the agent's commits to the PR branch. Never forces. */
-export async function pushAgentCommits(ws: PrWorkspace, s: PrSnapshot, write: boolean): Promise<PushOutcome> {
+export async function pushAgentCommits(
+  ws: PrWorkspace,
+  s: PrSnapshot,
+  write: boolean,
+  prefix: string,
+): Promise<PushOutcome> {
   const dirty = await git(ws.path, ["status", "--porcelain"]);
   const head = await git(ws.path, ["rev-parse", "HEAD"]);
   if (head === ws.startSha) return dirty ? { status: "dirty", files: dirty } : { status: "no_changes" };
@@ -69,11 +91,18 @@ export async function pushAgentCommits(ws: PrWorkspace, s: PrSnapshot, write: bo
   } catch {
     return { status: "rewrote_history" };
   }
-  const commits = Number(await git(ws.path, ["rev-list", "--count", `${ws.startSha}..${head}`]));
-  if (!write) return { status: "dry_run", commits, head };
+  try {
+    await ensureCommitPrefix(ws, prefix);
+  } catch {
+    await git(ws.path, ["rebase", "--abort"]).catch(() => undefined);
+    await git(ws.path, ["reset", "--hard", head]); // keep the agent's commits as they were
+  }
+  const finalHead = await git(ws.path, ["rev-parse", "HEAD"]);
+  const commits = Number(await git(ws.path, ["rev-list", "--count", `${ws.startSha}..${finalHead}`]));
+  if (!write) return { status: "dry_run", commits, head: finalHead };
   try {
     await git(ws.path, ["push", "origin", `HEAD:refs/heads/${s.headRefName}`]);
-    return { status: "pushed", commits, head };
+    return { status: "pushed", commits, head: finalHead };
   } catch (err) {
     return { status: "rejected", error: (err as Error).message.slice(0, 500) };
   }
