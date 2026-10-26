@@ -14,6 +14,17 @@ import {
   timeAgo,
 } from "./constants";
 
+/** pr-patrol tasks carry their PR in workflow_meta_json. */
+function prPatrolLink(task: Task): { pr: string; url: string } | null {
+  if (!task.workflow_meta_json) return null;
+  try {
+    const meta = JSON.parse(task.workflow_meta_json) as { source?: string; pr?: string; url?: string };
+    return meta.source === "pr-patrol" && meta.pr && meta.url ? { pr: meta.pr, url: meta.url } : null;
+  } catch {
+    return null;
+  }
+}
+
 interface TaskCardProps {
   task: Task;
   agents: Agent[];
@@ -78,6 +89,7 @@ export default function TaskCard({
   const assignedLabel = assignedDisplayName || fallbackAssignedName || null;
   const department = departments.find((d) => d.id === task.department_id);
   const typeBadge = getTaskTypeBadge(task.task_type, t);
+  const prLink = prPatrolLink(task);
 
   const canRun = task.status === "planned" || task.status === "inbox";
   const canStop = task.status === "in_progress";
@@ -121,6 +133,16 @@ export default function TaskCard({
           <span className="rounded-full bg-cyan-900/60 px-2 py-0.5 text-xs text-cyan-200">
             🙈 {t({ ko: "숨김", en: "Hidden", ja: "非表示", zh: "隐藏" })}
           </span>
+        )}
+        {prLink && (
+          <a
+            href={prLink.url}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full bg-violet-900/60 px-2 py-0.5 text-xs text-violet-200 hover:underline"
+          >
+            🔀 {prLink.pr.split("/")[1]}
+          </a>
         )}
         {department && (
           <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">

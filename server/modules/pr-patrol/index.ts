@@ -332,6 +332,27 @@ export function createPrPatrol(ctx: RuntimeContext) {
     const key = prKey(repo, number);
     const s = await fetchPrSnapshot(repo, number, cfg);
     store.upsertPr({ pr_key: key, repo, number, title: s.title, url: s.url, head_sha: s.headRefOid });
+    const handled = store.memory(key).handledFeedbackIds;
+    store.setSnapshot(key, {
+      headRefName: s.headRefName,
+      baseRefName: s.baseRefName,
+      isDraft: s.isDraft,
+      mergeable: s.mergeable,
+      mergeStateStatus: s.mergeStateStatus,
+      reviewDecision: s.reviewDecision,
+      checks: s.checks.map((c) => ({ ...c, ignored: cfg.ignoredChecks.includes(c.name) })),
+      feedback: s.feedback.map((f) => ({
+        id: f.id,
+        kind: f.kind,
+        author: f.author,
+        path: f.path,
+        line: f.line,
+        url: f.url,
+        excerpt: f.body.slice(0, 280),
+        handled: handled.has(f.id),
+      })),
+      fetchedAt: nowMs(),
+    });
     if (running.has(key)) return;
 
     const d = decide(s, cfg, store.memory(key));
@@ -412,7 +433,25 @@ export function createPrPatrol(ctx: RuntimeContext) {
       maxConcurrent: cfg.maxConcurrent,
       lastTick,
       running: Object.fromEntries(running),
-      prs: store.listPrs().map((r) => ({ ...r, notes: JSON.parse(r.notes_json) as string[] })),
+      prs: store.listPrs().map((r) => {
+        const run = running.get(r.pr_key);
+        return {
+          ...r,
+          notes: JSON.parse(r.notes_json) as string[],
+          snapshot: r.snapshot_json ? JSON.parse(r.snapshot_json) : null,
+          agent: run
+            ? { name: PATROL_AGENTS[ACTION_ROLE[run.action]].name, action: run.action, taskId: run.taskId }
+            : null,
+          actions: store.listActions(r.pr_key).map((a) => ({
+            action: a.action,
+            status: a.status,
+            attempts: a.attempts,
+            taskId: a.task_id,
+            updatedAt: a.updated_at,
+            note: (a.result_json ? (JSON.parse(a.result_json)?.note as string | undefined) : undefined) ?? null,
+          })),
+        };
+      }),
     };
   }
 

@@ -5,6 +5,7 @@ import Dashboard from "../components/Dashboard";
 import TaskBoard from "../components/TaskBoard";
 import AgentManager from "../components/AgentManager";
 import SkillsLibrary from "../components/SkillsLibrary";
+import PrPatrolView from "../components/pr-patrol/PrPatrolView";
 import SettingsPanel from "../components/SettingsPanel";
 import { I18nProvider } from "../i18n";
 import type {
@@ -538,6 +539,8 @@ export default function AppMainLayout({
                 }}
               />
             )}
+
+            {view === "prs" && <PrPatrolView agents={agents} onOpenTerminal={onOpenTerminal} />}
 
             {view === "skills" && <SkillsLibrary agents={agents} />}
 

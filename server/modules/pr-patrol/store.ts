@@ -18,6 +18,18 @@ export type PrRow = {
   last_review_json: string | null;
   handled_feedback_json: string;
   ready_sha: string | null;
+  snapshot_json: string | null;
+  updated_at: number;
+};
+
+export type ActionRow = {
+  pr_key: string;
+  action_key: string;
+  action: string;
+  status: "running" | "done" | "failed";
+  attempts: number;
+  task_id: string | null;
+  result_json: string | null;
   updated_at: number;
 };
 
@@ -52,6 +64,8 @@ CREATE TABLE IF NOT EXISTS pr_patrol_actions (
   PRIMARY KEY (pr_key, action_key)
 );
 `);
+  const cols = db.prepare("PRAGMA table_info(pr_patrol_prs)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "snapshot_json")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN snapshot_json TEXT");
 }
 
 export function prKey(repo: string, number: number): string {
@@ -79,6 +93,17 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
       nowMs(),
       key,
     );
+  }
+
+  /** Last seen GitHub state of the PR, for the UI. */
+  function setSnapshot(key: string, snapshot: unknown): void {
+    db.prepare("UPDATE pr_patrol_prs SET snapshot_json = ? WHERE pr_key = ?").run(JSON.stringify(snapshot), key);
+  }
+
+  function listActions(key: string, limit = 20): ActionRow[] {
+    return db
+      .prepare("SELECT * FROM pr_patrol_actions WHERE pr_key = ? ORDER BY updated_at DESC LIMIT ?")
+      .all(key, limit) as ActionRow[];
   }
 
   function markReady(key: string, sha: string): boolean {
@@ -140,7 +165,10 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
   /** Runs interrupted by a restart never report back; let the loop retry them. */
   function failInterruptedActions(): number {
     const r = db
-      .prepare("UPDATE pr_patrol_actions SET status = 'failed', updated_at = ? WHERE status = 'running'")
+      // The restart, not the agent, ended the run: give the attempt back.
+      .prepare(
+        "UPDATE pr_patrol_actions SET status = 'failed', attempts = MAX(attempts - 1, 0), updated_at = ? WHERE status = 'running'",
+      )
       .run(nowMs());
     return Number(r.changes ?? 0);
   }
@@ -161,6 +189,8 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     upsertPr,
     setPhase,
     markReady,
+    setSnapshot,
+    listActions,
     memory,
     startAction,
     finishAction,
