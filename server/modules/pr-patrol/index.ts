@@ -369,7 +369,12 @@ export function createPrPatrol(ctx: RuntimeContext) {
           store.setPhase(key, "watching", `queued: ${PATROL_AGENTS[ACTION_ROLE[d.action]].name} is busy`);
           return;
         }
-        await launch(key, s, d);
+        // Not awaited: a first clone of a big repo would otherwise stall the tick and idle the other slots.
+        // launch() claims its `running` slot synchronously, before its first await.
+        void launch(key, s, d).catch((err) => {
+          running.delete(key);
+          store.setPhase(key, "error", `launch failed: ${(err as Error).message.slice(0, 400)}`);
+        });
     }
   }
 
