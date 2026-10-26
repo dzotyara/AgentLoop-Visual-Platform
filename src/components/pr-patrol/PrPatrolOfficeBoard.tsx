@@ -4,6 +4,7 @@ import { formatUsd, getClaudeCosts, getPrPatrolStatus, type PrPatrolPhase } from
 import { usePolling } from "../../hooks/usePolling";
 import AgentAvatar from "../AgentAvatar";
 import { setLiveFromStatus } from "./live-store";
+import ReadyToMergeBlock from "./ReadyToMergeBlock";
 import { ACTION_LABEL, PHASE_META, TONE_TEXT, checksSummary } from "./pr-ui";
 
 const ORDER: PrPatrolPhase[] = ["working", "blocked", "waiting", "watching", "ready", "error"];
@@ -23,11 +24,12 @@ export default function PrPatrolOfficeBoard({ agents, onOpenPrs }: { agents: Age
   const prs = useMemo(
     () =>
       (data?.prs ?? [])
-        .filter((p) => p.phase !== "skipped")
+        .filter((p) => p.phase !== "skipped" && p.phase !== "ready")
         .sort((a, b) => ORDER.indexOf(a.phase) - ORDER.indexOf(b.phase) || b.updated_at - a.updated_at),
     [data],
   );
-  if (!data || prs.length === 0) return null;
+  const ready = (data?.prs ?? []).filter((p) => p.phase === "ready");
+  if (!data || prs.length + ready.length === 0) return null;
   const working = prs.filter((p) => p.agent).length;
 
   return (
@@ -40,7 +42,7 @@ export default function PrPatrolOfficeBoard({ agents, onOpenPrs }: { agents: Age
           🔀 PR Patrol
         </h3>
         <span className="text-xs" style={{ color: "var(--th-text-muted)" }}>
-          {working} agent{working === 1 ? "" : "s"} working · {prs.length} open PRs
+          {working} agent{working === 1 ? "" : "s"} working · {prs.length + ready.length} open PRs
           {costs ? ` · 💸 today ${formatUsd(costs.today.costUsd)}` : ""}
         </span>
         <span
@@ -108,6 +110,11 @@ export default function PrPatrolOfficeBoard({ agents, onOpenPrs }: { agents: Age
           );
         })}
       </div>
+      {ready.length > 0 && (
+        <div className={prs.length ? "mt-3" : ""}>
+          <ReadyToMergeBlock prs={ready} costs={costs} compact />
+        </div>
+      )}
     </section>
   );
 }

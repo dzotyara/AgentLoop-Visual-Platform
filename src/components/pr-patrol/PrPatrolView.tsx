@@ -10,6 +10,7 @@ import {
 } from "../../api";
 import { usePolling } from "../../hooks/usePolling";
 import PrDetail from "./PrDetail";
+import ReadyToMergeBlock from "./ReadyToMergeBlock";
 import { PHASE_META, TONE_TEXT, checksSummary, timeAgo } from "./pr-ui";
 
 const PHASE_ORDER: PrPatrolPhase[] = ["working", "blocked", "waiting", "watching", "ready", "error", "skipped"];
@@ -59,7 +60,8 @@ export default function PrPatrolView({
   const [ticking, setTicking] = useState(false);
 
   const prs = useMemo(() => {
-    const list = (data?.prs ?? []).filter((p) => showSkipped || p.phase !== "skipped");
+    // Ready PRs live in their own block above the list.
+    const list = (data?.prs ?? []).filter((p) => p.phase !== "ready" && (showSkipped || p.phase !== "skipped"));
     return list.sort(
       (a, b) => PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase) || b.updated_at - a.updated_at,
     );
@@ -69,7 +71,11 @@ export default function PrPatrolView({
     for (const p of data?.prs ?? []) c[p.phase] = (c[p.phase] ?? 0) + 1;
     return c;
   }, [data]);
-  const selected = prs.find((p) => p.pr_key === selectedKey) ?? prs[0] ?? null;
+  const readyPrs = useMemo(
+    () => (data?.prs ?? []).filter((p) => p.phase === "ready").sort((a, b) => b.updated_at - a.updated_at),
+    [data],
+  );
+  const selected = (data?.prs ?? []).find((p) => p.pr_key === selectedKey) ?? prs[0] ?? readyPrs[0] ?? null;
 
   const checkNow = async () => {
     setTicking(true);
@@ -145,12 +151,16 @@ export default function PrPatrolView({
         </div>
       )}
 
+      <ReadyToMergeBlock prs={readyPrs} costs={costs} onSelect={setSelectedKey} />
+
       <div className="grid gap-4 lg:grid-cols-[minmax(260px,340px)_1fr]">
         {/* List */}
         <div className="flex flex-col gap-2">
           {prs.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--th-text-muted)" }}>
-              No open pull requests match the patrol query.
+              {readyPrs.length
+                ? "Every open pull request is ready to merge."
+                : "No open pull requests match the patrol query."}
             </p>
           ) : (
             prs.map((pr) => (
