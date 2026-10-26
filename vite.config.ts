@@ -1,10 +1,13 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Socket } from "node:net";
 
-const apiTarget = process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8790";
+// Follow the API server's PORT from .env so moving the API off a busy port needs one setting, not two.
+const fileEnv = loadEnv(process.env.NODE_ENV ?? "development", process.cwd(), "");
+const apiPort = process.env.PORT ?? fileEnv.PORT ?? "8790";
+const apiTarget = process.env.VITE_API_PROXY_TARGET ?? fileEnv.VITE_API_PROXY_TARGET ?? `http://127.0.0.1:${apiPort}`;
 const wsTarget = process.env.VITE_WS_PROXY_TARGET ?? apiTarget.replace(/^http/i, "ws");
 
 type ProxyErrorResponse = ServerResponse<IncomingMessage> | Socket;
