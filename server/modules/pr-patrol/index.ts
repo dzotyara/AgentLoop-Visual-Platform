@@ -4,9 +4,11 @@ import path from "node:path";
 import type { RuntimeContext } from "../../types/runtime-context.ts";
 import { loadPrPatrolConfig } from "./config.ts";
 import { BLOCKING_SEVERITIES, decide, type ActionKind, type Decision, type ReviewFinding } from "./decide.ts";
+import { formatReviewComment, normalizeSeverity } from "./review-comment.ts";
 import {
   fetchPrSnapshot,
   listPatrolledPrs,
+  postPrComment,
   replyAndResolveThread,
   rerunFailedRuns,
   type PrSnapshot,
@@ -220,15 +222,33 @@ export function createPrPatrol(ctx: RuntimeContext) {
     if (!result) return { ok: false, note: `agent exited with code ${exitCode} and wrote no result` };
 
     if (d.action === "review") {
-      const findings: ReviewFinding[] = Array.isArray(result.findings) ? result.findings : [];
-      const blocking = findings.filter((f) => BLOCKING_SEVERITIES.has(String(f.severity)));
+      const findings: ReviewFinding[] = (Array.isArray(result.findings) ? result.findings : []).map(
+        (f: ReviewFinding) => ({ ...f, severity: normalizeSeverity(f.severity) }),
+      );
+      const blocking = findings.filter((f) => BLOCKING_SEVERITIES.has(f.severity));
       store.recordReview(key, ws.startSha, blocking);
       const list = findings
         .map((f) => `- [${f.severity}] ${f.file ?? ""}${f.line ? `:${f.line}` : ""} ${f.title}`)
         .join("\n");
+      // The review goes on the PR as a [review] comment (write mode only); the fixes follow as [fix] commits.
+      let posted = "not posted (dry run)";
+      if (cfg.write) {
+        try {
+          const body = formatReviewComment({
+            findings,
+            summary,
+            reviewer: PATROL_AGENTS.reviewer.name,
+            headSha: ws.startSha,
+            autoFix: true,
+          });
+          posted = `posted ${await postPrComment(s.repo, s.number, body)}`;
+        } catch (err) {
+          posted = `comment failed: ${(err as Error).message.slice(0, 200)}`;
+        }
+      }
       return {
         ok: true,
-        note: `review: ${blocking.length} blocking of ${findings.length} finding(s). ${summary}\n${list}`,
+        note: `review: ${blocking.length} blocking (P0/P1) of ${findings.length} finding(s); ${posted}. ${summary}\n${list}`,
       };
     }
 

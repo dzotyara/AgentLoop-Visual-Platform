@@ -88,11 +88,7 @@ describe("decide", () => {
   });
 
   it("fixes blocking review findings on the reviewed head", () => {
-    const d = decide(
-      snap(),
-      cfg,
-      mem({ lastReview: { sha: "head1", blocking: [{ severity: "high", title: "bug" }] } }),
-    );
+    const d = decide(snap(), cfg, mem({ lastReview: { sha: "head1", blocking: [{ severity: "P1", title: "bug" }] } }));
     expect(d).toMatchObject({ kind: "run", action: "fix_review", key: "fixreview:head1" });
   });
 

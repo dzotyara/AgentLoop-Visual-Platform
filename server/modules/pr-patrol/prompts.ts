@@ -3,13 +3,13 @@ import path from "node:path";
 import type { ActionKind, Decision } from "./decide.ts";
 import type { PrSnapshot } from "./github.ts";
 
-/** Commit-subject / task-title tag per action: CI and conflict fixes vs. changes driven by review. */
+/** Tag per action for commit subjects, task titles and PR comments: every change is `[fix]`, the review itself `[review]`. */
 export const ACTION_PREFIX: Record<ActionKind, "[fix]" | "[review]"> = {
   fix_ci: "[fix]",
   fix_conflict: "[fix]",
   review: "[review]",
-  fix_review: "[review]",
-  address_feedback: "[review]",
+  fix_review: "[fix]",
+  address_feedback: "[fix]",
 };
 
 const VENDOR_DIR = path.resolve(import.meta.dirname, "../../../pr-patrol/agents/vendor");
@@ -46,7 +46,7 @@ Hard rules:
 
 const REVIEW_RESULT = `Result JSON:
 {"verdict": "clean" | "issues", "summary": "<one paragraph>",
- "findings": [{"severity": "critical" | "high" | "medium" | "low", "file": "<path>", "line": <number>, "title": "<short>", "detail": "<why it is a problem>", "fix": "<what to change>"}]}`;
+ "findings": [{"severity": "P0" | "P1" | "P2" | "P3", "file": "<path>", "line": <number>, "title": "<short>", "detail": "<why it is a problem>", "fix": "<what to change>"}]}`;
 
 function reviewPrompt(s: PrSnapshot): string {
   return `## Your role: PR reviewer (correctness, error handling, security)
@@ -55,9 +55,12 @@ Review ONLY what this PR changes: \`git diff origin/${s.baseRefName}...HEAD\` (r
 You may delegate the three angles below to subagents in parallel, or do them yourself in sequence.
 Do not modify files and do not commit.
 
-Severity contract (the loop auto-fixes only critical/high):
-- critical/high: a real bug, data loss, security hole, silent failure that hides errors, broken build, or a clear violation of the repo's CLAUDE.md/AGENTS.md rules — introduced by this PR, with high confidence.
-- medium/low: everything else worth mentioning. Do not inflate severity; false positives cost a fix round.
+Severity contract (findings are posted to the PR with these labels; the loop auto-fixes only P0/P1):
+- P0: breaks production, loses or corrupts data, or opens a security hole — introduced by this PR.
+- P1: a real bug, a silent failure that hides errors, a broken build/test, or a clear violation of the repo's CLAUDE.md/AGENTS.md rules — high confidence, introduced by this PR.
+- P2: worth fixing but not blocking: an unhandled edge case, a missing test, fragile code.
+- P3: nit: naming, style, docs, comments.
+Do not inflate severity; a false P0/P1 costs a fix round.
 
 ### Angle 1 — code reviewer (anthropics/claude-plugins-official, Apache-2.0)
 ${vendored("anthropic-pr-review-toolkit/code-reviewer.md")}

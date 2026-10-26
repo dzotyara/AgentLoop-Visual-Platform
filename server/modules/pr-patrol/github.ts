@@ -308,6 +308,12 @@ export async function rerunFailedRuns(repo: string, checks: PrCheck[]): Promise<
   return done;
 }
 
+/** Posts a top-level PR comment as the gh user; returns its URL. */
+export async function postPrComment(repo: string, number: number, body: string): Promise<string> {
+  const out = await gh(["api", `repos/${repo}/issues/${number}/comments`, "-f", `body=${body}`, "--jq", ".html_url"]);
+  return out.trim();
+}
+
 export async function replyAndResolveThread(threadId: string, body: string): Promise<void> {
   await gh([
     "api",

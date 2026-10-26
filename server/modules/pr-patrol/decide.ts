@@ -4,8 +4,11 @@ import type { PrCheck, PrFeedback, PrSnapshot } from "./github.ts";
 
 export type ActionKind = "fix_conflict" | "fix_ci" | "address_feedback" | "review" | "fix_review";
 
+/** P0 breaks prod / data / security, P1 real bug or broken build, P2 should fix, P3 nit. */
+export type Severity = "P0" | "P1" | "P2" | "P3";
+
 export type ReviewFinding = {
-  severity: "critical" | "high" | "medium" | "low";
+  severity: Severity;
   file?: string;
   line?: number;
   title: string;
@@ -37,7 +40,7 @@ export type Decision =
   | { kind: "blocked"; reasons: string[]; notes: string[] }
   | { kind: "ready"; notes: string[] };
 
-export const BLOCKING_SEVERITIES = new Set(["critical", "high"]);
+export const BLOCKING_SEVERITIES = new Set<Severity>(["P0", "P1"]);
 
 function shortHash(parts: string[]): string {
   return createHash("sha1")

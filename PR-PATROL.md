@@ -27,7 +27,11 @@ are capped by `PR_PATROL_MAX_REVIEW_ROUNDS` so review→fix cannot ping-pong for
 - **Agents never push.** The loop pushes their commits itself, fast-forward only (`git push origin HEAD:<branch>`,
   never `--force`), and refuses if the agent rewrote history or left uncommitted changes.
 - Agents are told not to run GitHub write commands; PR comments and CI logs are passed as untrusted data.
-- Own review findings are **not** posted to the PR; they go straight into a fix task.
+- Every change an agent makes is committed as `[fix] …`; the review itself is a `[review]` PR comment
+  (write mode only) with findings labelled P0 (prod/data/security) · P1 (real bug, broken build, repo-rule
+  violation) · P2 (should fix) · P3 (nit). P0/P1 are fixed automatically, P2/P3 are left for the author.
+- Agents cannot push or open PRs: the clone's `origin` has a dead pushurl, and the loop pushes by explicit
+  URL to the PR's own branch only.
 - Replying to and resolving review threads is a separate opt-in (`PR_PATROL_REPLY_THREADS=1`), because it
   posts under your `gh` account.
 - Fork PRs are skipped (their branches cannot be pushed). Drafts are skipped unless `PR_PATROL_INCLUDE_DRAFTS=1`.
