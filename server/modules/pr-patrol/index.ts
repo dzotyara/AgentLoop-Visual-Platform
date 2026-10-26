@@ -311,8 +311,17 @@ export function createPrPatrol(ctx: RuntimeContext) {
     const resultPath = path.join(resultDir, `${taskId}.json`);
     const prompt = buildPatrolPrompt(s, d, resultPath);
     const child = spawnCliAgent(taskId, "claude", prompt, ws.path, path.join(logsDir, `${taskId}.log`), cfg.model);
+    // A spawn failure emits "error" and may or may not emit "close": settle exactly once either way.
+    let settled = false;
+    child.on("error", (err: Error) => {
+      if (settled) return;
+      settled = true;
+      void done(false, `could not start claude: ${err.message}`);
+    });
     child.on("close", (code: number | null) => {
       activeProcesses.delete(taskId);
+      if (settled) return;
+      settled = true;
       settle(key, s, d, ws, readResult(resultPath), code ?? 1)
         .then((r) => done(r.ok, r.note))
         .catch((err) => done(false, `settle failed: ${(err as Error).message}`));
