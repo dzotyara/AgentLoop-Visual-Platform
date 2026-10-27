@@ -109,6 +109,16 @@ export function prKey(repo: string, number: number): string {
   return `${repo}#${number}`;
 }
 
+/** last_review_json is { blocking, minor }; rows written before minor findings were kept are a bare array. */
+function parseLastReview(
+  sha: string,
+  json: string,
+): { sha: string; blocking: ReviewFinding[]; minor: ReviewFinding[] } {
+  const parsed = JSON.parse(json) as ReviewFinding[] | { blocking?: ReviewFinding[]; minor?: ReviewFinding[] };
+  if (Array.isArray(parsed)) return { sha, blocking: parsed, minor: [] };
+  return { sha, blocking: parsed.blocking ?? [], minor: parsed.minor ?? [] };
+}
+
 export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
   function getPr(key: string): PrRow | undefined {
     return db.prepare("SELECT * FROM pr_patrol_prs WHERE pr_key = ?").get(key) as PrRow | undefined;
@@ -197,7 +207,7 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
       handledFeedbackIds: new Set<string>(JSON.parse(row?.handled_feedback_json ?? "[]")),
       lastReview:
         row?.last_review_sha && row.last_review_json
-          ? { sha: row.last_review_sha, blocking: JSON.parse(row.last_review_json) as ReviewFinding[] }
+          ? parseLastReview(row.last_review_sha, row.last_review_json)
           : null,
       reviewRounds: row?.review_rounds ?? 0,
     };
@@ -218,10 +228,10 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     ).run(status, JSON.stringify(result ?? null), nowMs(), key, actionKey);
   }
 
-  function recordReview(key: string, sha: string, blocking: ReviewFinding[]): void {
+  function recordReview(key: string, sha: string, blocking: ReviewFinding[], minor: ReviewFinding[] = []): void {
     db.prepare(
       "UPDATE pr_patrol_prs SET last_review_sha = ?, last_review_json = ?, review_rounds = review_rounds + 1 WHERE pr_key = ?",
-    ).run(sha, JSON.stringify(blocking), key);
+    ).run(sha, JSON.stringify({ blocking, minor }), key);
   }
 
   function addHandledFeedback(key: string, ids: string[]): void {

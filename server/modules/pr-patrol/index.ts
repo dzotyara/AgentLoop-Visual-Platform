@@ -299,7 +299,12 @@ export function createPrPatrol(ctx: RuntimeContext) {
         (f: ReviewFinding) => ({ ...f, severity: normalizeSeverity(f.severity) }),
       );
       const blocking = findings.filter((f) => BLOCKING_SEVERITIES.has(f.severity));
-      store.recordReview(key, ws.startSha, blocking);
+      store.recordReview(
+        key,
+        ws.startSha,
+        blocking,
+        findings.filter((f) => !BLOCKING_SEVERITIES.has(f.severity)),
+      );
       const list = findings
         .map((f) => `- [${f.severity}] ${f.file ?? ""}${f.line ? `:${f.line}` : ""} ${f.title}`)
         .join("\n");
@@ -525,7 +530,9 @@ export function createPrPatrol(ctx: RuntimeContext) {
         line: f.line,
         url: f.url,
         excerpt: f.body.slice(0, 280),
-        handled: handled.has(f.key),
+        handled: handled.has(f.key) || f.inProgress || f.severity === "none",
+        severity: f.severity,
+        inProgress: f.inProgress,
       })),
       fetchedAt: nowMs(),
     });

@@ -14,6 +14,8 @@ export type PrPatrolConfig = {
   fixers: number;
   maxAttempts: number;
   maxReviewRounds: number;
+  /** P2/P3 fix rounds per PR (bot comments + own review). P0/P1 are always fixed, outside this budget. */
+  maxNitRounds: number;
   searchQuery: string;
   repoAllowlist: string[];
   repoDenylist: string[];
@@ -56,6 +58,7 @@ export function loadPrPatrolConfig(): PrPatrolConfig {
     fixers: Math.min(3, envInt("PR_PATROL_FIXERS", 3, 1)),
     maxAttempts: envInt("PR_PATROL_MAX_ATTEMPTS", 2, 1),
     maxReviewRounds: envInt("PR_PATROL_MAX_REVIEW_ROUNDS", 3, 0),
+    maxNitRounds: envInt("PR_PATROL_MAX_NIT_ROUNDS", 5, 0),
     searchQuery: process.env.PR_PATROL_QUERY?.trim() || "author:@me",
     repoAllowlist: envList("PR_PATROL_REPOS"),
     repoDenylist: envList("PR_PATROL_EXCLUDE_REPOS"),

@@ -100,7 +100,7 @@ ${REVIEW_RESULT}`;
 
 function fixReviewPrompt(d: Extract<Decision, { kind: "run" }>): string {
   return `## Your role: fixer for findings from the automated review
-
+${(d.findings ?? []).every((f) => f.severity === "P2" || f.severity === "P3") ? "\nThese are P2/P3 findings: fix the ones that are small and clearly right in one commit, decline the rest.\n" : ""}
 Each finding below came from an automated reviewer. Verify every one against the actual code before changing anything:
 fix the valid ones minimally (add or adjust a targeted test when the fix warrants it), decline the ones that are wrong with a concrete reason.
 
@@ -118,10 +118,14 @@ function feedbackPrompt(d: Extract<Decision, { kind: "run" }>): string {
   const items = (d.feedback ?? [])
     .map(
       (f) =>
-        `### feedback_id: ${f.id}\nkind: ${f.kind} · author: @${f.author}${f.path ? ` · ${f.path}${f.line ? `:${f.line}` : ""}` : ""}\n${fence("untrusted_comment", f.body)}`,
+        `### feedback_id: ${f.id}\nkind: ${f.kind} · author: @${f.author}${f.bot ? " (bot)" : ""} · severity: ${f.severity}${f.path ? ` · ${f.path}${f.line ? `:${f.line}` : ""}` : ""}\n${fence("untrusted_comment", f.body)}`,
     )
     .join("\n\n");
   return `## Your role: resolve PR review feedback
+
+Severity policy: items marked severity "blocking" (P0/P1-level from bots, and every comment from a person) must be
+resolved. Items marked "minor" (P2/P3, nits, wording) are worth fixing only when the change is small and safe; a
+round of minor fixes is limited, so batch everything minor into one commit and skip what is not clearly right.
 
 You are both the orchestrator and the fixer. For each feedback item below decide first:
 - actionable and valid -> implement it (verdict fixed / fixed-differently);

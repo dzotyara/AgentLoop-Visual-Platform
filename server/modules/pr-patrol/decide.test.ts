@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { PrPatrolConfig } from "./config.ts";
 import { decide, type PatrolMemory } from "./decide.ts";
-import { extractChangesRequestedBy, extractFeedback, normalizeChecks, type PrSnapshot } from "./github.ts";
+import {
+  classifyFeedback,
+  extractChangesRequestedBy,
+  extractFeedback,
+  normalizeChecks,
+  type PrSnapshot,
+} from "./github.ts";
 
 const cfg: PrPatrolConfig = {
   enabled: true,
@@ -14,6 +20,7 @@ const cfg: PrPatrolConfig = {
   fixers: 3,
   maxAttempts: 2,
   maxReviewRounds: 3,
+  maxNitRounds: 5,
   searchQuery: "author:@me",
   repoAllowlist: [],
   repoDenylist: [],
@@ -78,6 +85,9 @@ describe("decide", () => {
         {
           id: "T1",
           key: "T1:v1",
+          bot: false,
+          inProgress: false,
+          severity: "blocking",
           kind: "review_thread",
           author: "bob",
           body: "x",
@@ -120,6 +130,9 @@ describe("decide", () => {
         {
           id: "R1",
           key: "R1:v1",
+          bot: false,
+          inProgress: false,
+          severity: "blocking",
           kind: "review_body",
           author: "bob",
           body: "x",
@@ -196,6 +209,72 @@ describe("normalizeChecks", () => {
       skip: "neutral",
       ext: "failure",
     });
+  });
+});
+
+describe("P0/P1 always, P2/P3 within a round budget", () => {
+  const fb = (id: string, severity: "blocking" | "minor" | "none", inProgress = false) => ({
+    id,
+    key: `${id}:v1`,
+    bot: true,
+    inProgress,
+    severity,
+    kind: "pr_comment" as const,
+    author: "claude",
+    body: "x",
+    path: null,
+    line: null,
+    url: null,
+    createdAt: "",
+  });
+  const pendingCheck = { name: "t", workflow: null, state: "pending" as const, rawConclusion: null, detailsUrl: null };
+
+  it("ignores bot placeholders and status summaries", () => {
+    expect(decide(snap({ feedback: [fb("A", "none", true), fb("B", "none")] }), cfg, mem()).kind).toBe("ready");
+  });
+
+  it("fixes blocking feedback right away, even while CI runs", () => {
+    const d = decide(snap({ checks: [pendingCheck], feedback: [fb("A", "blocking"), fb("B", "minor")] }), cfg, mem());
+    expect(d).toMatchObject({ kind: "run", action: "address_feedback" });
+    if (d.kind === "run") expect(d.feedback?.map((f) => f.id)).toEqual(["A", "B"]);
+  });
+
+  it("waits for CI before a minor round, then runs it as a nit round", () => {
+    expect(decide(snap({ checks: [pendingCheck], feedback: [fb("B", "minor")] }), cfg, mem()).kind).toBe("wait");
+    const d = decide(snap({ feedback: [fb("B", "minor")] }), cfg, mem());
+    expect(d).toMatchObject({ kind: "run", action: "address_feedback" });
+    if (d.kind === "run") expect(d.key.startsWith("feedback-nit:")).toBe(true);
+  });
+
+  it("stops minor rounds at the cap and lets the PR become ready", () => {
+    const actions = new Map(
+      Array.from({ length: 5 }, (_, i) => [`feedback-nit:h${i}:x`, { status: "done" as const, attempts: 1 }]),
+    );
+    const d = decide(snap({ feedback: [fb("B", "minor")] }), cfg, mem({ actions }));
+    expect(d.kind).toBe("ready");
+    if (d.kind === "ready") expect(d.notes.join()).toContain("P2/P3 round cap (5)");
+  });
+
+  it("fixes minor own-review findings within the budget once CI is done", () => {
+    const d = decide(
+      snap(),
+      cfg,
+      mem({ lastReview: { sha: "head1", blocking: [], minor: [{ severity: "P3", title: "nit" }] } }),
+    );
+    expect(d).toMatchObject({ kind: "run", action: "fix_review", key: "fixreview-nit:head1" });
+  });
+});
+
+describe("classifyFeedback", () => {
+  it("tells placeholders, blockers, nits and summaries apart", () => {
+    expect(classifyFeedback("**Claude Code is working…** - [ ] Gather context", true)).toEqual({
+      inProgress: true,
+      severity: "none",
+    });
+    expect(classifyFeedback("- [x] done\n### Review\n**[P1]** shard timeout ignored", true).severity).toBe("blocking");
+    expect(classifyFeedback("LGTM. Three P3 notes: wording in docs", true).severity).toBe("minor");
+    expect(classifyFeedback("Decision: No blocking issues found. 0 findings.", true).severity).toBe("none");
+    expect(classifyFeedback("please rename this", false).severity).toBe("blocking");
   });
 });
 
@@ -334,6 +413,9 @@ describe("decide with pipeline step overrides", () => {
   const comment = {
     id: "T1",
     key: "T1:v1",
+    bot: false,
+    inProgress: false,
+    severity: "blocking" as const,
     kind: "review_thread" as const,
     author: "bob",
     body: "x",

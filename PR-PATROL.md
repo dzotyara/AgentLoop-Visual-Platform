@@ -29,7 +29,9 @@ are capped by `PR_PATROL_MAX_REVIEW_ROUNDS` so review→fix cannot ping-pong for
 - Agents are told not to run GitHub write commands; PR comments and CI logs are passed as untrusted data.
 - Every change an agent makes is committed as `[fix] …`; the review itself is a `[review]` PR comment
   (write mode only) with findings labelled P0 (prod/data/security) · P1 (real bug, broken build, repo-rule
-  violation) · P2 (should fix) · P3 (nit). P0/P1 are fixed automatically, P2/P3 are left for the author.
+  violation) · P2 (should fix) · P3 (nit). P0/P1 (and every human comment) are fixed right away; P2/P3 get up to
+  `PR_PATROL_MAX_NIT_ROUNDS` (5) rounds per PR, each started only after CI on the head finished, so a push never
+  cancels a running CI. Bot placeholders and status summaries never cost a run.
 - Agents cannot push or open PRs: the clone's `origin` has a dead pushurl, and the loop pushes by explicit
   URL to the PR's own branch only.
 - Replying to and resolving review threads is a separate opt-in (`PR_PATROL_REPLY_THREADS=1`), because it

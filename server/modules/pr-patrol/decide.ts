@@ -36,8 +36,8 @@ export type PatrolMemory = {
   actions: Map<string, ActionState>;
   /** Keys (id + text hash) of feedback already handled; see PrFeedback.key. */
   handledFeedbackIds: Set<string>;
-  /** Latest finished review of this PR, if any. */
-  lastReview: { sha: string; blocking: ReviewFinding[] } | null;
+  /** Latest finished review of this PR, if any: blocking (P0/P1) and minor (P2/P3) findings. */
+  lastReview: { sha: string; blocking: ReviewFinding[]; minor?: ReviewFinding[] } | null;
   reviewRounds: number;
 };
 
@@ -135,14 +135,34 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
     );
   }
 
-  const pending = s.feedback.filter((f) => !mem.handledFeedbackIds.has(f.key));
-  if (pending.length > 0) {
+  // P0/P1 (and every human comment) are always fixed; P2/P3 get at most cfg.maxNitRounds rounds per PR, and a
+  // round starts only once CI on the head has finished, so every push gets a full CI run instead of a cancelled one.
+  // Bot placeholders and status summaries with nothing to act on never cost a run.
+  const nitRounds = [...mem.actions].filter(([k, a]) => k.includes("-nit:") && a.status === "done").length;
+  const nitBudget = nitRounds < cfg.maxNitRounds;
+  const ciRunning = checks.some((c) => c.state === "pending");
+  const pending = s.feedback.filter(
+    (f) => !mem.handledFeedbackIds.has(f.key) && !f.inProgress && f.severity !== "none",
+  );
+  const minorFeedback = pending.filter((f) => f.severity === "minor");
+  if (pending.some((f) => f.severity === "blocking")) {
     const key = `feedback:${head}:${shortHash(pending.map((f) => f.key))}`;
     const g = gate(key, "address_feedback");
     if (g === "go") return { kind: "run", action: "address_feedback", key, feedback: pending };
     blocked.push(
       `${pending.length} review comment(s) unhandled: ${g === "disabled" ? DISABLED_LABEL.address_feedback : "fix attempts exhausted"}`,
     );
+  } else if (minorFeedback.length > 0) {
+    if (!nitBudget) {
+      notes.push(
+        `P2/P3 round cap (${cfg.maxNitRounds}) reached: ${minorFeedback.length} minor comment(s) left for the author`,
+      );
+    } else if (!ciRunning) {
+      const key = `feedback-nit:${head}:${shortHash(minorFeedback.map((f) => f.key))}`;
+      const g = gate(key, "address_feedback");
+      if (g === "go") return { kind: "run", action: "address_feedback", key, feedback: minorFeedback };
+      if (g !== "done") notes.push(`${minorFeedback.length} minor comment(s) not fixed (${g})`);
+    }
   }
 
   // A disabled own review behaves like PR_PATROL_REVIEW=0 (its stale findings no longer block either).
@@ -150,6 +170,19 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
   if (cfg.review && !reviewOn) notes.push(DISABLED_LABEL.review);
   if (reviewOn) {
     if (mem.lastReview?.sha === head) {
+      const minorFindings = mem.lastReview.minor ?? [];
+      if (mem.lastReview.blocking.length === 0 && minorFindings.length > 0) {
+        if (!nitBudget) {
+          notes.push(
+            `P2/P3 round cap (${cfg.maxNitRounds}) reached: ${minorFindings.length} review finding(s) left for the author`,
+          );
+        } else if (!ciRunning) {
+          const key = `fixreview-nit:${head}`;
+          const g = gate(key, "fix_review");
+          if (g === "go") return { kind: "run", action: "fix_review", key, findings: minorFindings };
+          if (g !== "done") notes.push(`${minorFindings.length} minor review finding(s) not fixed (${g})`);
+        }
+      }
       if (mem.lastReview.blocking.length > 0) {
         const key = `fixreview:${head}`;
         const g = gate(key, "fix_review");
