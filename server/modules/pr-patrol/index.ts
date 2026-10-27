@@ -16,6 +16,7 @@ import {
 import { activityFromStreamLines, createLineSplitter } from "./activity.ts";
 import { ACTION_PREFIX, buildPatrolPrompt } from "./prompts.ts";
 import { createPrPatrolStore, ensurePrPatrolSchema, prKey } from "./store.ts";
+import { registerRunRoutes } from "./runs.ts";
 import { preparePrWorktree, pushAgentCommits, type PrWorkspace, type PushOutcome } from "./workspace.ts";
 
 export const PR_PATROL_SOURCE = "pr-patrol";
@@ -575,6 +576,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
   }
 
   function registerRoutes(): void {
+    registerRunRoutes({ app, db, logsDir, workdir: cfg.workdir });
     app.get("/api/pr-patrol/status", (_req: unknown, res: { json(v: unknown): void }) => res.json(status()));
     app.post("/api/pr-patrol/tick", (_req: unknown, res: { json(v: unknown): void }) => {
       void tick();
