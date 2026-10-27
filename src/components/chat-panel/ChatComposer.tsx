@@ -1,6 +1,7 @@
 import type { KeyboardEvent, RefObject } from "react";
 import type { Agent } from "../../types";
 import ChatModeHint from "./ChatModeHint";
+import PixelIcon from "../pixel/PixelIcon";
 
 type ChatMode = "chat" | "task" | "announcement" | "report";
 type Tr = (ko: string, en: string, ja?: string, zh?: string) => string;
@@ -46,7 +47,7 @@ export default function ChatComposer({
               : "bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
           }`}
         >
-          <span>📋</span>
+          <PixelIcon name="tasks" size={12} />
           <span>{tr("업무 지시", "Task", "タスク指示", "任务指示")}</span>
         </button>
 
@@ -56,7 +57,7 @@ export default function ChatComposer({
             mode === "announcement" ? "bg-yellow-500 text-gray-900" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
           }`}
         >
-          <span>📢</span>
+          <PixelIcon name="announcement" size={12} />
           <span>{tr("전사 공지", "Announcement", "全体告知", "全员公告")}</span>
         </button>
 
@@ -69,7 +70,7 @@ export default function ChatComposer({
               : "bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
           }`}
         >
-          <span>📊</span>
+          <PixelIcon name="report" size={12} />
           <span>{tr("보고 요청", "Report", "レポート依頼", "报告请求")}</span>
         </button>
       </div>

@@ -12,6 +12,7 @@ import DepartmentsTab from "./agent-manager/DepartmentsTab";
 import { StackedSpriteIcon } from "./agent-manager/EmojiPicker";
 import type { AgentManagerProps, FormData } from "./agent-manager/types";
 import { pickRandomSpritePair } from "./agent-manager/utils";
+import PixelIcon from "./pixel/PixelIcon";
 
 export default function AgentManager({
   agents,
@@ -142,7 +143,7 @@ export default function AgentManager({
         name_zh: form.name_zh.trim(),
         role: form.role,
         cli_provider: form.cli_provider,
-        avatar_emoji: form.avatar_emoji || "🤖",
+        avatar_emoji: form.avatar_emoji || "robot",
         sprite_number: form.sprite_number,
         personality: form.personality.trim() || null,
       };
@@ -510,7 +511,7 @@ export default function AgentManager({
             label: tr("직원관리", "Agents"),
             icon: <StackedSpriteIcon sprites={randomIconSprites.tab} />,
           },
-          { key: "departments" as const, label: tr("부서관리", "Departments"), icon: "🏢" },
+          { key: "departments" as const, label: tr("부서관리", "Departments"), icon: <PixelIcon name="office" size={16} /> },
         ].map((tab) => (
           <button
             key={tab.key}

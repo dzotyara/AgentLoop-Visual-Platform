@@ -2,6 +2,8 @@ import type { DragEvent } from "react";
 import type { Agent, Department } from "../../types";
 import { localeName } from "../../i18n";
 import type { Translator } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 
 interface DepartmentsTabProps {
   tr: Translator;
@@ -122,7 +124,7 @@ export default function DepartmentsTab({
                 {index + 1}
               </div>
 
-              <span className="text-2xl">{dept.icon}</span>
+              <PixelIcon name={iconFor(dept.icon, "office")} size={24} />
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -162,7 +164,9 @@ export default function DepartmentsTab({
 
       {deptOrder.length === 0 && (
         <div className="text-center py-16" style={{ color: "var(--th-text-muted)" }}>
-          <div className="text-3xl mb-2">🏢</div>
+          <div className="mb-2 flex justify-center">
+            <PixelIcon name="office" size={32} />
+          </div>
           {tr("등록된 부서가 없습니다.", "No departments found.")}
         </div>
       )}

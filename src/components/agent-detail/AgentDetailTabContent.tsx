@@ -1,6 +1,8 @@
 import { localeName, type UiLanguage } from "../../i18n";
 import type { Agent, Department, SubAgent, SubTask, Task } from "../../types";
 import { getSubAgentSpriteNum, SUBTASK_STATUS_ICON, taskStatusLabel, taskTypeLabel, type TFunction } from "./constants";
+import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 
 interface AgentDetailTabContentProps {
   tab: "info" | "tasks" | "alba";
@@ -73,13 +75,13 @@ export default function AgentDetailTabContent({
             onClick={() => onChat(agent)}
             className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
           >
-            💬 {t({ ko: "대화하기", en: "Chat", ja: "チャット", zh: "对话" })}
+            <PixelIcon name="chat" size={16} /> {t({ ko: "대화하기", en: "Chat", ja: "チャット", zh: "对话" })}
           </button>
           <button
             onClick={() => onAssignTask(agent.id)}
             className="flex-1 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
           >
-            📋 {t({ ko: "업무 배정", en: "Assign Task", ja: "タスク割り当て", zh: "分配任务" })}
+            <PixelIcon name="tasks" size={16} /> {t({ ko: "업무 배정", en: "Assign Task", ja: "タスク割り当て", zh: "分配任务" })}
           </button>
         </div>
         {agent.status === "working" && agent.current_task_id && onOpenTerminal && (
@@ -87,7 +89,7 @@ export default function AgentDetailTabContent({
             onClick={() => onOpenTerminal(agent.current_task_id!)}
             className="w-full mt-2 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
           >
-            &#128421; {t({ ko: "터미널 보기", en: "View Terminal", ja: "ターミナル表示", zh: "查看终端" })}
+            <PixelIcon name="terminal" size={16} /> {t({ ko: "터미널 보기", en: "View Terminal", ja: "ターミナル表示", zh: "查看终端" })}
           </button>
         )}
       </div>
@@ -155,7 +157,7 @@ export default function AgentDetailTabContent({
                         : null;
                       return (
                         <div key={subtask.id} className="flex items-center gap-1.5 text-xs">
-                          <span>{SUBTASK_STATUS_ICON[subtask.status] || "\u23F3"}</span>
+                          <PixelIcon name={SUBTASK_STATUS_ICON[subtask.status] ?? "pending"} size={12} />
                           <span
                             className={`flex-1 truncate ${subtask.status === "done" ? "line-through text-slate-500" : "text-slate-300"}`}
                           >
@@ -166,7 +168,8 @@ export default function AgentDetailTabContent({
                               className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium"
                               style={{ backgroundColor: targetDepartment.color + "30", color: targetDepartment.color }}
                             >
-                              {targetDepartment.icon} {localeName(language, targetDepartment)}
+                              <PixelIcon name={iconFor(targetDepartment.icon, "office")} size={12} />{" "}
+                              {localeName(language, targetDepartment)}
                             </span>
                           )}
                           {subtask.delegated_task_id && subtask.status !== "done" && (
@@ -174,7 +177,7 @@ export default function AgentDetailTabContent({
                               className="text-blue-400 shrink-0"
                               title={t({ ko: "위임됨", en: "Delegated", ja: "委任済み", zh: "已委派" })}
                             >
-                              🔗
+                              <PixelIcon name="link" size={12} />
                             </span>
                           )}
                           {subtask.status === "blocked" && subtask.blocked_reason && (
@@ -202,7 +205,9 @@ export default function AgentDetailTabContent({
     <div className="space-y-2">
       {agentSubAgents.length === 0 ? (
         <div className="text-center py-8 text-slate-500 text-sm">
-          <div className="text-3xl mb-2">🧑‍💼</div>
+          <div className="mb-2 flex justify-center">
+            <PixelIcon name="user" size={32} />
+          </div>
           {t({
             ko: "현재 알바생이 없습니다",
             en: "No sub-agents currently",
@@ -239,10 +244,11 @@ export default function AgentDetailTabContent({
                 </span>
                 {subAgent.task}
               </div>
-              <div className="text-xs text-slate-500 mt-0.5">
+              <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                <PixelIcon name={subAgent.status === "working" ? "wrench" : "check"} size={12} />
                 {subAgent.status === "working"
-                  ? `🔨 ${t({ ko: "작업중...", en: "Working...", ja: "作業中...", zh: "工作中..." })}`
-                  : `✅ ${t({ ko: "완료", en: "Done", ja: "完了", zh: "完成" })}`}
+                  ? t({ ko: "작업중...", en: "Working...", ja: "作業中...", zh: "工作中..." })
+                  : t({ ko: "완료", en: "Done", ja: "完了", zh: "完成" })}
               </div>
             </div>
             {subAgent.status === "working" && (

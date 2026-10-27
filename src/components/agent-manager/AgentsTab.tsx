@@ -3,6 +3,8 @@ import { localeName } from "../../i18n";
 import AgentCard from "./AgentCard";
 import { StackedSpriteIcon } from "./EmojiPicker";
 import type { Translator } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 
 interface AgentsTabProps {
   tr: Translator;
@@ -66,8 +68,8 @@ export default function AgentsTab({
             value: agents.length,
             icon: <StackedSpriteIcon sprites={randomIconSprites.total} />,
           },
-          { label: tr("근무 중", "Working"), value: workingCount, icon: "💼" },
-          { label: tr("부서", "Departments"), value: departments.length, icon: "🏢" },
+          { label: tr("근무 중", "Working"), value: workingCount, icon: <PixelIcon name="team" size={12} /> },
+          { label: tr("부서", "Departments"), value: departments.length, icon: <PixelIcon name="office" size={12} /> },
         ].map((summary) => (
           <div
             key={summary.label}
@@ -110,7 +112,7 @@ export default function AgentsTab({
               }`}
               style={deptTab !== department.id ? { color: "var(--th-text-muted)" } : undefined}
             >
-              <span>{department.icon}</span>
+              <PixelIcon name={iconFor(department.icon, "office")} size={16} />
               <span className="hidden sm:inline">{localeName(locale, department)}</span>
               <span className="opacity-60">{count?.total ?? 0}</span>
             </button>
@@ -134,7 +136,9 @@ export default function AgentsTab({
 
       {sortedAgents.length === 0 ? (
         <div className="text-center py-16" style={{ color: "var(--th-text-muted)" }}>
-          <div className="text-3xl mb-2">🔍</div>
+          <div className="mb-2 flex justify-center">
+            <PixelIcon name="search" size={32} />
+          </div>
           {tr("검색 결과 없음", "No agents found")}
         </div>
       ) : (

@@ -1,5 +1,6 @@
 import { CLI_INFO } from "./constants";
 import type { CliSettingsTabProps } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 export default function CliSettingsTab({
   t,
@@ -21,7 +22,7 @@ export default function CliSettingsTab({
           {t({ ko: "CLI 도구 상태", en: "CLI Tool Status", ja: "CLI ツール状態", zh: "CLI 工具状态" })}
         </h3>
         <button onClick={onRefresh} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-          🔄 {t({ ko: "새로고침", en: "Refresh", ja: "更新", zh: "刷新" })}
+          <PixelIcon name="refresh" size={12} /> {t({ ko: "새로고침", en: "Refresh", ja: "更新", zh: "刷新" })}
         </button>
       </div>
 

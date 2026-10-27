@@ -1,3 +1,4 @@
+import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
 import type { SettingsTab, TFunction } from "./types";
 
 interface SettingsTabNavProps {
@@ -6,12 +7,12 @@ interface SettingsTabNavProps {
   t: TFunction;
 }
 
-const TAB_ITEMS: Array<{ key: SettingsTab; icon: string; label: (t: TFunction) => string }> = [
-  { key: "general", icon: "⚙️", label: (t) => t({ ko: "일반 설정", en: "General", ja: "一般設定", zh: "常规设置" }) },
-  { key: "cli", icon: "🔧", label: (t) => t({ ko: "CLI 도구", en: "CLI Tools", ja: "CLI ツール", zh: "CLI 工具" }) },
-  { key: "oauth", icon: "🔑", label: (t) => t({ ko: "OAuth 인증", en: "OAuth", ja: "OAuth 認証", zh: "OAuth 认证" }) },
-  { key: "api", icon: "🔌", label: (t) => t({ ko: "API 연동", en: "API", ja: "API 連携", zh: "API 集成" }) },
-  { key: "gateway", icon: "📡", label: (t) => t({ ko: "채널 메시지", en: "Channel", ja: "チャネル", zh: "频道" }) },
+const TAB_ITEMS: Array<{ key: SettingsTab; icon: PixelIconName; label: (t: TFunction) => string }> = [
+  { key: "general", icon: "settings", label: (t) => t({ ko: "일반 설정", en: "General", ja: "一般設定", zh: "常规设置" }) },
+  { key: "cli", icon: "terminal", label: (t) => t({ ko: "CLI 도구", en: "CLI Tools", ja: "CLI ツール", zh: "CLI 工具" }) },
+  { key: "oauth", icon: "key", label: (t) => t({ ko: "OAuth 인증", en: "OAuth", ja: "OAuth 認証", zh: "OAuth 认证" }) },
+  { key: "api", icon: "link", label: (t) => t({ ko: "API 연동", en: "API", ja: "API 連携", zh: "API 集成" }) },
+  { key: "gateway", icon: "chat", label: (t) => t({ ko: "채널 메시지", en: "Channel", ja: "チャネル", zh: "频道" }) },
 ];
 
 export default function SettingsTabNav({ tab, setTab, t }: SettingsTabNavProps) {
@@ -25,7 +26,7 @@ export default function SettingsTabNav({ tab, setTab, t }: SettingsTabNavProps) 
             tab === item.key ? "text-blue-400 border-b-2 border-blue-400" : "text-slate-400 hover:text-slate-200"
           }`}
         >
-          <span>{item.icon}</span>
+          <PixelIcon name={item.icon} size={16} />
           <span>{item.label(t)}</span>
         </button>
       ))}

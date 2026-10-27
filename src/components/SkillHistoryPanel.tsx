@@ -20,6 +20,7 @@ import {
   statusClass,
   statusLabel,
 } from "./skill-history/utils";
+import PixelIcon from "./pixel/PixelIcon";
 
 type UnlearnEffect = "pot" | "hammer";
 
@@ -314,8 +315,8 @@ export default function SkillHistoryPanel({
                       className={`relative h-5 w-5 overflow-hidden rounded-md bg-slate-800/80 ${unlearnEffect ? "unlearn-avatar-hit" : ""}`}
                     >
                       <AgentAvatar agent={agent ?? undefined} agents={agents} size={20} rounded="xl" />
-                      {unlearnEffect === "pot" && <span className="unlearn-pot-drop-sm">🪴</span>}
-                      {unlearnEffect === "hammer" && <span className="unlearn-hammer-swing-sm">🔨</span>}
+                      {unlearnEffect === "pot" && <PixelIcon name="break" size={16} className="unlearn-pot-drop-sm" />}
+                      {unlearnEffect === "hammer" && <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing-sm" />}
                       {unlearnEffect && <span className="unlearn-hit-text-sm">Bonk!</span>}
                     </div>
                     <span className="truncate">
@@ -384,8 +385,8 @@ export default function SkillHistoryPanel({
                       className={`relative h-5 w-5 overflow-hidden rounded-md bg-slate-800/80 ${unlearnEffect ? "unlearn-avatar-hit" : ""}`}
                     >
                       <AgentAvatar agent={agent ?? undefined} agents={agents} size={20} rounded="xl" />
-                      {unlearnEffect === "pot" && <span className="unlearn-pot-drop-sm">🪴</span>}
-                      {unlearnEffect === "hammer" && <span className="unlearn-hammer-swing-sm">🔨</span>}
+                      {unlearnEffect === "pot" && <PixelIcon name="break" size={16} className="unlearn-pot-drop-sm" />}
+                      {unlearnEffect === "hammer" && <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing-sm" />}
                       {unlearnEffect && <span className="unlearn-hit-text-sm">Bonk!</span>}
                     </div>
                     <span className="truncate">
@@ -420,7 +421,7 @@ export default function SkillHistoryPanel({
               <div className="unlearn-avatar-hit">
                 <AgentAvatar agent={centerBonk.agent ?? undefined} agents={agents} size={80} rounded="xl" />
               </div>
-              <span className="unlearn-hammer-swing-center">🔨</span>
+              <PixelIcon name="wrench" size={32} className="unlearn-hammer-swing-center" />
               <span className="unlearn-hit-text-center">Bonk!</span>
             </div>
             <div className="skill-history-center-label mt-2 text-center text-xs font-medium text-rose-100">

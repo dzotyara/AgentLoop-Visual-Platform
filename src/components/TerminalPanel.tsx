@@ -12,6 +12,7 @@ import {
   type TaskLogEntry,
   type TerminalPanelProps,
 } from "./terminal-panel/model";
+import PixelIcon from "./pixel/PixelIcon";
 
 export default function TerminalPanel({
   taskId,
@@ -671,9 +672,9 @@ export default function TerminalPanel({
             <div className="flex flex-col items-center justify-center h-full" style={{ color: "var(--th-text-muted)" }}>
               <div className="text-3xl mb-3">
                 {task?.status === "in_progress" ? (
-                  <span className="inline-block animate-spin">&#9881;</span>
+                  <PixelIcon name="settings" size={32} className="animate-spin" />
                 ) : (
-                  <span>&#128421;</span>
+                  <PixelIcon name="terminal" size={32} />
                 )}
               </div>
               <div className="text-sm">
@@ -702,7 +703,9 @@ export default function TerminalPanel({
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {meetingMinutes.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center" style={{ color: "var(--th-text-muted)" }}>
-              <div className="text-3xl mb-3">📝</div>
+              <div className="mb-3">
+                <PixelIcon name="meeting" size={32} />
+              </div>
               <div className="text-sm">
                 {tr("회의록이 아직 없습니다", "No meeting minutes yet", "会議録はまだありません", "暂无会议纪要")}
               </div>
@@ -806,7 +809,8 @@ export default function TerminalPanel({
           </div>
           {progressHints.ok_items.length > 0 && (
             <div className="mt-1 text-[10px] text-emerald-300/80 break-words">
-              {`✓ ${progressHints.ok_items.map((item) => compactHintText(item, 44)).join(" · ")}`}
+              <PixelIcon name="check" size={12} className="mr-1" />
+              {progressHints.ok_items.map((item) => compactHintText(item, 44)).join(" · ")}
             </div>
           )}
         </div>

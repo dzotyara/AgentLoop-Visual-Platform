@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { TFunction } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 export default function GitHubOAuthAppConfig({ t }: { t: TFunction }) {
   const [ghClientId, setGhClientId] = useState("");
@@ -76,11 +77,12 @@ export default function GitHubOAuthAppConfig({ t }: { t: TFunction }) {
           <li>Homepage URL: http://localhost:8800</li>
           <li>Callback URL: http://localhost:8800/oauth/callback</li>
           <li>
+            <PixelIcon name="check" size={12} className="mr-1" />
             {t({
-              ko: "☑ Enable Device Flow 체크",
-              en: "☑ Check 'Enable Device Flow'",
-              ja: "☑ Enable Device Flow にチェック",
-              zh: "☑ 勾选 Enable Device Flow",
+              ko: "Enable Device Flow 체크",
+              en: "Check 'Enable Device Flow'",
+              ja: "Enable Device Flow にチェック",
+              zh: "勾选 Enable Device Flow",
             })}
           </li>
           <li>

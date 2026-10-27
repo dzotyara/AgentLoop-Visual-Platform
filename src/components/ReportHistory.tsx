@@ -113,7 +113,7 @@ export default function ReportHistory({ agents, departments, uiLanguage, onClose
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700/50 px-6 py-4">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">&#x1F4CA;</span>
+            <PixelIcon name="report" size={24} />
             <h2 className="text-lg font-bold text-white">
               {t({ ko: "작업 보고서 이력", en: "Report History", ja: "レポート履歴", zh: "报告历史" })}
             </h2>
@@ -136,7 +136,7 @@ export default function ReportHistory({ agents, departments, uiLanguage, onClose
             </div>
           ) : reports.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <span className="mb-2 text-3xl opacity-40">&#x1F4ED;</span>
+              <PixelIcon name="mail" size={32} className="mb-2 opacity-40" />
               <p className="text-sm text-slate-500">
                 {t({
                   ko: "완료된 보고서가 없습니다",
@@ -184,7 +184,7 @@ export default function ReportHistory({ agents, departments, uiLanguage, onClose
                                 <span>{fmtDate(r.completed_at)}</span>
                               </div>
                             </div>
-                            <span className="flex-shrink-0 text-xs text-emerald-400">&#x2713;</span>
+                            <PixelIcon name="check" size={12} />
                           </button>
                         );
                       })}

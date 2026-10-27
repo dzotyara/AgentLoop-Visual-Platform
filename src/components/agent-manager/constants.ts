@@ -1,4 +1,5 @@
 import type { AgentRole, CliProvider } from "../../types";
+import type { PixelIconName } from "../pixel/PixelIcon";
 import type { DeptForm, FormData } from "./types";
 
 export const ROLES: AgentRole[] = ["team_leader", "senior", "junior", "intern"];
@@ -36,26 +37,95 @@ export const STATUS_DOT: Record<string, string> = {
 
 export const ICON_SPRITE_POOL = Array.from({ length: 13 }, (_, i) => i + 1);
 
-export const EMOJI_GROUPS: { label: string; labelEn: string; emojis: string[] }[] = [
+/** Icon choices for agent avatars and department icons (stored as PixelIconName). */
+export const ICON_GROUPS: { label: string; labelEn: string; icons: PixelIconName[] }[] = [
   {
     label: "부서/업무",
     labelEn: "Work",
-    emojis: ["📊", "💻", "🎨", "🔍", "🛡️", "⚙️", "📁", "🏢", "📋", "📈", "💼", "🗂️", "📌", "🎯", "🔧", "🧪"],
+    icons: [
+      "planning",
+      "dev",
+      "design",
+      "qa",
+      "devsecops",
+      "operations",
+      "folder",
+      "office",
+      "tasks",
+      "chart",
+      "team",
+      "report",
+      "pin",
+      "flag",
+      "wrench",
+      "test",
+    ],
   },
   {
-    label: "사람/표정",
+    label: "사람/크루",
     labelEn: "People",
-    emojis: ["🤖", "👤", "👥", "😊", "😎", "🤓", "🧑‍💻", "👨‍🔬", "👩‍🎨", "🧑‍🏫", "🦸", "🦊", "🐱", "🐶", "🐻", "🐼"],
+    icons: [
+      "robot",
+      "user",
+      "agents",
+      "ceo",
+      "you",
+      "reviewer",
+      "crown",
+      "graduation",
+      "brain",
+      "heart",
+      "scope",
+      "medkit",
+      "shield",
+      "bomb",
+      "camo",
+      "intel",
+    ],
   },
   {
     label: "사물/기호",
     labelEn: "Objects",
-    emojis: ["💡", "🚀", "⚡", "🔥", "💎", "🏆", "🎵", "🎮", "📱", "💾", "🖥️", "📡", "🔑", "🛠️", "📦", "🧩"],
+    icons: [
+      "lightbulb",
+      "rocket",
+      "bolt",
+      "fire",
+      "gem",
+      "trophy",
+      "music",
+      "play",
+      "phone",
+      "file",
+      "terminal",
+      "key",
+      "workbench",
+      "gift",
+      "code",
+      "camera",
+    ],
   },
   {
-    label: "자연/색상",
-    labelEn: "Nature",
-    emojis: ["🌟", "⭐", "🌈", "🌊", "🌸", "🍀", "🌙", "☀️", "❄️", "🔵", "🟢", "🟡", "🔴", "🟣", "🟠", "⚪"],
+    label: "기타",
+    labelEn: "More",
+    icons: [
+      "sparkle",
+      "star",
+      "sun",
+      "moon",
+      "globe",
+      "coffee",
+      "medal",
+      "bell",
+      "book",
+      "palette",
+      "generator",
+      "security",
+      "hideout",
+      "medstation",
+      "break",
+      "money",
+    ],
   },
 ];
 
@@ -67,7 +137,7 @@ export const BLANK: FormData = {
   department_id: "",
   role: "junior",
   cli_provider: "claude",
-  avatar_emoji: "🤖",
+  avatar_emoji: "robot",
   sprite_number: null,
   personality: "",
 };
@@ -90,7 +160,7 @@ export const DEPT_BLANK: DeptForm = {
   name_ko: "",
   name_ja: "",
   name_zh: "",
-  icon: "📁",
+  icon: "folder",
   color: "#3b82f6",
   description: "",
   prompt: "",

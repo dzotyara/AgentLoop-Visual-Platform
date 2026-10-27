@@ -160,7 +160,7 @@ export default function AgentStatusPanel({ agents, uiLanguage, onClose }: AgentS
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700/50 px-6 py-4">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">&#x1F6E0;</span>
+            <PixelIcon name="robot" size={24} />
             <h2 className="text-lg font-bold text-white">
               {t({ ko: "활성 에이전트", en: "Active Agents", ja: "アクティブエージェント", zh: "活跃代理" })}
             </h2>
@@ -184,7 +184,7 @@ export default function AgentStatusPanel({ agents, uiLanguage, onClose }: AgentS
               title={t({ ko: "Script 조회", en: "Script Inspector", ja: "Script確認", zh: "Script查看" })}
             >
               <span>{t({ ko: "Script조회", en: "Script", ja: "Script", zh: "Script" })}</span>
-              <span aria-hidden>&#x2699;</span>
+              <PixelIcon name="settings" size={12} />
             </button>
             <button
               onClick={(e) => {
@@ -201,7 +201,7 @@ export default function AgentStatusPanel({ agents, uiLanguage, onClose }: AgentS
               title={t({ ko: "유휴 CLI 조회", en: "Idle CLI Inspector", ja: "アイドルCLI確認", zh: "闲置CLI查看" })}
             >
               <span>{t({ ko: "유휴CLI조회", en: "Idle CLI", ja: "アイドルCLI", zh: "闲置CLI" })}</span>
-              <span aria-hidden>&#x1F5A5;</span>
+              <PixelIcon name="terminal" size={12} />
             </button>
             <button
               onClick={(e) => {
@@ -367,7 +367,7 @@ export default function AgentStatusPanel({ agents, uiLanguage, onClose }: AgentS
             </div>
           ) : activeAgents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <span className="mb-2 text-3xl opacity-40">&#x1F634;</span>
+              <PixelIcon name="pause" size={32} className="mb-2 opacity-40" />
               <p className="text-sm text-slate-500">
                 {t({
                   ko: "현재 작업 중인 에이전트가 없습니다",

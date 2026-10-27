@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { EMOJI_GROUPS } from "./constants";
+import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
+import { ICON_GROUPS } from "./constants";
 
 export function StackedSpriteIcon({ sprites }: { sprites: [number, number] }) {
   return (
@@ -43,7 +45,8 @@ export default function EmojiPicker({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const btnSize = size === "sm" ? "w-10 h-10 text-lg" : "w-14 h-10 text-xl";
+  const btnSize = size === "sm" ? "w-10 h-10" : "w-14 h-10";
+  const current = value ? iconFor(value, "info") : null;
 
   return (
     <div className="relative" ref={ref}>
@@ -52,8 +55,10 @@ export default function EmojiPicker({
         onClick={() => setOpen(!open)}
         className={`${btnSize} rounded-lg border flex items-center justify-center transition-all hover:scale-105 hover:shadow-md`}
         style={{ background: "var(--th-input-bg)", borderColor: "var(--th-input-border)" }}
+        aria-label={tr("아이콘 선택", "Choose icon")}
+        title={current ?? undefined}
       >
-        {value || "❓"}
+        <PixelIcon name={current ?? "info"} size={size === "sm" ? 16 : 24} />
       </button>
       {open && (
         <div
@@ -64,7 +69,7 @@ export default function EmojiPicker({
             backdropFilter: "blur(20px)",
           }}
         >
-          {EMOJI_GROUPS.map((group) => (
+          {ICON_GROUPS.map((group) => (
             <div key={group.labelEn} className="mb-2 last:mb-0">
               <div
                 className="text-[10px] font-semibold uppercase tracking-widest mb-1"
@@ -73,19 +78,21 @@ export default function EmojiPicker({
                 {tr(group.label, group.labelEn)}
               </div>
               <div className="grid grid-cols-8 gap-0.5">
-                {group.emojis.map((emoji) => (
+                {group.icons.map((icon) => (
                   <button
-                    key={emoji}
+                    key={icon}
                     type="button"
+                    title={icon}
+                    aria-label={icon}
                     onClick={() => {
-                      onChange(emoji);
+                      onChange(icon);
                       setOpen(false);
                     }}
-                    className={`w-8 h-8 rounded-lg text-base flex items-center justify-center transition-all hover:scale-125 hover:bg-[var(--th-bg-surface-hover)] ${
-                      value === emoji ? "ring-2 ring-blue-400 bg-blue-500/15" : ""
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-125 hover:bg-[var(--th-bg-surface-hover)] ${
+                      current === icon ? "ring-2 ring-blue-400 bg-blue-500/15" : ""
                     }`}
                   >
-                    {emoji}
+                    <PixelIcon name={icon} size={16} />
                   </button>
                 ))}
               </div>

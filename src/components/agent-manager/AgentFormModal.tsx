@@ -6,6 +6,7 @@ import { CLI_PROVIDERS, ROLE_BADGE, ROLE_LABEL, ROLES } from "./constants";
 import EmojiPicker from "./EmojiPicker";
 import type { FormData } from "./types";
 import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -133,7 +134,7 @@ export default function AgentFormModal({
                       style={{ imageRendering: "pixelated" }}
                     />
                   ) : (
-                    <span className="text-2xl">{form.avatar_emoji || "🤖"}</span>
+                    <PixelIcon name={iconFor(form.avatar_emoji, "robot")} size={24} />
                   )}
                 </div>
                 <button
@@ -338,7 +339,7 @@ export default function AgentFormModal({
               className="flex flex-col items-center justify-center gap-2 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-colors hover:border-blue-500/50"
               style={{ borderColor: "var(--th-input-border)", color: "var(--th-text-muted)" }}
             >
-              <span className="text-2xl">🖼️</span>
+              <PixelIcon name="image" size={24} />
               <span className="text-xs">
                 {tr("4방향 스프라이트 시트 업로드 (2x2 그리드)", "Upload 4-direction sprite sheet (2x2 grid)")}
               </span>
@@ -379,7 +380,7 @@ export default function AgentFormModal({
 
           {processing && (
             <div className="flex items-center justify-center gap-2 py-8" style={{ color: "var(--th-text-muted)" }}>
-              <span className="animate-spin text-lg">⏳</span>
+              <PixelIcon name="pending" size={16} className="animate-spin" />
               <span className="text-sm">
                 {tr("배경 제거 및 분할 처리 중...", "Removing background & splitting...")}
               </span>

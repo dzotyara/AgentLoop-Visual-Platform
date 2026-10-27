@@ -2,6 +2,7 @@ import type { OAuthConnectProvider } from "../../api";
 import { OAUTH_INFO } from "./constants";
 import { AntigravityLogo, GitHubCopilotLogo } from "./Logos";
 import type { OAuthCommonProps } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 export default function OAuthConnectedProvidersSection({
   t,
@@ -54,7 +55,7 @@ export default function OAuthConnectedProvidersSection({
           <div key={provider} className="space-y-2 overflow-hidden rounded-lg bg-slate-700/30 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-                {LogoComp ? <LogoComp className="w-5 h-5" /> : <span className="text-lg">🔑</span>}
+                {LogoComp ? <LogoComp className="w-5 h-5" /> : <PixelIcon name="key" size={20} />}
                 <span className="text-sm font-medium text-white">{oauthInfo?.label ?? provider}</span>
                 {info.email && <span className="max-w-full break-all text-xs text-slate-400">{info.email}</span>}
                 {isFileDetected && (

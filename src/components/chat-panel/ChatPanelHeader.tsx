@@ -64,7 +64,7 @@ export default function ChatPanelHeader({
         ) : (
           <>
             <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-yellow-500/20 text-xl">
-              📢
+              <PixelIcon name="announcement" size={24} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-white">
@@ -139,7 +139,7 @@ export default function ChatPanelHeader({
       {showAnnouncementBanner && (
         <div className="flex flex-shrink-0 items-center gap-2 border-b border-yellow-500/30 bg-yellow-500/10 px-4 py-2">
           <span className="text-sm font-medium text-yellow-400">
-            📢{" "}
+            <PixelIcon name="announcement" size={12} />{" "}
             {tr(
               "전사 공지 모드 - 모든 에이전트에게 전달됩니다",
               "Announcement mode - sent to all agents",

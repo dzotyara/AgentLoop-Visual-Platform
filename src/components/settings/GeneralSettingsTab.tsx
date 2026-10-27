@@ -1,5 +1,6 @@
 import type { CliProvider } from "../../types";
 import type { LocalSettings, SetLocalSettings, TFunction } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface GeneralSettingsTabProps {
   t: TFunction;
@@ -188,7 +189,7 @@ export default function GeneralSettingsTab({ t, form, setForm, saved, onSave }: 
       <div className="flex justify-end gap-3">
         {saved && (
           <span className="text-green-400 text-sm self-center">
-            ✅ {t({ ko: "저장 완료", en: "Saved", ja: "保存完了", zh: "已保存" })}
+            <PixelIcon name="check" size={16} /> {t({ ko: "저장 완료", en: "Saved", ja: "保存完了", zh: "已保存" })}
           </span>
         )}
         <button

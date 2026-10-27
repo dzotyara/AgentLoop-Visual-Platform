@@ -56,7 +56,7 @@ export default function OAuthSettingsTab({
           {t({ ko: "OAuth 인증 현황", en: "OAuth Status", ja: "OAuth 認証状態", zh: "OAuth 认证状态" })}
         </h3>
         <button onClick={onRefresh} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-          🔄 {t({ ko: "새로고침", en: "Refresh", ja: "更新", zh: "刷新" })}
+          <PixelIcon name="refresh" size={12} /> {t({ ko: "새로고침", en: "Refresh", ja: "更新", zh: "刷新" })}
         </button>
       </div>
 
@@ -87,7 +87,7 @@ export default function OAuthSettingsTab({
               : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
           }`}
         >
-          <span>{oauthStatus.storageReady ? "🔒" : "⚠️"}</span>
+          <PixelIcon name={oauthStatus.storageReady ? "lock" : "warning"} size={16} />
           <span>
             {oauthStatus.storageReady
               ? t({

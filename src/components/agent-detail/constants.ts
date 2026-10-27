@@ -1,5 +1,6 @@
 import type { OAuthAccountInfo } from "../../api";
 import type { UiLanguage } from "../../i18n";
+import type { PixelIconName } from "../pixel/PixelIcon";
 
 export type Locale = UiLanguage;
 export type TFunction = (messages: Record<Locale, string>) => string;
@@ -53,11 +54,11 @@ export const CLI_LABELS: Record<string, string> = {
   api: "API Provider",
 };
 
-export const SUBTASK_STATUS_ICON: Record<string, string> = {
-  pending: "\u23F3",
-  in_progress: "\uD83D\uDD28",
-  done: "\u2705",
-  blocked: "\uD83D\uDEAB",
+export const SUBTASK_STATUS_ICON: Record<string, PixelIconName> = {
+  pending: "pending",
+  in_progress: "wrench",
+  done: "check",
+  blocked: "error",
 };
 
 export function oauthAccountLabel(account: OAuthAccountInfo): string {

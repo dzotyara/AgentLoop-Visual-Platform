@@ -1,3 +1,4 @@
+import PixelIcon from "../pixel/PixelIcon";
 type ChatMode = "chat" | "task" | "announcement" | "report";
 
 type Tr = (ko: string, en: string, ja?: string, zh?: string) => string;
@@ -26,7 +27,7 @@ export default function ChatModeHint({ mode, isDirectiveMode, tr }: ChatModeHint
         <>
           {mode === "task" && (
             <p className="text-xs text-blue-400">
-              📋{" "}
+              <PixelIcon name="tasks" size={12} />{" "}
               {tr(
                 "업무 지시 모드 — 에이전트에게 작업을 할당합니다",
                 "Task mode - assign work to the agent",
@@ -37,7 +38,7 @@ export default function ChatModeHint({ mode, isDirectiveMode, tr }: ChatModeHint
           )}
           {mode === "announcement" && (
             <p className="text-xs text-yellow-400">
-              📢{" "}
+              <PixelIcon name="announcement" size={12} />{" "}
               {tr(
                 "전사 공지 모드 — 모든 에이전트에게 전달됩니다",
                 "Announcement mode - sent to all agents",
@@ -48,7 +49,7 @@ export default function ChatModeHint({ mode, isDirectiveMode, tr }: ChatModeHint
           )}
           {mode === "report" && (
             <p className="text-xs text-emerald-400">
-              📊{" "}
+              <PixelIcon name="report" size={12} />{" "}
               {tr(
                 "보고 요청 모드 — 보고서/발표자료 작성 작업을 요청합니다",
                 "Report mode - request report/deck authoring",

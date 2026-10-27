@@ -6,6 +6,7 @@ import { DEPT_BLANK, DEPT_COLORS } from "./constants";
 import EmojiPicker from "./EmojiPicker";
 import type { DeptForm, Translator } from "./types";
 import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 
 export default function DepartmentFormModal({
   locale,
@@ -219,7 +220,7 @@ export default function DepartmentFormModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-bold flex items-center gap-2" style={{ color: "var(--th-text-heading)" }}>
-            <span className="text-lg">{form.icon}</span>
+            <PixelIcon name={iconFor(form.icon, "folder")} size={16} />
             {isEdit ? tr("부서 정보 수정", "Edit Department") : tr("신규 부서 추가", "Add Department")}
           </h3>
           <button

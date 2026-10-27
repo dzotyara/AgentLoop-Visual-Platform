@@ -5,6 +5,7 @@ import type { CliStatusMap } from "../../types";
 import ClaudeSpend from "./ClaudeSpend";
 import { formatReset } from "./drawing-furniture-b";
 import { LOCALE_TEXT } from "./themes-locale";
+import PixelIcon from "../pixel/PixelIcon";
 
 type TFunction = (messages: Record<UiLanguage, string>) => string;
 
@@ -75,14 +76,14 @@ const CLI_DISPLAY: Array<{ key: string; name: string; icon: ReactNode; color: st
   {
     key: "copilot",
     name: "Copilot",
-    icon: "🚀",
+    icon: <PixelIcon name="github" size={16} />,
     color: "text-amber-300",
     bgColor: "bg-amber-500/15 border-amber-400/30",
   },
   {
     key: "antigravity",
     name: "Antigravity",
-    icon: "🌌",
+    icon: <PixelIcon name="globe" size={16} />,
     color: "text-pink-300",
     bgColor: "bg-pink-500/15 border-pink-400/30",
   },
