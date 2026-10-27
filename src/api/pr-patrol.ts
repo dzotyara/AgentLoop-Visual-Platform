@@ -92,3 +92,58 @@ export function getPrPatrolStatus(): Promise<PrPatrolStatus> {
 export function triggerPrPatrolTick(): Promise<{ ok: boolean }> {
   return post<{ ok: boolean }>("/api/pr-patrol/tick");
 }
+
+export type LoopMetricsDistribution = { medianMs: number | null; p90Ms: number | null; n: number };
+export type LoopMetricsWaitBucket = "ci" | "reviewer" | "github" | "you" | "agent" | "ready";
+
+/** GET /api/pr-patrol/metrics: see server/modules/pr-patrol/metrics.ts. */
+export type LoopMetrics = {
+  days: number;
+  since: number;
+  until: number;
+  /** First recorded phase event (null: none yet); metrics in needsHistory only cover time after it. */
+  history: { since: number | null; needsHistory: string[] };
+  kpis: {
+    timeToGreen: LoopMetricsDistribution;
+    timeToMerge: LoopMetricsDistribution;
+    mergedPrs: number;
+    mergedWithAgentHelp: number;
+    costPerMergedPrUsd: number | null;
+    runsPerMergedPr: number | null;
+    runsPerActivePr: number | null;
+    acceptedFindingsRate: number | null;
+    spendUsd: number;
+    todaySpendUsd: number;
+    runs: number;
+  };
+  outcomes: Array<{
+    action: string;
+    agent: string;
+    runs: number;
+    done: number;
+    failed: number;
+    running: number;
+    costUsd: number;
+    medianDurationMs: number | null;
+  }>;
+  findings: { reviews: number; bySeverity: Record<"P0" | "P1" | "P2" | "P3", number> };
+  verdicts: Array<{ action: string; accepted: number; declined: number; noAction: number; blocked: number }>;
+  ci: {
+    classification: Record<"branch" | "flaky" | "infra" | "unknown", number>;
+    flakyChecks: Array<{ name: string; flips: number; classifiedFlaky: number; prs: number; lastAt: number }>;
+  };
+  waiting: Array<{ on: LoopMetricsWaitBucket; ms: number }>;
+  daily: Array<{ day: string; start: number; spendUsd: number; runs: number; prsReady: number; prsMerged: number }>;
+  merged: Array<{
+    prKey: string;
+    mergedAt: number;
+    runs: number;
+    costUsd: number;
+    timeToGreenMs: number | null;
+    timeToMergeMs: number | null;
+  }>;
+};
+
+export function getLoopMetrics(days: number): Promise<LoopMetrics> {
+  return request<LoopMetrics>(`/api/pr-patrol/metrics?days=${encodeURIComponent(String(days))}`);
+}

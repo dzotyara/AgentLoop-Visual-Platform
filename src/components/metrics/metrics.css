@@ -1,0 +1,48 @@
+/*
+ * Loop metrics chart palette. Categorical slots 1-4 from the dataviz reference palette, validated
+ * (scripts/validate_palette.js) against this app's card surfaces: light ~#fbf8f1, dark ~#12122c.
+ * Dark steps are selected for the dark surface, not flipped. Light slots 3 and 4 sit below 3:1, so every
+ * chart that uses them carries visible labels or a table view. Text never wears these colors.
+ */
+.lm-root {
+  --lm-s1: #3987e5;
+  --lm-s2: #d95926;
+  --lm-s3: #199e70;
+  --lm-s4: #c98500;
+  --lm-s1-ink: #ffffff;
+  --lm-s2-ink: #ffffff;
+  --lm-s3-ink: #0b0b0b;
+  --lm-s4-ink: #0b0b0b;
+  --lm-deemph: #4b5368;
+  --lm-grid: rgba(120, 120, 170, 0.18);
+  --lm-axis: rgba(120, 120, 170, 0.38);
+  --lm-hover: rgba(255, 255, 255, 0.06);
+  --lm-tip-bg: #191936;
+  --lm-tip-border: rgba(120, 120, 170, 0.45);
+}
+
+[data-theme="light"] .lm-root {
+  --lm-s1: #2a78d6;
+  --lm-s2: #eb6834;
+  --lm-s3: #1baf7a;
+  --lm-s4: #eda100;
+  --lm-s1-ink: #ffffff;
+  --lm-s2-ink: #0b0b0b;
+  --lm-s3-ink: #0b0b0b;
+  --lm-s4-ink: #0b0b0b;
+  --lm-deemph: #c9c2b5;
+  --lm-grid: rgba(150, 138, 115, 0.2);
+  --lm-axis: rgba(150, 138, 115, 0.45);
+  --lm-hover: rgba(0, 0, 0, 0.04);
+  --lm-tip-bg: #fffdf8;
+  --lm-tip-border: rgba(170, 158, 135, 0.5);
+}
+
+.lm-root .lm-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.lm-root .lm-hit:focus-visible {
+  outline: 2px solid var(--th-focus-ring);
+  outline-offset: 1px;
+}
