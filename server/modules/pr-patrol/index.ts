@@ -15,6 +15,7 @@ import {
 } from "./github.ts";
 import { activityFromStreamLines, createLineSplitter } from "./activity.ts";
 import { ACTION_PREFIX, buildPatrolPrompt } from "./prompts.ts";
+import { registerMetricsRoutes } from "./metrics.ts";
 import { createPrPatrolStore, ensurePrPatrolSchema, prKey } from "./store.ts";
 import { preparePrWorktree, pushAgentCommits, type PrWorkspace, type PushOutcome } from "./workspace.ts";
 
@@ -576,6 +577,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
 
   function registerRoutes(): void {
     app.get("/api/pr-patrol/status", (_req: unknown, res: { json(v: unknown): void }) => res.json(status()));
+    registerMetricsRoutes(app, db, path.join(cfg.workdir, "results"), nowMs);
     app.post("/api/pr-patrol/tick", (_req: unknown, res: { json(v: unknown): void }) => {
       void tick();
       res.json({ ok: true });

@@ -68,6 +68,39 @@ CREATE TABLE IF NOT EXISTS pr_patrol_actions (
   const cols = db.prepare("PRAGMA table_info(pr_patrol_prs)").all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "snapshot_json")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN snapshot_json TEXT");
   if (!cols.some((c) => c.name === "waiting_on")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN waiting_on TEXT");
+  ensurePrPatrolHistorySchema(db);
+}
+
+/** Summary of the event written when a PR is first seen; metrics measure time to green / merge from it. */
+export const FIRST_SEEN_SUMMARY = "first seen";
+
+/**
+ * Loop history for metrics. pr_patrol_events: one row when a PR is first seen and whenever its phase or
+ * waiting_on changes (never per tick). pr_patrol_check_flips: per PR head and check, when it first failed and
+ * when it later passed on that same head (a flip = a flaky candidate).
+ */
+export function ensurePrPatrolHistorySchema(db: DatabaseSync): void {
+  db.exec(`
+CREATE TABLE IF NOT EXISTS pr_patrol_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  pr_key TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  waiting_on TEXT,
+  summary TEXT NOT NULL DEFAULT '',
+  head_sha TEXT NOT NULL DEFAULT '',
+  at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pr_patrol_events_pr ON pr_patrol_events(pr_key, at);
+CREATE INDEX IF NOT EXISTS idx_pr_patrol_events_at ON pr_patrol_events(at);
+CREATE TABLE IF NOT EXISTS pr_patrol_check_flips (
+  pr_key TEXT NOT NULL,
+  head_sha TEXT NOT NULL,
+  name TEXT NOT NULL,
+  failed_at INTEGER NOT NULL,
+  passed_at INTEGER,
+  PRIMARY KEY (pr_key, head_sha, name)
+);
+`);
 }
 
 export function prKey(repo: string, number: number): string {
@@ -79,7 +112,14 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     return db.prepare("SELECT * FROM pr_patrol_prs WHERE pr_key = ?").get(key) as PrRow | undefined;
   }
 
+  function addEvent(key: string, phase: string, waitingOn: string | null, summary: string, headSha: string): void {
+    db.prepare(
+      "INSERT INTO pr_patrol_events (pr_key, phase, waiting_on, summary, head_sha, at) VALUES (?, ?, ?, ?, ?, ?)",
+    ).run(key, phase, waitingOn, summary.slice(0, 500), headSha, nowMs());
+  }
+
   function upsertPr(row: Pick<PrRow, "pr_key" | "repo" | "number" | "title" | "url" | "head_sha">): void {
+    if (!getPr(row.pr_key)) addEvent(row.pr_key, "watching", null, FIRST_SEEN_SUMMARY, row.head_sha);
     db.prepare(
       `INSERT INTO pr_patrol_prs (pr_key, repo, number, title, url, head_sha, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -94,6 +134,9 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     notes: string[] = [],
     waitingOn: string | null = null,
   ): void {
+    const prev = getPr(key);
+    if (prev && (prev.phase !== phase || (prev.waiting_on ?? null) !== waitingOn))
+      addEvent(key, phase, waitingOn, summary, prev.head_sha);
     db.prepare(
       "UPDATE pr_patrol_prs SET phase = ?, summary = ?, notes_json = ?, waiting_on = ?, updated_at = ? WHERE pr_key = ?",
     ).run(phase, summary, JSON.stringify(notes), waitingOn, nowMs(), key);
@@ -102,6 +145,28 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
   /** Last seen GitHub state of the PR, for the UI. */
   function setSnapshot(key: string, snapshot: unknown): void {
     db.prepare("UPDATE pr_patrol_prs SET snapshot_json = ? WHERE pr_key = ?").run(JSON.stringify(snapshot), key);
+    trackCheckFlips(key, snapshot);
+  }
+
+  /** Remembers checks that failed on a head, and when they later passed on that same head. */
+  function trackCheckFlips(key: string, snapshot: unknown): void {
+    const head = getPr(key)?.head_sha;
+    const checks = (snapshot as { checks?: unknown } | null)?.checks;
+    if (!head || !Array.isArray(checks)) return;
+    const at = nowMs();
+    for (const c of checks as Array<{ name?: unknown; workflow?: unknown; state?: unknown; ignored?: unknown }>) {
+      if (typeof c?.name !== "string" || c.ignored === true) continue;
+      const name = typeof c.workflow === "string" && c.workflow ? `${c.workflow} / ${c.name}` : c.name;
+      if (c.state === "failure") {
+        db.prepare(
+          "INSERT OR IGNORE INTO pr_patrol_check_flips (pr_key, head_sha, name, failed_at) VALUES (?, ?, ?, ?)",
+        ).run(key, head, name, at);
+      } else if (c.state === "success") {
+        db.prepare(
+          "UPDATE pr_patrol_check_flips SET passed_at = ? WHERE pr_key = ? AND head_sha = ? AND name = ? AND passed_at IS NULL",
+        ).run(at, key, head, name);
+      }
+    }
   }
 
   function listActions(key: string, limit = 20): ActionRow[] {
