@@ -11,7 +11,7 @@ import {
 import { usePolling } from "../../hooks/usePolling";
 import PrDetail from "./PrDetail";
 import ReadyToMergeBlock from "./ReadyToMergeBlock";
-import { PHASE_META, TONE_TEXT, checksSummary, timeAgo } from "./pr-ui";
+import { PHASE_META, TONE_TEXT, WaitReason, checksSummary, timeAgo } from "./pr-ui";
 
 const PHASE_ORDER: PrPatrolPhase[] = ["working", "blocked", "waiting", "watching", "ready", "error", "skipped"];
 
@@ -42,6 +42,11 @@ function PrRow({ pr, selected, onSelect }: { pr: PrPatrolPr; selected: boolean; 
         <span style={{ color: "var(--th-text-secondary)" }}>{meta.label}</span>
         {pr.snapshot && <span className={TONE_TEXT[checks.tone]}>· {checks.text}</span>}
       </div>
+      {!pr.agent && (
+        <div className="mt-1">
+          <WaitReason waitingOn={pr.waiting_on} summary={pr.summary} />
+        </div>
+      )}
     </button>
   );
 }

@@ -52,6 +52,8 @@ export type PrPatrolPr = {
   head_sha: string;
   phase: PrPatrolPhase;
   summary: string;
+  /** Who/what the PR waits for: ci | reviewer | github | you | agent; null while an agent works or it is ready. */
+  waiting_on: string | null;
   notes: string[];
   review_rounds: number;
   updated_at: number;

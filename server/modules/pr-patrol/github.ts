@@ -41,6 +41,8 @@ export type PrSnapshot = {
   mergeable: string; // MERGEABLE | CONFLICTING | UNKNOWN
   mergeStateStatus: string;
   reviewDecision: string | null;
+  /** Reviewers whose latest review still requests changes. */
+  changesRequestedBy?: string[];
   checks: PrCheck[];
   feedback: PrFeedback[];
 };
@@ -230,6 +232,17 @@ export function extractFeedback(resp: FeedbackResponse, me: string, ignored: str
   return out;
 }
 
+/** Logins whose most recent decisive review (approve / request changes / dismissed) requests changes. */
+export function extractChangesRequestedBy(resp: FeedbackResponse): string[] {
+  const latest = new Map<string, string>();
+  for (const r of resp.data.repository.pullRequest.reviews.nodes) {
+    const login = r.author?.login;
+    if (!login || !["APPROVED", "CHANGES_REQUESTED", "DISMISSED"].includes(r.state)) continue;
+    latest.set(login, r.state); // nodes come oldest → newest
+  }
+  return [...latest].filter(([, state]) => state === "CHANGES_REQUESTED").map(([login]) => login);
+}
+
 export async function fetchPrSnapshot(repo: string, number: number, cfg: PrPatrolConfig): Promise<PrSnapshot> {
   const [owner, name] = repo.split("/");
   const view = await ghJson<{
@@ -284,6 +297,7 @@ export async function fetchPrSnapshot(repo: string, number: number, cfg: PrPatro
     mergeable: view.mergeable,
     mergeStateStatus: view.mergeStateStatus,
     reviewDecision: view.reviewDecision || null,
+    changesRequestedBy: extractChangesRequestedBy(feedbackResp),
     checks: normalizeChecks(view.statusCheckRollup),
     feedback: extractFeedback(feedbackResp, me, cfg.ignoredCommenters),
   };

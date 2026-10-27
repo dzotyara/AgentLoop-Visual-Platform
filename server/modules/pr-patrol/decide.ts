@@ -36,9 +36,12 @@ export type Decision =
       feedback?: PrFeedback[];
       findings?: ReviewFinding[];
     }
-  | { kind: "wait"; reason: string; notes: string[] }
+  | { kind: "wait"; reason: string; on: WaitingOn; notes: string[] }
   | { kind: "blocked"; reasons: string[]; notes: string[] }
   | { kind: "ready"; notes: string[] };
+
+/** Who or what the PR is waiting for when no agent can act: shown next to the reason in the UI. */
+export type WaitingOn = "ci" | "reviewer" | "github" | "you" | "agent";
 
 export const BLOCKING_SEVERITIES = new Set<Severity>(["P0", "P1"]);
 
@@ -130,12 +133,19 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory): D
 
   if (blocked.length > 0) return { kind: "blocked", reasons: blocked, notes };
   const running = checks.filter((c) => c.state === "pending");
-  if (running.length > 0) return { kind: "wait", reason: `CI running (${running.length} check(s))`, notes };
-  if (s.mergeable === "UNKNOWN") return { kind: "wait", reason: "GitHub is still computing mergeability", notes };
+  if (running.length > 0) return { kind: "wait", reason: `CI running (${running.length} check(s))`, on: "ci", notes };
+  if (s.mergeable === "UNKNOWN")
+    return { kind: "wait", reason: "GitHub is still computing mergeability", on: "github", notes };
   // A standing "changes requested" review keeps the PR in work until the reviewer lifts it, even when the
   // loop has handled every comment: only that reviewer can clear it.
   if (s.reviewDecision === "CHANGES_REQUESTED") {
-    return { kind: "wait", reason: "a reviewer requested changes: waiting for them to re-review", notes };
+    const who = s.changesRequestedBy?.length ? s.changesRequestedBy.map((r) => `@${r}`).join(", ") : "a reviewer";
+    return {
+      kind: "wait",
+      reason: `${who} requested changes: waiting for them to re-review or dismiss`,
+      on: "reviewer",
+      notes,
+    };
   }
   return { kind: "ready", notes };
 }

@@ -19,6 +19,7 @@ export type PrRow = {
   handled_feedback_json: string;
   ready_sha: string | null;
   snapshot_json: string | null;
+  waiting_on: string | null;
   updated_at: number;
 };
 
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS pr_patrol_actions (
 `);
   const cols = db.prepare("PRAGMA table_info(pr_patrol_prs)").all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "snapshot_json")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN snapshot_json TEXT");
+  if (!cols.some((c) => c.name === "waiting_on")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN waiting_on TEXT");
 }
 
 export function prKey(repo: string, number: number): string {
@@ -85,14 +87,16 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     ).run(row.pr_key, row.repo, row.number, row.title, row.url, row.head_sha, nowMs());
   }
 
-  function setPhase(key: string, phase: PrPhase, summary: string, notes: string[] = []): void {
-    db.prepare("UPDATE pr_patrol_prs SET phase = ?, summary = ?, notes_json = ?, updated_at = ? WHERE pr_key = ?").run(
-      phase,
-      summary,
-      JSON.stringify(notes),
-      nowMs(),
-      key,
-    );
+  function setPhase(
+    key: string,
+    phase: PrPhase,
+    summary: string,
+    notes: string[] = [],
+    waitingOn: string | null = null,
+  ): void {
+    db.prepare(
+      "UPDATE pr_patrol_prs SET phase = ?, summary = ?, notes_json = ?, waiting_on = ?, updated_at = ? WHERE pr_key = ?",
+    ).run(phase, summary, JSON.stringify(notes), waitingOn, nowMs(), key);
   }
 
   /** Last seen GitHub state of the PR, for the UI. */

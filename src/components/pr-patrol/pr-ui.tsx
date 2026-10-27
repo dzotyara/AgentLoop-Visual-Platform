@@ -115,3 +115,33 @@ export function ExternalLink({
     </a>
   );
 }
+
+const WAITING_ON: Record<string, { label: string; chip: string }> = {
+  ci: { label: "⏳ CI", chip: "bg-amber-500/15 text-amber-500 border-amber-500/30" },
+  reviewer: { label: "👤 Reviewer", chip: "bg-violet-500/15 text-violet-400 border-violet-500/30" },
+  github: { label: "🐙 GitHub", chip: "bg-slate-500/15 text-slate-400 border-slate-500/30" },
+  you: { label: "🙋 You", chip: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
+  agent: { label: "🤖 Agent queue", chip: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
+};
+
+/** "Waiting on X — reason" for PRs no agent is working on; null when there is nothing to wait for. */
+export function WaitReason({
+  waitingOn,
+  summary,
+  clamp = 2,
+}: {
+  waitingOn: string | null;
+  summary: string;
+  clamp?: 1 | 2;
+}) {
+  if (!waitingOn || !summary) return null;
+  const who = WAITING_ON[waitingOn] ?? { label: waitingOn, chip: WAITING_ON.github.chip };
+  return (
+    <span className="flex min-w-0 items-start gap-1.5 text-[11px]">
+      <span className={`shrink-0 rounded-full border px-1.5 py-px font-medium ${who.chip}`}>{who.label}</span>
+      <span className={clamp === 1 ? "truncate" : "line-clamp-2"} style={{ color: "var(--th-text-secondary)" }}>
+        {summary}
+      </span>
+    </span>
+  );
+}

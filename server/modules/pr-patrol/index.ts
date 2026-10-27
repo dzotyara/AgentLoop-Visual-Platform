@@ -451,10 +451,10 @@ export function createPrPatrol(ctx: RuntimeContext) {
         store.setPhase(key, "skipped", d.reason);
         return;
       case "wait":
-        store.setPhase(key, "waiting", d.reason, d.notes);
+        store.setPhase(key, "waiting", d.reason, d.notes, d.on);
         return;
       case "blocked":
-        store.setPhase(key, "blocked", d.reasons.join("; "), d.notes);
+        store.setPhase(key, "blocked", d.reasons.join("; "), d.notes, "you");
         return;
       case "ready":
         store.setPhase(key, "ready", "checks green, no conflicts, feedback handled, review clean", d.notes);
@@ -473,18 +473,24 @@ export function createPrPatrol(ctx: RuntimeContext) {
         return;
       case "run":
         if (running.size >= cfg.maxConcurrent) {
-          store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]}`);
+          store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]} (all agent slots busy)`, [], "agent");
           return;
         }
         if ([...running.values()].some((r) => r.agentId === agentId(ACTION_ROLE[d.action]))) {
-          store.setPhase(key, "watching", `queued: ${PATROL_AGENTS[ACTION_ROLE[d.action]].name} is busy`);
+          store.setPhase(
+            key,
+            "watching",
+            `queued: ${PATROL_AGENTS[ACTION_ROLE[d.action]].name} is busy on another PR`,
+            [],
+            "agent",
+          );
           return;
         }
         // Not awaited: a first clone of a big repo would otherwise stall the tick and idle the other slots.
         // launch() claims its `running` slot synchronously, before its first await.
         void launch(key, s, d).catch((err) => {
           running.delete(key);
-          store.setPhase(key, "error", `launch failed: ${(err as Error).message.slice(0, 400)}`);
+          store.setPhase(key, "error", `launch failed: ${(err as Error).message.slice(0, 400)}`, [], "you");
         });
     }
   }
@@ -500,7 +506,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
         } catch (err) {
           const key = prKey(pr.repo, pr.number);
           store.upsertPr({ pr_key: key, repo: pr.repo, number: pr.number, title: "", url: "", head_sha: "" });
-          store.setPhase(key, "error", (err as Error).message.slice(0, 500));
+          store.setPhase(key, "error", (err as Error).message.slice(0, 500), [], "you");
         }
       }
       store.forgetMissing(new Set(prs.map((p) => prKey(p.repo, p.number))));

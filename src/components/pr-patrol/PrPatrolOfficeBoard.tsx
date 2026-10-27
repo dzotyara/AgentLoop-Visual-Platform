@@ -5,7 +5,7 @@ import { usePolling } from "../../hooks/usePolling";
 import AgentAvatar from "../AgentAvatar";
 import { setLiveFromStatus } from "./live-store";
 import ReadyToMergeBlock from "./ReadyToMergeBlock";
-import { ACTION_LABEL, PHASE_META, TONE_TEXT, checksSummary } from "./pr-ui";
+import { ACTION_LABEL, PHASE_META, TONE_TEXT, WaitReason, checksSummary } from "./pr-ui";
 
 const ORDER: PrPatrolPhase[] = ["working", "blocked", "waiting", "watching", "ready", "error"];
 
@@ -101,9 +101,14 @@ export default function PrPatrolOfficeBoard({ agents, onOpenPrs }: { agents: Age
                     {pr.agent.name} · {ACTION_LABEL[pr.agent.action] ?? pr.agent.action} — {pr.agent.activity}
                   </span>
                 ) : (
-                  <span className={`block truncate text-[11px] ${pr.snapshot ? TONE_TEXT[checks.tone] : ""}`}>
-                    {pr.snapshot ? checks.text : pr.summary}
-                  </span>
+                  <>
+                    <span className="mt-0.5 block">
+                      <WaitReason waitingOn={pr.waiting_on} summary={pr.summary} clamp={1} />
+                    </span>
+                    {pr.snapshot && (
+                      <span className={`block truncate text-[10px] ${TONE_TEXT[checks.tone]}`}>{checks.text}</span>
+                    )}
+                  </>
                 )}
               </span>
             </button>

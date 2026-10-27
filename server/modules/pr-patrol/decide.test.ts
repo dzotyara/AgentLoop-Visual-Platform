@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PrPatrolConfig } from "./config.ts";
 import { decide, type PatrolMemory } from "./decide.ts";
-import { extractFeedback, normalizeChecks, type PrSnapshot } from "./github.ts";
+import { extractChangesRequestedBy, extractFeedback, normalizeChecks, type PrSnapshot } from "./github.ts";
 
 const cfg: PrPatrolConfig = {
   enabled: true,
@@ -99,9 +99,9 @@ describe("decide", () => {
   });
 
   it("keeps a PR with a standing changes-requested review in work", () => {
-    const d = decide(snap({ reviewDecision: "CHANGES_REQUESTED" }), cfg, mem());
-    expect(d.kind).toBe("wait");
-    if (d.kind === "wait") expect(d.reason).toContain("requested changes");
+    const d = decide(snap({ reviewDecision: "CHANGES_REQUESTED", changesRequestedBy: ["FlemHW"] }), cfg, mem());
+    expect(d).toMatchObject({ kind: "wait", on: "reviewer" });
+    if (d.kind === "wait") expect(d.reason).toContain("@FlemHW requested changes");
     // feedback still gets addressed first
     const fb = snap({
       reviewDecision: "CHANGES_REQUESTED",
@@ -123,7 +123,7 @@ describe("decide", () => {
     const pending = snap({
       checks: [{ name: "b", workflow: null, state: "pending", rawConclusion: null, detailsUrl: null }],
     });
-    expect(decide(pending, cfg, mem()).kind).toBe("wait");
+    expect(decide(pending, cfg, mem())).toMatchObject({ kind: "wait", on: "ci" });
     expect(decide(snap(), cfg, mem()).kind).toBe("ready");
   });
 
@@ -163,6 +163,30 @@ describe("normalizeChecks", () => {
       skip: "neutral",
       ext: "failure",
     });
+  });
+});
+
+describe("extractChangesRequestedBy", () => {
+  it("keeps reviewers whose latest decisive review requests changes", () => {
+    const resp = {
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: { nodes: [] },
+            comments: { nodes: [] },
+            reviews: {
+              nodes: [
+                { id: "1", state: "CHANGES_REQUESTED", body: "", url: "", createdAt: "", author: { login: "amy" } },
+                { id: "2", state: "CHANGES_REQUESTED", body: "", url: "", createdAt: "", author: { login: "bob" } },
+                { id: "3", state: "COMMENTED", body: "", url: "", createdAt: "", author: { login: "bob" } },
+                { id: "4", state: "APPROVED", body: "", url: "", createdAt: "", author: { login: "amy" } },
+              ],
+            },
+          },
+        },
+      },
+    };
+    expect(extractChangesRequestedBy(resp)).toEqual(["bob"]);
   });
 });
 
