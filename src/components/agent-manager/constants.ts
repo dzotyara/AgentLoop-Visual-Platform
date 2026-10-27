@@ -1,4 +1,5 @@
 import type { AgentRole, CliProvider } from "../../types";
+import { PACK_SKIN_SPRITE_NUMS } from "../pack-sprite-skin";
 import type { PixelIconName } from "../pixel/PixelIcon";
 import type { DeptForm, FormData } from "./types";
 
@@ -35,7 +36,8 @@ export const STATUS_DOT: Record<string, string> = {
   idle: "bg-slate-500",
 };
 
-export const ICON_SPRITE_POOL = Array.from({ length: 13 }, (_, i) => i + 1);
+/** Decorative tab icons use the operator sprites too (military skins everywhere, see pack-sprite-skin.ts). */
+export const ICON_SPRITE_POOL = PACK_SKIN_SPRITE_NUMS;
 
 /** Icon choices for agent avatars and department icons (stored as PixelIconName). */
 export const ICON_GROUPS: { label: string; labelEn: string; icons: PixelIconName[] }[] = [

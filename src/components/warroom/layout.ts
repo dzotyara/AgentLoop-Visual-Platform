@@ -91,6 +91,8 @@ export const STATIONS: Record<StationKey, Station> = {
 /** Station of each crew seat (see api/crew-seats.ts): the seat, not the agent's editable name. */
 export const STATION_BY_SEAT: Record<string, StationKey> = {
   Argus: "argus",
+  Hawk: "argus",
+  Owl: "argus",
   Patch: "patch",
   Rivet: "patch",
   Splice: "patch",
@@ -136,8 +138,10 @@ export const STATION_OWNER: Record<StationKey, string> = {
   gate: "Gate",
 };
 
-/** Idle spots for the helper fixers that share Patch's workbench (Rivet, Splice seats). */
+/** Idle spots for the helpers sharing a station: reviewers by Argus (Hawk, Owl), fixers by Patch (Rivet, Splice). */
 export const HELPER_HOMES: Record<string, { x: number; y: number }> = {
+  Hawk: { x: 30, y: 140 },
+  Owl: { x: 62, y: 140 },
   Rivet: { x: 30, y: 234 },
   Splice: { x: 62, y: 234 },
 };

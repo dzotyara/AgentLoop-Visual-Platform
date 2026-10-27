@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { createCrew, FIXER_HELPERS, mergeDuplicateSeats, PATROL_AGENTS } from "./crew.ts";
+import { createCrew, FIXER_HELPERS, mergeDuplicateSeats, PATROL_AGENTS, REVIEWER_HELPERS } from "./crew.ts";
 
 function db(): DatabaseSync {
   const d = new DatabaseSync(":memory:");
@@ -75,5 +75,17 @@ describe("crew seats", () => {
     ]);
     expect(createCrew(d).agentId(PATROL_AGENTS.reviewer)).toBe("old");
     expect(mergeDuplicateSeats(d)).toBe(0);
+  });
+
+  it("creates helper reviewers under their own names, bound to their seats", () => {
+    const d = db();
+    const crew = createCrew(d);
+    const [hawk, owl] = REVIEWER_HELPERS.map((seat) => crew.agentId(seat));
+    expect(d.prepare("SELECT name, name_ko FROM agents ORDER BY name").all()).toEqual([
+      { name: "Dmitrly", name_ko: "Owl" },
+      { name: "Timur", name_ko: "Hawk" },
+    ]);
+    expect(crew.seats()).toEqual({ [hawk]: "Hawk", [owl]: "Owl" });
+    expect(createCrew(d).agentId(REVIEWER_HELPERS[0])).toBe(hawk);
   });
 });

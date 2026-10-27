@@ -18,6 +18,7 @@ const cfg: PrPatrolConfig = {
   intervalMs: 60_000,
   maxConcurrent: 2,
   fixers: 3,
+  reviewers: 3,
   maxAttempts: 2,
   maxReviewRounds: 3,
   maxNitRounds: 5,

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 /** The pr-patrol crew seats (server: crew.ts). A seat is stable; the agent sitting in it can be renamed. */
-export const CREW_SEATS = ["Argus", "Patch", "Rivet", "Splice", "Medic", "Weaver", "Gate"] as const;
+export const CREW_SEATS = ["Argus", "Hawk", "Owl", "Patch", "Rivet", "Splice", "Medic", "Weaver", "Gate"] as const;
 export type CrewSeat = (typeof CREW_SEATS)[number];
 
 let seats: Record<string, string> = {};

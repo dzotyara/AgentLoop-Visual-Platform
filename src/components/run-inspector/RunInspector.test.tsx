@@ -192,9 +192,9 @@ describe("RunInspector", () => {
 
     expect(await screen.findByText("Editing parse.ts")).toBeInTheDocument();
     expect(apiMocks.getRun).toHaveBeenCalledWith("fix-1", undefined);
-    // header: avatar sprite, PR link, cost
+    // header: avatar sprite (the Patch seat's operator skin, not the stock sprite_number), PR link, cost
     const avatars = screen.getAllByAltText("Patch") as HTMLImageElement[];
-    expect(avatars.some((img) => img.getAttribute("src") === "/sprites/3-D-1.png")).toBe(true);
+    expect(avatars.some((img) => img.getAttribute("src") === "/sprites/102-D-1.png")).toBe(true);
     expect(screen.getAllByText("widgets#7").length).toBeGreaterThan(0);
     expect(screen.getAllByText("$0.420").length).toBeGreaterThan(0);
     // diff with coloured lines

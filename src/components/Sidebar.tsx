@@ -27,7 +27,7 @@ interface SidebarProps {
 
 const NAV_ITEMS: { view: View; icon: PixelIconName; sprite?: string }[] = [
   { view: "office", icon: "office" },
-  { view: "agents", icon: "agents", sprite: "/sprites/3-D-1.png" },
+  { view: "agents", icon: "agents", sprite: "/sprites/102-D-1.png" },
   { view: "skills", icon: "library" },
   { view: "dashboard", icon: "dashboard" },
   { view: "tasks", icon: "tasks" },

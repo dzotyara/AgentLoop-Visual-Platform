@@ -1,4 +1,4 @@
-"""Generates the Tarkov-pack operator sprites (public/sprites/101..105-*.png).
+"""Generates the Tarkov-pack operator sprites (public/sprites/101..109-*.png).
 
 Original pixel art in the chibi format of the stock sprites: a 13x22 grid, 39px per cell, dark outline,
 frames D-1..3 (walking towards the viewer) plus L-1 / R-1. Run: python3 scripts/sprites/generate-tarkov-sprites.py
@@ -186,6 +186,49 @@ OPERATORS = {
         "colors": {
             "H": "#2f3a2a", "w": "#26262b", "W": "#f4f0c8", "M": "#6b6f4a", "C": "#c8642a",
             "V": "#9c8a62", "P": "#7f6f4c", "A": "#8a7d58", "B": "#3a3326", "L": "#6c6448", "K": "#2c2722",
+        },
+    },
+    # Hawk seat (Timur) — second reviewer, marksman: black cap, headset, amber shooting glasses, stubble, grey-blue kit
+    108: {
+        "head": [
+            "...OOOOOOO...",
+            "..OCCCCCCCO..",
+            ".OCCCCcCCCCO.",
+            "OCCCCCCCCCCCO",
+            ".OEECCCCCEEO.",
+            "OEESSSSSSSEEO",
+            "OEEGGGSGGGEEO",
+            ".OSGgGSGgGSO.",
+            ".OSSSSSSSSSO.",
+            ".OSsSmmmSsSO.",
+            "..OsssssssO..",
+        ],
+        "overrides": {(1, 5): "T", (1, 6): "T", (1, 7): "T"},
+        "colors": {
+            "C": "#1f2226", "c": "#3a3f45", "E": "#2a2c30", "G": "#1a1a1e", "g": "#d79a2b", "s": "#9a7a5e",
+            "m": "#a8775a", "T": "#59606a",
+            "V": "#4a5866", "P": "#3b4754", "A": "#556371", "B": "#262a30", "L": "#3f4a55", "K": "#1c1f24",
+        },
+    },
+    # Owl seat (Dmitrly) — third reviewer, spotter: multicam boonie, binoculars on the chest, beard, tan kit
+    109: {
+        "head": [
+            "...OOOOOOO...",
+            "..OHhHHhHHO..",
+            ".OHHHhHHhHHO.",
+            "OHHhHHHHHhHHO",
+            "OOOOOOOOOOOOO",
+            ".OSSSSSSSSSO.",
+            ".OSSSSSSSSSO.",
+            ".OSSGSSSGSSO.",
+            ".OSSSSSSSSSO.",
+            ".ObbbmmmbbbO.",
+            "..ObbbbbbbO..",
+        ],
+        "overrides": {(1, 4): "N", (1, 5): "N", (1, 7): "N", (1, 8): "N", (2, 4): "n", (2, 5): "N", (2, 7): "N", (2, 8): "n"},
+        "colors": {
+            "H": "#8f8458", "h": "#5d6a3e", "b": "#5a3e2b", "m": "#a8775a", "N": "#202024", "n": "#6fa3c0",
+            "V": "#a3906a", "P": "#8a7a58", "A": "#9b8b63", "B": "#4a3d2b", "L": "#7d6f4f", "K": "#3a3126",
         },
     },
 }

@@ -7,7 +7,16 @@ export type AgentRole = "reviewer" | "fixer" | "ci" | "conflict" | "gate";
  * One crew seat. `key` is its stable identity (also the name a fresh agent row gets); the person in the seat
  * keeps the agent row, so renaming it in the office never loses the seat, its desk or its sprite.
  */
-export type CrewSeat = { key: string; dept: string; role: string; emoji: string; sprite: number; personality: string };
+export type CrewSeat = {
+  key: string;
+  /** Name the agent row starts with (defaults to the key); the user may rename it later. */
+  name?: string;
+  dept: string;
+  role: string;
+  emoji: string;
+  sprite: number;
+  personality: string;
+};
 
 /** The patrol's own staff: they sit in the pixel office and pick up the loop's tasks. */
 export const PATROL_AGENTS: Record<AgentRole, CrewSeat> = {
@@ -73,6 +82,28 @@ export const FIXER_HELPERS: CrewSeat[] = [
   },
 ];
 
+/** Extra reviewers beyond Argus, enabled by PR_PATROL_REVIEWERS: every fix head is reviewed, so reviews queue up. */
+export const REVIEWER_HELPERS: CrewSeat[] = [
+  {
+    key: "Hawk",
+    name: "Timur",
+    dept: "qa",
+    role: "senior",
+    emoji: "scope",
+    sprite: 8,
+    personality: "Second reviewer: correctness, silent failures, security on another PR",
+  },
+  {
+    key: "Owl",
+    name: "Dmitrly",
+    dept: "qa",
+    role: "senior",
+    emoji: "scope",
+    sprite: 10,
+    personality: "Third reviewer: correctness, silent failures, security on another PR",
+  },
+];
+
 export function ensureCrewSchema(db: DatabaseSync): void {
   db.exec("CREATE TABLE IF NOT EXISTS pr_patrol_crew (seat TEXT PRIMARY KEY, agent_id TEXT NOT NULL)");
 }
@@ -104,7 +135,7 @@ export function createCrew(db: DatabaseSync, onCreated: (row: unknown) => void =
         db.prepare(
           `INSERT INTO agents (id, name, name_ko, department_id, role, cli_provider, avatar_emoji, sprite_number, personality)
            VALUES (?, ?, ?, ?, ?, 'claude', ?, ?, ?)`,
-        ).run(id, seat.key, seat.key, seat.dept, seat.role, seat.emoji, seat.sprite, seat.personality);
+        ).run(id, seat.name ?? seat.key, seat.key, seat.dept, seat.role, seat.emoji, seat.sprite, seat.personality);
         onCreated(db.prepare("SELECT * FROM agents WHERE id = ?").get(id));
       }
       db.prepare("INSERT OR REPLACE INTO pr_patrol_crew (seat, agent_id) VALUES (?, ?)").run(seat.key, id);
@@ -139,7 +170,7 @@ export function createCrew(db: DatabaseSync, onCreated: (row: unknown) => void =
  * Returns how many copies were merged. Idempotent.
  */
 export function mergeDuplicateSeats(db: DatabaseSync): number {
-  const seatKeys = [...Object.values(PATROL_AGENTS), ...FIXER_HELPERS].map((s) => s.key);
+  const seatKeys = [...Object.values(PATROL_AGENTS), ...FIXER_HELPERS, ...REVIEWER_HELPERS].map((s) => s.key);
   // every column that points at an agent row: declared foreign keys plus *agent_id columns without one
   const refs: Array<{ table: string; column: string }> = [];
   const tables = db

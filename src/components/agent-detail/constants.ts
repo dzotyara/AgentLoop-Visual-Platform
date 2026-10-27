@@ -1,6 +1,7 @@
 import type { OAuthAccountInfo } from "../../api";
 import type { UiLanguage } from "../../i18n";
 import type { PixelIconName } from "../pixel/PixelIcon";
+import { PACK_SKIN_SPRITE_NUMS } from "../pack-sprite-skin";
 
 export type Locale = UiLanguage;
 export type TFunction = (messages: Record<Locale, string>) => string;
@@ -28,8 +29,9 @@ function hashSubAgentId(value: string): number {
   return Math.abs(hash);
 }
 
+/** Sub-agent clones wear an operator sprite like everyone else (see pack-sprite-skin.ts). */
 export function getSubAgentSpriteNum(subAgentId: string): number {
-  return (hashSubAgentId(`${subAgentId}:clone`) % 13) + 1;
+  return PACK_SKIN_SPRITE_NUMS[hashSubAgentId(`${subAgentId}:clone`) % PACK_SKIN_SPRITE_NUMS.length];
 }
 
 export const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {

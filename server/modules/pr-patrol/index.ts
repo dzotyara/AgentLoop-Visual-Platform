@@ -25,7 +25,7 @@ import { ACTION_PREFIX, buildPatrolPrompt } from "./prompts.ts";
 import { createPipelineStore, effectiveConfig, registerPipelineRoutes, stepPolicy } from "./pipeline.ts";
 import { registerMetricsRoutes } from "./metrics.ts";
 import { createPrPatrolStore, ensurePrPatrolSchema, prKey } from "./store.ts";
-import { createCrew, FIXER_HELPERS, PATROL_AGENTS, type AgentRole } from "./crew.ts";
+import { createCrew, FIXER_HELPERS, PATROL_AGENTS, REVIEWER_HELPERS, type AgentRole, type CrewSeat } from "./crew.ts";
 import { registerRunRoutes } from "./runs.ts";
 import { preparePrWorktree, pushAgentCommits, type PrWorkspace, type PushOutcome } from "./workspace.ts";
 
@@ -77,17 +77,18 @@ export function createPrPatrol(ctx: RuntimeContext) {
   const agentId = (role: AgentRole) => crewSeats.agentId(PATROL_AGENTS[role]);
   const member = (id: string, seatKey: string): CrewMember => ({ id, name: crewSeats.name(id, seatKey) });
 
+  const pool = (seats: CrewSeat[]): CrewMember[] => seats.map((seat) => member(crewSeats.agentId(seat), seat.key));
   /** Patch first, then as many helpers as PR_PATROL_FIXERS allows; names are read fresh (agents get renamed). */
-  const fixers = (): CrewMember[] =>
-    [PATROL_AGENTS.fixer, ...FIXER_HELPERS.slice(0, cfg.fixers - 1)].map((seat) =>
-      member(crewSeats.agentId(seat), seat.key),
-    );
+  const fixers = (): CrewMember[] => pool([PATROL_AGENTS.fixer, ...FIXER_HELPERS.slice(0, cfg.fixers - 1)]);
+  /** Argus first, then as many helpers as PR_PATROL_REVIEWERS allows. */
+  const reviewers = (): CrewMember[] => pool([PATROL_AGENTS.reviewer, ...REVIEWER_HELPERS.slice(0, cfg.reviewers - 1)]);
+  const crewFor = (role: AgentRole): CrewMember[] =>
+    role === "fixer" ? fixers() : role === "reviewer" ? reviewers() : pool([PATROL_AGENTS[role]]);
 
   /** A free crew member for the role, or null when all of them are on other PRs. */
   function pickAgent(role: AgentRole): CrewMember | null {
     const busy = new Set([...running.values()].map((r) => r.agentId));
-    const pool = role === "fixer" ? fixers() : [member(agentId(role), PATROL_AGENTS[role].key)];
-    return pool.find((m) => !busy.has(m.id)) ?? null;
+    return crewFor(role).find((m) => !busy.has(m.id)) ?? null;
   }
 
   function setAgent(id: string, working: boolean, taskId: string | null, success = false): void {
@@ -494,10 +495,8 @@ export function createPrPatrol(ctx: RuntimeContext) {
         const crew = pickAgent(ACTION_ROLE[d.action]);
         if (!crew) {
           const role = ACTION_ROLE[d.action];
-          const who =
-            role === "fixer"
-              ? `all ${fixers().length} fixers are`
-              : `${crewSeats.name(agentId(role), PATROL_AGENTS[role].key)} is`;
+          const members = crewFor(role);
+          const who = members.length > 1 ? `all ${members.length} ${role}s are` : `${members[0].name} is`;
           store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]} (${who} busy on other PRs)`, [], "agent");
           return;
         }
@@ -601,7 +600,8 @@ export function createPrPatrol(ctx: RuntimeContext) {
       "UPDATE tasks SET status = 'cancelled', updated_at = ? WHERE status = 'in_progress' AND workflow_meta_json LIKE ?",
     ).run(nowMs(), `%"source":"${PR_PATROL_SOURCE}"%`);
     for (const role of Object.keys(PATROL_AGENTS) as AgentRole[]) agentId(role); // bind every seat up front
-    fixers(); // and the helper fixers, so they show in the office
+    fixers(); // and the helper fixers and reviewers, so they show in the office
+    reviewers();
     console.log(
       `[pr-patrol] on: query "${cfg.searchQuery}", every ${cfg.intervalMs / 1000}s, write=${cfg.write}, review=${cfg.review}` +
         (interrupted ? `, ${interrupted} interrupted action(s) will retry` : ""),
