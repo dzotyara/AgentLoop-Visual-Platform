@@ -13,38 +13,71 @@ export function normalizeSeverity(raw: unknown): Severity {
 
 const ORDER: Severity[] = ["P0", "P1", "P2", "P3"];
 
-/** The `[review]` PR comment for one review round. */
+const ICON: Record<Severity, string> = { P0: "⛔", P1: "🔴", P2: "🟠", P3: "⚪" };
+
+/** Table cells: one line, no pipes, bounded. */
+function cell(text: string, max = 140): string {
+  const one = text.replace(/\s+/g, " ").replace(/\|/g, "\\|").trim();
+  return one.length > max ? `${one.slice(0, max - 1)}…` : one;
+}
+
+/**
+ * The review comment for one round ("Review Agent" card): a header with the short head sha, a verdict with
+ * P0..P3 counts, a findings table (most severe first), the reasoning and fixes folded in a <details>, and a
+ * small footer with the [review] tag and the fix policy.
+ */
 export function formatReviewComment(input: {
   findings: ReviewFinding[];
   summary: string;
   reviewer: string;
   headSha: string;
   autoFix: boolean;
+  /** P2/P3 round budget, for the footer. */
+  nitRounds?: number;
 }): string {
-  const { findings, summary, reviewer, headSha, autoFix } = input;
+  const { findings, summary, reviewer, headSha, autoFix, nitRounds = 5 } = input;
   const sorted = [...findings].sort((a, b) => ORDER.indexOf(a.severity) - ORDER.indexOf(b.severity));
   const count = (sev: Severity) => findings.filter((f) => f.severity === sev).length;
   const blocking = count("P0") + count("P1");
-  const tally = ORDER.map((sev) => `${sev}: ${count(sev)}`).join(" · ");
-  const lines = [
-    `[review] ${findings.length === 0 ? "No findings" : `${findings.length} finding(s), ${blocking} blocking`} — ${tally}`,
+  const lines = [`### 🤖 Review Agent · \`${headSha.slice(0, 7)}\``];
+
+  if (findings.length === 0) {
+    lines.push("**No findings** — correctness, silent failures, security");
+    if (summary.trim())
+      lines.push("", `<details><summary>What was reviewed</summary>\n\n${summary.trim()}\n</details>`);
+    lines.push("", `<sub>[review] ${reviewer} · pr-patrol</sub>`);
+    return lines.join("\n");
+  }
+
+  const verdict = blocking > 0 ? `**${blocking} blocking**` : "**No blocking findings**";
+  lines.push(
+    `${verdict} · ${ORDER.map((sev) => `${sev} ${count(sev)}`).join(" · ")}`,
     "",
-    `_Automated review by ${reviewer} (pr-patrol) of \`${headSha.slice(0, 7)}\`: correctness, silent failures, security._`,
-  ];
-  if (summary.trim()) lines.push("", summary.trim());
+    "| | Where | Finding |",
+    "|---|---|---|",
+  );
   for (const f of sorted) {
-    const where = f.file ? ` \`${f.file}${f.line ? `:${f.line}` : ""}\`` : "";
-    lines.push("", `- **[${f.severity}]**${where} — ${f.title}`);
-    if (f.detail) lines.push(`  ${f.detail.trim().replace(/\n+/g, " ")}`);
-    if (f.fix) lines.push(`  _Fix:_ ${f.fix.trim().replace(/\n+/g, " ")}`);
+    const where = f.file ? `\`${cell(f.file, 80)}${f.line ? `:${f.line}` : ""}\`` : "—";
+    lines.push(`| ${ICON[f.severity]} ${f.severity} | ${where} | ${cell(f.title)} |`);
   }
-  if (blocking > 0) {
-    lines.push(
-      "",
-      autoFix
-        ? "P0/P1 findings will be fixed automatically in this PR as `[fix]` commits; P2/P3 are left for the author."
-        : "P0/P1 findings block merge; P2/P3 are left for the author.",
-    );
+
+  const details = sorted
+    .filter((f) => f.detail || f.fix)
+    .map((f) => {
+      const where = f.file ? ` \`${f.file}${f.line ? `:${f.line}` : ""}\`` : "";
+      const parts = [`**${ICON[f.severity]} ${f.severity}**${where} — ${f.title.trim()}`];
+      if (f.detail) parts.push(f.detail.trim());
+      if (f.fix) parts.push(`_Fix:_ ${f.fix.trim()}`);
+      return parts.join("\n\n");
+    });
+  if (details.length || summary.trim()) {
+    const body = [...(summary.trim() ? [summary.trim()] : []), ...details].join("\n\n---\n\n");
+    lines.push("", `<details><summary>Details and suggested fixes</summary>\n\n${body}\n</details>`);
   }
+
+  const policy = autoFix
+    ? `P0/P1 fixed here as [fix] commits · P2/P3 up to ${nitRounds} rounds`
+    : "P0/P1 block merge · P2/P3 left for the author";
+  lines.push("", `<sub>[review] ${reviewer} · ${policy}</sub>`);
   return lines.join("\n");
 }

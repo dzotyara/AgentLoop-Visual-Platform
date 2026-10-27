@@ -318,6 +318,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
             reviewer: PATROL_AGENTS.reviewer.name,
             headSha: ws.startSha,
             autoFix: true,
+            nitRounds: cfg.maxNitRounds,
           });
           posted = `posted ${await postPrComment(s.repo, s.number, body)}`;
         } catch (err) {
