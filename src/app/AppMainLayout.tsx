@@ -1,6 +1,5 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import Sidebar from "../components/Sidebar";
-import OfficeView from "../components/OfficeView";
 import Dashboard from "../components/Dashboard";
 import TaskBoard from "../components/TaskBoard";
 import AgentManager from "../components/AgentManager";
@@ -38,6 +37,7 @@ import {
 import { resolvePackAgentViews, resolvePackDepartmentsForDisplay } from "./office-pack-display";
 import { applyOfficePackToTaskInput, filterTasksByOfficePack, type TaskCreateInput } from "./task-workflow-pack";
 import { setPackSpriteSkin } from "../components/pack-sprite-skin";
+import OfficeHub from "../components/warroom/OfficeHub";
 
 interface AppMainLayoutLabels {
   uiLanguage: string;
@@ -493,7 +493,7 @@ export default function AppMainLayout({
 
           <div className="p-3 sm:p-4 lg:p-6">
             {view === "office" && (
-              <OfficeView
+              <OfficeHub
                 departments={officePresentation.departments}
                 agents={officePresentation.agents}
                 tasks={tasks}

@@ -1,0 +1,86 @@
+.warroom-font {
+  font-family: "Pixelify Sans", "Silkscreen", ui-monospace, monospace;
+  -webkit-font-smoothing: none;
+  letter-spacing: 0.02em;
+}
+
+.warroom-tex {
+  image-rendering: pixelated;
+  background-repeat: repeat;
+}
+
+/* working at the table: short hops on the keyboard rhythm */
+.warroom-typing {
+  animation: warroom-type 0.5s steps(2, end) infinite;
+}
+@keyframes warroom-type {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-3%);
+  }
+}
+
+/* sparks next to a working agent */
+.warroom-sparks {
+  position: absolute;
+  top: 35%;
+  width: 6px;
+  height: 6px;
+  background: #ffd36a;
+  box-shadow:
+    6px -6px 0 #ffd36a,
+    -4px -10px 0 #8fd0ff,
+    10px 4px 0 #8fd0ff;
+  animation: warroom-spark 0.6s steps(3, end) infinite;
+}
+@keyframes warroom-spark {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.6);
+  }
+}
+
+/* flickering bulbs */
+.warroom-lamp-glow {
+  animation: warroom-flicker 3.2s steps(1, end) infinite;
+}
+@keyframes warroom-flicker {
+  0%,
+  86%,
+  92%,
+  100% {
+    opacity: 0.55;
+  }
+  88% {
+    opacity: 0.15;
+  }
+  90% {
+    opacity: 0.4;
+  }
+}
+
+/* a pin with an agent on it pulses */
+.warroom-pin-active {
+  animation: warroom-pin 1s steps(2, end) infinite;
+}
+@keyframes warroom-pin {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-10%);
+  }
+}
+
+.warroom-pin .warroom-pin-card {
+  display: none;
+}
+.warroom-pin:hover .warroom-pin-card {
+  display: block;
+}

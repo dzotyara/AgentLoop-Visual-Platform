@@ -11,6 +11,7 @@ import {
 import { usePolling } from "../../hooks/usePolling";
 import PrDetail from "./PrDetail";
 import ReadyToMergeBlock from "./ReadyToMergeBlock";
+import { takeRequestedPr } from "../warroom/pr-selection";
 import { PHASE_META, TONE_TEXT, WaitReason, checksSummary, timeAgo } from "./pr-ui";
 
 const PHASE_ORDER: PrPatrolPhase[] = ["working", "blocked", "waiting", "watching", "ready", "error", "skipped"];
@@ -60,7 +61,7 @@ export default function PrPatrolView({
 }) {
   const { data, error, loading, refresh } = usePolling(getPrPatrolStatus, 4000);
   const { data: costs } = usePolling(getClaudeCosts, 15000);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(takeRequestedPr);
   const [showSkipped, setShowSkipped] = useState(false);
   const [ticking, setTicking] = useState(false);
 
