@@ -71,6 +71,27 @@ CREATE TABLE IF NOT EXISTS pr_patrol_actions (
   if (!cols.some((c) => c.name === "waiting_on")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN waiting_on TEXT");
   ensurePipelineSchema(db); // pipeline settings edited from the loop graph (pipeline.ts)
   ensurePrPatrolHistorySchema(db);
+  countLegacyNitRounds(db);
+}
+
+/** When comment feedback got severities (P0/P1 always fixed, P2/P3 within the nit budget): commit 5d0c2f3. */
+export const NIT_BUDGET_SINCE_MS = Date.parse("2026-10-27T03:02:29Z");
+
+/**
+ * Comment rounds from before the nit budget fixed bot P2/P3 nits under plain `feedback:` keys, so they never
+ * counted against it and a PR that already had ten such pushes got five more. Each of those rounds that pushed a
+ * commit is re-keyed `legacy-nit:<key>` and now counts as a spent P2/P3 round. They sit on old heads, so the
+ * rename never re-opens a gate on a current head. Idempotent.
+ */
+export function countLegacyNitRounds(db: DatabaseSync): number {
+  const r = db
+    .prepare(
+      `UPDATE pr_patrol_actions SET action_key = 'legacy-nit:' || action_key
+       WHERE action_key LIKE 'feedback:%' AND status = 'done' AND updated_at < ?
+         AND json_extract(result_json, '$.note') LIKE 'pushed %'`,
+    )
+    .run(NIT_BUDGET_SINCE_MS);
+  return Number(r.changes);
 }
 
 /** Summary of the event written when a PR is first seen; metrics measure time to green / merge from it. */
