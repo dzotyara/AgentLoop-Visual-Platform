@@ -6,7 +6,7 @@ import { loadPrPatrolConfig } from "./config.ts";
 import {
   BLOCKING_SEVERITIES,
   decide,
-  nitRoundsUsed,
+  nitRoundOpen,
   type ActionKind,
   type Decision,
   type ReviewFinding,
@@ -195,7 +195,12 @@ export function createPrPatrol(ctx: RuntimeContext) {
       const approving =
         d.final === true &&
         blocking.length === 0 &&
-        (minor.length === 0 || nitRoundsUsed(store.memory(key)) >= cfg.maxNitRounds);
+        (minor.length === 0 ||
+          !nitRoundOpen(
+            store.memory(key),
+            cfg,
+            minor.every((f) => f.severity === "P3"),
+          ));
       store.recordReview(key, ws.startSha, blocking, minor);
       const list = findings
         .map((f) => `- [${f.severity}] ${f.file ?? ""}${f.line ? `:${f.line}` : ""} ${f.title}`)

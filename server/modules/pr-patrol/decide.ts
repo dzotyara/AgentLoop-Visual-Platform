@@ -81,6 +81,30 @@ export function nitRoundsUsed(mem: PatrolMemory): number {
   return [...mem.actions].filter(([k, a]) => k.includes("-nit:") && a.status === "done").length;
 }
 
+/** Of those, rounds that fixed P3-only items (keys `*-p3-nit:*`). */
+export function p3RoundsUsed(mem: PatrolMemory): number {
+  return [...mem.actions].filter(([k, a]) => k.includes("-p3-nit:") && a.status === "done").length;
+}
+
+/**
+ * Whether one more P2/P3 round may run: within the P2/P3 budget, and for a P3-only round also within the
+ * smaller P3 budget (review bots re-review every push and always find one more nit).
+ */
+export function nitRoundOpen(
+  mem: PatrolMemory,
+  cfg: Pick<PrPatrolConfig, "maxNitRounds" | "maxP3Rounds">,
+  p3Only: boolean,
+): boolean {
+  return nitRoundsUsed(mem) < cfg.maxNitRounds && (!p3Only || p3RoundsUsed(mem) < cfg.maxP3Rounds);
+}
+
+/** "P2/P3 round cap (5) reached" / "P3-only round cap (2) reached", for notes. */
+function nitCapLabel(mem: PatrolMemory, cfg: Pick<PrPatrolConfig, "maxNitRounds" | "maxP3Rounds">): string {
+  return nitRoundsUsed(mem) >= cfg.maxNitRounds
+    ? `P2/P3 round cap (${cfg.maxNitRounds}) reached`
+    : `P3-only round cap (${cfg.maxP3Rounds}) reached`;
+}
+
 function shortHash(parts: string[]): string {
   return createHash("sha1")
     .update([...parts].sort().join("\n"))
@@ -147,10 +171,13 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
     );
   }
 
-  // P0/P1 (and every human comment) are always fixed; P2/P3 get at most cfg.maxNitRounds rounds per PR, and a
-  // round starts only once CI on the head has finished, so every push gets a full CI run instead of a cancelled one.
+  // P0/P1 (and every human comment) are always fixed; P2/P3 get at most cfg.maxNitRounds rounds per PR (P3-only
+  // ones cfg.maxP3Rounds), and a round starts only once CI on the head has finished and Argus has reviewed it, so
+  // every push gets a full CI run and no fix lands on top of an unreviewed one.
   // Bot placeholders and status summaries with nothing to act on never cost a run.
-  const nitBudget = nitRoundsUsed(mem) < cfg.maxNitRounds;
+  // A disabled own review behaves like PR_PATROL_REVIEW=0 (its stale findings no longer block either).
+  const reviewOn = cfg.review && steps.review?.enabled !== false;
+  const headReviewed = !reviewOn || mem.lastReview?.sha === head;
   const ciRunning = checks.some((c) => c.state === "pending");
   const pending = s.feedback.filter(
     (f) => !mem.handledFeedbackIds.has(f.key) && !f.inProgress && f.severity !== "none",
@@ -164,31 +191,27 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
       `${pending.length} review comment(s) unhandled: ${g === "disabled" ? DISABLED_LABEL.address_feedback : "fix attempts exhausted"}`,
     );
   } else if (minorFeedback.length > 0) {
-    if (!nitBudget) {
-      notes.push(
-        `P2/P3 round cap (${cfg.maxNitRounds}) reached: ${minorFeedback.length} minor comment(s) left for the author`,
-      );
-    } else if (!ciRunning) {
-      const key = `feedback-nit:${head}:${shortHash(minorFeedback.map((f) => f.key))}`;
+    const p3Only = minorFeedback.every((f) => f.p3Only);
+    if (!nitRoundOpen(mem, cfg, p3Only)) {
+      notes.push(`${nitCapLabel(mem, cfg)}: ${minorFeedback.length} minor comment(s) left for the author`);
+    } else if (!ciRunning && headReviewed) {
+      const key = `feedback-${p3Only ? "p3-" : ""}nit:${head}:${shortHash(minorFeedback.map((f) => f.key))}`;
       const g = gate(key, "address_feedback");
       if (g === "go") return { kind: "run", action: "address_feedback", key, feedback: minorFeedback };
       if (g !== "done") notes.push(`${minorFeedback.length} minor comment(s) not fixed (${g})`);
     }
   }
 
-  // A disabled own review behaves like PR_PATROL_REVIEW=0 (its stale findings no longer block either).
-  const reviewOn = cfg.review && steps.review?.enabled !== false;
   if (cfg.review && !reviewOn) notes.push(DISABLED_LABEL.review);
   if (reviewOn) {
     if (mem.lastReview?.sha === head) {
       const minorFindings = mem.lastReview.minor ?? [];
       if (mem.lastReview.blocking.length === 0 && minorFindings.length > 0) {
-        if (!nitBudget) {
-          notes.push(
-            `P2/P3 round cap (${cfg.maxNitRounds}) reached: ${minorFindings.length} review finding(s) left for the author`,
-          );
+        const p3Only = minorFindings.every((f) => f.severity === "P3");
+        if (!nitRoundOpen(mem, cfg, p3Only)) {
+          notes.push(`${nitCapLabel(mem, cfg)}: ${minorFindings.length} review finding(s) left for the author`);
         } else if (!ciRunning) {
-          const key = `fixreview-nit:${head}`;
+          const key = `fixreview-${p3Only ? "p3-" : ""}nit:${head}`;
           const g = gate(key, "fix_review");
           if (g === "go") return { kind: "run", action: "fix_review", key, findings: minorFindings };
           if (g !== "done") notes.push(`${minorFindings.length} minor review finding(s) not fixed (${g})`);

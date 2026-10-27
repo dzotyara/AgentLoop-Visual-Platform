@@ -21,6 +21,7 @@ const cfg: PrPatrolConfig = {
   maxAttempts: 2,
   maxReviewRounds: 3,
   maxNitRounds: 5,
+  maxP3Rounds: 2,
   searchQuery: "author:@me",
   repoAllowlist: [],
   repoDenylist: [],
@@ -248,12 +249,13 @@ describe("normalizeChecks", () => {
 });
 
 describe("P0/P1 always, P2/P3 within a round budget", () => {
-  const fb = (id: string, severity: "blocking" | "minor" | "none", inProgress = false) => ({
+  const fb = (id: string, severity: "blocking" | "minor" | "none", inProgress = false, p3Only = false) => ({
     id,
     key: `${id}:v1`,
     bot: true,
     inProgress,
     severity,
+    p3Only,
     kind: "pr_comment" as const,
     author: "claude",
     body: "x",
@@ -296,7 +298,41 @@ describe("P0/P1 always, P2/P3 within a round budget", () => {
       cfg,
       mem({ lastReview: { sha: "head1", blocking: [], minor: [{ severity: "P3", title: "nit" }] } }),
     );
-    expect(d).toMatchObject({ kind: "run", action: "fix_review", key: "fixreview-nit:head1" });
+    expect(d).toMatchObject({ kind: "run", action: "fix_review", key: "fixreview-p3-nit:head1" });
+    const p2 = decide(
+      snap(),
+      cfg,
+      mem({ lastReview: { sha: "head1", blocking: [], minor: [{ severity: "P2", title: "edge case" }] } }),
+    );
+    expect(p2).toMatchObject({ kind: "run", action: "fix_review", key: "fixreview-nit:head1" });
+  });
+
+  it("reviews a head a fix produced before the next P2/P3 round lands on it", () => {
+    // head2 came from a [fix] push; the bot already posted a nit on it, Argus has not looked yet
+    const s = snap({ headRefOid: "head2", feedback: [fb("B", "minor")] });
+    expect(decide(s, cfg, mem({ reviewRounds: 5 }))).toMatchObject({
+      kind: "run",
+      action: "review",
+      key: "review:head2",
+    });
+    const reviewed = mem({ reviewRounds: 6, lastReview: { sha: "head2", blocking: [] } });
+    expect(decide(s, cfg, reviewed)).toMatchObject({ kind: "run", action: "address_feedback" });
+  });
+
+  it("gives P3-only rounds a smaller budget than P2 rounds", () => {
+    const actions = new Map([
+      ["feedback-p3-nit:h0:x", { status: "done" as const, attempts: 1 }],
+      ["fixreview-p3-nit:h1", { status: "done" as const, attempts: 1 }],
+    ]);
+    const p3 = decide(snap({ feedback: [fb("B", "minor", false, true)] }), cfg, mem({ actions }));
+    expect(p3.kind).toBe("ready");
+    if (p3.kind === "ready") expect(p3.notes.join()).toContain("P3-only round cap (2)");
+    // a P2 still gets a round: 2 of 5 P2/P3 rounds used
+    const p2 = decide(snap({ feedback: [fb("C", "minor")] }), cfg, mem({ actions }));
+    expect(p2).toMatchObject({ kind: "run", action: "address_feedback" });
+    if (p2.kind === "run") expect(p2.key.startsWith("feedback-nit:")).toBe(true);
+    const first = decide(snap({ feedback: [fb("B", "minor", false, true)] }), cfg, mem());
+    if (first.kind === "run") expect(first.key.startsWith("feedback-p3-nit:")).toBe(true);
   });
 });
 
@@ -307,7 +343,14 @@ describe("classifyFeedback", () => {
       severity: "none",
     });
     expect(classifyFeedback("- [x] done\n### Review\n**[P1]** shard timeout ignored", true).severity).toBe("blocking");
-    expect(classifyFeedback("LGTM. Three P3 notes: wording in docs", true).severity).toBe("minor");
+    expect(classifyFeedback("LGTM. Three P3 notes: wording in docs", true)).toMatchObject({
+      severity: "minor",
+      p3Only: true,
+    });
+    expect(classifyFeedback("**[P2]** unhandled edge case; **[P3]** naming", true)).toMatchObject({
+      severity: "minor",
+      p3Only: false,
+    });
     expect(classifyFeedback("Decision: No blocking issues found. 0 findings.", true).severity).toBe("none");
     expect(classifyFeedback("please rename this", false).severity).toBe("blocking");
   });

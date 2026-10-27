@@ -310,7 +310,7 @@ export default function PipelineGraph({ agents, onOpenRun }: { agents: Agent[]; 
             value={draft?.maxReviewRounds ?? null}
             fallback={defaults?.maxReviewRounds}
             min={0}
-            max={10}
+            max={30}
             onChange={(v) => setDraft((d) => (d ? { ...d, maxReviewRounds: v } : d))}
           />
           <div className="flex items-center gap-1.5 pt-1">

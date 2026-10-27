@@ -39,6 +39,8 @@ export type PrFeedback = {
    * per-PR P2/P3 round budget. none = a bot status summary with nothing to act on.
    */
   severity: "blocking" | "minor" | "none";
+  /** minor with nothing above P3 (no P2 / medium): counts against the smaller P3-only round budget too. */
+  p3Only?: boolean;
 };
 
 /** GitHub merge queue entry: state is QUEUED | AWAITING_CHECKS | MERGEABLE | UNMERGEABLE | LOCKED. */
@@ -217,10 +219,11 @@ type FeedbackResponse = {
 const BLOCKING_RE =
   /\[P[01]\]|\bP[01]\b|\bcritical\b|\bhigh(?:-severity| severity| findings?)\b|must fix|fix the high|security (?:issue|hole|vulnerab)/i;
 const NO_BLOCKERS_RE = /no blocking issues|0 blocking|no (?:p0|p1)\b|nothing blocking/i;
+const P2_RE = /\[P2\]|\bP2\b|\bmedium\b/i;
 const MINOR_RE = /\[P[23]\]|\bP[23]\b|\bnit\b|\bmedium\b|\blow\b|suggest|consider|could be|wording|typo/i;
 
 /** How a comment should be treated by the fixers; see PrFeedback.severity and .inProgress. */
-export function classifyFeedback(body: string, bot: boolean): Pick<PrFeedback, "inProgress" | "severity"> {
+export function classifyFeedback(body: string, bot: boolean): Pick<PrFeedback, "inProgress" | "severity" | "p3Only"> {
   if (!bot) return { inProgress: false, severity: "blocking" };
   const unchecked = /- \[ \]/.test(body);
   const checked = /- \[x\]/i.test(body);
@@ -228,7 +231,7 @@ export function classifyFeedback(body: string, bot: boolean): Pick<PrFeedback, "
   if ((placeholder || (unchecked && !checked)) && !/\[P[0-3]\]/.test(body))
     return { inProgress: true, severity: "none" };
   if (BLOCKING_RE.test(body) && !NO_BLOCKERS_RE.test(body)) return { inProgress: false, severity: "blocking" };
-  if (MINOR_RE.test(body)) return { inProgress: false, severity: "minor" };
+  if (MINOR_RE.test(body)) return { inProgress: false, severity: "minor", p3Only: !P2_RE.test(body) };
   return { inProgress: false, severity: "none" };
 }
 

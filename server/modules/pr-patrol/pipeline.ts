@@ -21,7 +21,7 @@ export type PipelineSettings = {
 export const PIPELINE_LIMITS = {
   maxAttempts: { min: 1, max: 10 },
   maxConcurrent: { min: 1, max: 8 },
-  maxReviewRounds: { min: 0, max: 10 },
+  maxReviewRounds: { min: 0, max: 30 },
 } as const;
 
 /** CLI model ids/aliases: letters first (so a value can never read as a flag), then id-ish characters. */
