@@ -54,7 +54,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
         .map((department, idx) => ({
           id: department.id,
           name: department.name,
-          icon: department.icon ?? "🏢",
+          icon: department.icon ?? "office",
           done: department.done_tasks,
           total: department.total_tasks,
           ratio: department.total_tasks > 0 ? Math.round((department.done_tasks / department.total_tasks) * 100) : 0,
@@ -69,7 +69,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
       if (!deptMap.has(agent.department_id)) {
         deptMap.set(agent.department_id, {
           name: agent.department ? localeName(language, agent.department) : agent.department_id,
-          icon: agent.department?.icon ?? "🏢",
+          icon: agent.department?.icon ?? "office",
           done: 0,
           total: 0,
         });
@@ -136,7 +136,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
       value: totalTasks,
       sub: t({ ko: "누적 태스크", en: "Total tasks", ja: "累積タスク", zh: "累计任务" }),
       color: "#3b82f6",
-      icon: "📋",
+      icon: "tasks",
     },
     {
       id: "clear",
@@ -144,7 +144,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
       value: `${completionRate}%`,
       sub: `${numberFormatter.format(completedTasks)} ${t({ ko: "클리어", en: "cleared", ja: "クリア", zh: "完成" })}`,
       color: "#10b981",
-      icon: "✅",
+      icon: "check",
     },
     {
       id: "squad",
@@ -152,7 +152,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
       value: `${activeAgents}/${totalAgents}`,
       sub: `${t({ ko: "가동률", en: "uptime", ja: "稼働率", zh: "运行率" })} ${activeRate}%`,
       color: "#00f0ff",
-      icon: "🤖",
+      icon: "robot",
     },
     {
       id: "active",
@@ -165,7 +165,7 @@ export default function Dashboard({ stats, agents, tasks, companyName, onPrimary
         zh: "项",
       })}`,
       color: "#f59e0b",
-      icon: "⚡",
+      icon: "bolt",
     },
   ];
 

@@ -4,6 +4,7 @@ import OAuthConnectedProvidersSection from "./OAuthConnectedProvidersSection";
 import { OAUTH_INFO } from "./constants";
 import type { DeviceCodeStart } from "../../api";
 import type { OAuthCallbackResultLike, OAuthCommonProps, TFunction } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 type OAuthSettingsTabProps = Omit<OAuthCommonProps, "oauthStatus"> & {
   t: TFunction;
@@ -73,7 +74,7 @@ export default function OAuthSettingsTab({
               : `${OAUTH_INFO[oauthResult.provider || ""]?.label || oauthResult.provider} ${t({ ko: "연결 완료!", en: "connected!", ja: "接続完了!", zh: "连接成功!" })}`}
           </span>
           <button onClick={() => onOauthResultClear?.()} className="text-xs opacity-60 hover:opacity-100 ml-2">
-            ✕
+            <PixelIcon name="close" size={16} />
           </button>
         </div>
       )}

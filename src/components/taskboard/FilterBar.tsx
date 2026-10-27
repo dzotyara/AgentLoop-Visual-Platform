@@ -2,6 +2,7 @@ import type { Agent, Department } from "../../types";
 import { useI18n } from "../../i18n";
 import AgentSelect from "../AgentSelect";
 import { TASK_TYPE_OPTIONS, taskTypeLabel } from "./constants";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface FilterBarProps {
   agents: Agent[];
@@ -33,7 +34,7 @@ export default function FilterBar({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-[140px] flex-1 sm:min-w-[180px]">
-        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔎</span>
+        <PixelIcon name="search" size={16} className="absolute left-2 top-1/2 -translate-y-1/2 opacity-70" />
         <input
           type="text"
           value={search}
@@ -51,7 +52,7 @@ export default function FilterBar({
         <option value="">{t({ ko: "전체 부서", en: "All Departments", ja: "全部署", zh: "全部门" })}</option>
         {departments.map((department) => (
           <option key={department.id} value={department.id}>
-            {department.icon} {locale === "ko" ? department.name_ko : department.name}
+            {locale === "ko" ? department.name_ko : department.name}
           </option>
         ))}
       </select>

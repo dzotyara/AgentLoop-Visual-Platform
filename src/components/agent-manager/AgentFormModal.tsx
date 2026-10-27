@@ -5,6 +5,7 @@ import * as api from "../../api";
 import { CLI_PROVIDERS, ROLE_BADGE, ROLE_LABEL, ROLES } from "./constants";
 import EmojiPicker from "./EmojiPicker";
 import type { FormData } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -91,7 +92,7 @@ export default function AgentFormModal({
             className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--th-bg-surface-hover)] transition-colors"
             style={{ color: "var(--th-text-muted)" }}
           >
-            ✕
+            <PixelIcon name="close" size={16} />
           </button>
         </div>
 
@@ -240,7 +241,7 @@ export default function AgentFormModal({
                   <option value="">{tr("— 미배정 —", "— Unassigned —")}</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.icon} {localeName(locale, d)}
+                      {localeName(locale, d)}
                     </option>
                   ))}
                 </select>

@@ -19,7 +19,7 @@ function baseWorkflowDecisionItem(item: DecisionInboxRouteItem): Omit<DecisionIn
         ? item.project_name || item.project_id || "기획팀장"
         : item.task_title || item.task_id || "작업"),
     agentAvatar:
-      item.agent_avatar ?? (item.kind === "project_review_ready" || item.kind === "review_round_pick" ? "🧑‍💼" : null),
+      item.agent_avatar ?? (item.kind === "project_review_ready" || item.kind === "review_round_pick" ? "ceo" : null),
     requestContent: item.summary,
     createdAt: item.created_at,
     taskId: item.task_id,

@@ -8,6 +8,7 @@ import CreateTaskModal from "./taskboard/CreateTaskModal";
 import FilterBar from "./taskboard/FilterBar";
 import TaskCard from "./taskboard/TaskCard";
 import { COLUMNS, isHideableStatus, taskStatusLabel, type HideableStatus } from "./taskboard/constants";
+import PixelIcon from "./pixel/PixelIcon";
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -205,13 +206,13 @@ export function TaskBoard({
               zh: "隐藏完成/待处理/已取消任务",
             })}
           >
-            🙈 {t({ ko: "숨김", en: "Hide", ja: "非表示", zh: "隐藏" })}
+            <PixelIcon name="eye" size={12} /> {t({ ko: "숨김", en: "Hide", ja: "非表示", zh: "隐藏" })}
           </button>
           <button
             onClick={() => setShowProjectManager(true)}
             className="taskboard-project-manage-btn rounded-lg border px-3 py-1.5 text-xs font-semibold transition"
           >
-            🗂 {t({ ko: "프로젝트 관리", en: "Project Manager", ja: "プロジェクト管理", zh: "项目管理" })}
+            <PixelIcon name="folder" size={12} /> {t({ ko: "프로젝트 관리", en: "Project Manager", ja: "プロジェクト管理", zh: "项目管理" })}
           </button>
           <button
             onClick={() => setShowCreate(true)}
@@ -247,7 +248,7 @@ export function TaskBoard({
                 <div className="flex items-center gap-2">
                   <span className={`h-2 w-2 flex-shrink-0 rounded-full ${column.dotColor}`} />
                   <span className="text-sm font-semibold text-white">
-                    {column.icon} {taskStatusLabel(column.status, t)}
+                    <PixelIcon name={column.icon} size={16} /> {taskStatusLabel(column.status, t)}
                   </span>
                 </div>
                 <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs font-bold text-white/80">

@@ -1,4 +1,5 @@
 import AgentAvatar from "../AgentAvatar";
+import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
 import type { Agent } from "../../types";
 import { getRankTier, RankBadge, XpBar, type TFunction } from "./model";
 
@@ -8,7 +9,7 @@ export interface HudStat {
   value: number | string;
   sub: string;
   color: string;
-  icon: string;
+  icon: PixelIconName;
 }
 
 export interface RankedAgent {
@@ -71,7 +72,7 @@ export function DashboardHeroHeader({
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-500/[0.06] px-4 py-2">
-            <span className="text-xs text-cyan-400/60">⏰</span>
+            <PixelIcon name="clock" size={16} className="opacity-60" />
             <span className="dashboard-time-display font-mono text-xl font-bold tracking-tight">{time}</span>
           </div>
           <div className="hidden flex-col gap-1 sm:flex">
@@ -84,7 +85,7 @@ export function DashboardHeroHeader({
           </div>
           {reviewQueue > 0 && (
             <span className="flex items-center gap-1.5 rounded-lg border border-orange-400/30 bg-orange-500/15 px-3 py-1.5 text-xs font-bold text-orange-300 animate-neon-pulse-orange">
-              🔔 {t({ ko: "대기", en: "Queued", ja: "待機", zh: "待处理" })} {numberFormatter.format(reviewQueue)}
+              <PixelIcon name="bell" size={12} /> {t({ ko: "대기", en: "Queued", ja: "待機", zh: "待处理" })} {numberFormatter.format(reviewQueue)}
               {t({ ko: "건", en: "", ja: "件", zh: "项" })}
             </span>
           )}
@@ -104,7 +105,7 @@ export function DashboardHeroHeader({
             onClick={onPrimaryCtaClick}
             className="animate-cta-glow group inline-flex w-full items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-cyan-500 to-blue-500 px-6 py-3 text-sm font-black tracking-tight text-white shadow-[0_4px_20px_rgba(34,211,238,0.35)] transition-all duration-200 hover:-translate-y-0.5 hover:from-cyan-400 hover:to-blue-400 hover:shadow-[0_8px_30px_rgba(34,211,238,0.5)] active:translate-y-0 sm:w-auto sm:min-w-[200px]"
           >
-            <span aria-hidden="true">🚀</span>
+            <PixelIcon name="rocket" size={16} />
             <span>{primaryCtaLabel}</span>
             <span
               className="text-xs text-white/80 transition-transform duration-200 group-hover:translate-x-0.5"
@@ -156,7 +157,7 @@ export function DashboardHudStats({ hudStats, numberFormatter }: DashboardHudSta
               className="text-3xl opacity-20 transition-all duration-300 group-hover:opacity-40 group-hover:scale-110"
               style={{ filter: `drop-shadow(0 0 8px ${stat.color}40)` }}
             >
-              {stat.icon}
+              <PixelIcon name={stat.icon} size={32} />
             </span>
           </div>
         </div>
@@ -194,7 +195,7 @@ export function DashboardRankingBoard({
             className="text-2xl animate-crown-wiggle"
             style={{ display: "inline-block", filter: "drop-shadow(0 0 8px rgba(255,215,0,0.5))" }}
           >
-            🏆
+            <PixelIcon name="trophy" size={24} />
           </span>
           <div>
             <h2 className="dashboard-ranking-gradient text-lg font-black uppercase tracking-wider">
@@ -220,7 +221,7 @@ export function DashboardRankingBoard({
           className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-sm"
           style={{ color: "var(--th-text-muted)" }}
         >
-          <span className="text-4xl opacity-30">⚔️</span>
+          <PixelIcon name="medal" size={32} className="opacity-30" />
           <p>
             {t({
               ko: "등록된 에이전트가 없습니다",
@@ -260,17 +261,17 @@ export function DashboardRankingBoard({
                         className="text-2xl animate-crown-wiggle"
                         style={{ display: "inline-block", filter: "drop-shadow(0 0 12px rgba(255,215,0,0.6))" }}
                       >
-                        🥇
+                        <PixelIcon name="crown" size={24} />
                       </span>
                     )}
                     {rank === 2 && (
                       <span className="text-lg" style={{ filter: "drop-shadow(0 0 6px rgba(192,192,192,0.5))" }}>
-                        🥈
+                        <PixelIcon name="medal" size={16} />
                       </span>
                     )}
                     {rank === 3 && (
                       <span className="text-lg" style={{ filter: "drop-shadow(0 0 6px rgba(205,127,50,0.5))" }}>
-                        🥉
+                        <PixelIcon name="medal" size={16} />
                       </span>
                     )}
 
@@ -377,7 +378,7 @@ export function DashboardRankingBoard({
                   }}
                 >
                   <span className="text-2xl animate-crown-wiggle" style={{ display: "inline-block" }}>
-                    🥇
+                    <PixelIcon name="crown" size={24} />
                   </span>
                   <div
                     className="overflow-hidden rounded-2xl"

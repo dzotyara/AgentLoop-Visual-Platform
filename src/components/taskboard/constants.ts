@@ -1,5 +1,6 @@
 import type { TaskStatus, TaskType } from "../../types";
 import type { UiLanguage } from "../../i18n";
+import type { PixelIconName } from "../pixel/PixelIcon";
 
 export type Locale = UiLanguage;
 export type TFunction = (messages: Record<Locale, string>) => string;
@@ -105,63 +106,63 @@ export function saveCreateTaskDrafts(drafts: CreateTaskDraft[]): void {
 
 export const COLUMNS: {
   status: TaskStatus;
-  icon: string;
+  icon: PixelIconName;
   headerBg: string;
   borderColor: string;
   dotColor: string;
 }[] = [
   {
     status: "inbox",
-    icon: "📥",
+    icon: "download",
     headerBg: "bg-slate-800",
     borderColor: "border-slate-600",
     dotColor: "bg-slate-400",
   },
   {
     status: "planned",
-    icon: "📋",
+    icon: "tasks",
     headerBg: "bg-blue-900",
     borderColor: "border-blue-700",
     dotColor: "bg-blue-400",
   },
   {
     status: "collaborating",
-    icon: "🤝",
+    icon: "meeting",
     headerBg: "bg-indigo-900",
     borderColor: "border-indigo-700",
     dotColor: "bg-indigo-400",
   },
   {
     status: "in_progress",
-    icon: "⚡",
+    icon: "bolt",
     headerBg: "bg-amber-900",
     borderColor: "border-amber-700",
     dotColor: "bg-amber-400",
   },
   {
     status: "review",
-    icon: "🔍",
+    icon: "review",
     headerBg: "bg-purple-900",
     borderColor: "border-purple-700",
     dotColor: "bg-purple-400",
   },
   {
     status: "done",
-    icon: "✅",
+    icon: "check",
     headerBg: "bg-green-900",
     borderColor: "border-green-700",
     dotColor: "bg-green-400",
   },
   {
     status: "pending",
-    icon: "⏸️",
+    icon: "pause",
     headerBg: "bg-orange-900",
     borderColor: "border-orange-700",
     dotColor: "bg-orange-400",
   },
   {
     status: "cancelled",
-    icon: "🚫",
+    icon: "error",
     headerBg: "bg-red-900",
     borderColor: "border-red-700",
     dotColor: "bg-red-400",
@@ -233,10 +234,11 @@ export function getTaskTypeBadge(type: TaskType, t: TFunction) {
   return { ...option, label: taskTypeLabel(option.value, t) };
 }
 
-export function priorityIcon(priority: number) {
-  if (priority >= 4) return "🔴";
-  if (priority >= 2) return "🟡";
-  return "🟢";
+/** Tailwind background for the square priority marker (high / medium / low). */
+export function priorityDotClass(priority: number) {
+  if (priority >= 4) return "bg-red-500";
+  if (priority >= 2) return "bg-yellow-400";
+  return "bg-green-500";
 }
 
 export function priorityLabel(priority: number, t: TFunction) {

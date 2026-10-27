@@ -1,4 +1,5 @@
 import type { ManualPathEntry, ProjectI18nTranslate } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface ManualPathPickerDialogProps {
   open: boolean;
@@ -49,7 +50,7 @@ export default function ManualPathPickerDialog({
             onClick={onClose}
             className="rounded-md px-2 py-1 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white"
           >
-            ✕
+            <PixelIcon name="close" size={16} />
           </button>
         </div>
         <div className="space-y-3 px-4 py-4">

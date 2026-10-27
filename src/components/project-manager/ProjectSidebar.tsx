@@ -1,5 +1,6 @@
 import type { Project } from "../../types";
 import type { ProjectI18nTranslate } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface ProjectSidebarProps {
   headerTitle: string;
@@ -43,7 +44,7 @@ export default function ProjectSidebar({
           onClick={onClose}
           className="rounded-md px-2 py-1 text-xs text-slate-400 hover:bg-slate-800 hover:text-white"
         >
-          ✕
+          <PixelIcon name="close" size={16} />
         </button>
       </div>
 

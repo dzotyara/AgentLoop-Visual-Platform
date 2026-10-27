@@ -2,6 +2,8 @@ import { getOfficePackMeta } from "../../app/office-workflow-pack";
 import AgentAvatar, { buildSpriteMap } from "../AgentAvatar";
 import type { Agent, WorkflowPackKey } from "../../types";
 import type { ApiStateBundle, TFunction } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 
 interface ApiAssignModalProps {
   t: TFunction;
@@ -101,7 +103,7 @@ export default function ApiAssignModal({ t, localeTag, apiState }: ApiAssignModa
             {agent.cli_provider === "api" && agent.api_model ? `API: ${agent.api_model}` : agent.cli_provider}
           </div>
         </div>
-        {isAssigned && <span className="text-green-400 flex-shrink-0">✓</span>}
+        {isAssigned && <PixelIcon name="check" size={16} />}
       </button>
     );
   };
@@ -149,7 +151,7 @@ export default function ApiAssignModal({ t, localeTag, apiState }: ApiAssignModa
                   {departments.map(({ dept, agents }) => (
                     <div key={`${packKey}:${dept.id}`}>
                       <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-slate-700/40">
-                        <span className="text-sm">{dept.icon}</span>
+                        <PixelIcon name={iconFor(dept.icon, "office")} size={16} />
                         <span className="text-[11px] font-semibold text-slate-300 tracking-wide">
                           {localName(dept.name, dept.name_ko)}
                         </span>
@@ -161,7 +163,7 @@ export default function ApiAssignModal({ t, localeTag, apiState }: ApiAssignModa
                   {unassigned.length > 0 && (
                     <div>
                       <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-slate-700/40">
-                        <span className="text-sm">📁</span>
+                        <PixelIcon name="folder" size={16} />
                         <span className="text-[11px] font-semibold text-slate-500 tracking-wide">
                           {t({ ko: "미배정", en: "Unassigned", ja: "未配属", zh: "未分配" })}
                         </span>

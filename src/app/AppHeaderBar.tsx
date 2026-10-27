@@ -1,5 +1,16 @@
 import type { WorkflowPackKey } from "../types";
 import type { View } from "./types";
+import PixelIcon, { type PixelIconName } from "../components/pixel/PixelIcon";
+
+const VIEW_ICONS: Record<View, PixelIconName | null> = {
+  office: "office",
+  agents: null, // drawn with agent sprites below
+  dashboard: "dashboard",
+  tasks: "tasks",
+  prs: "prs",
+  skills: "library",
+  settings: "settings",
+};
 
 type OfficePackOption = {
   key: WorkflowPackKey;
@@ -83,7 +94,7 @@ export default function AppHeaderBar({
           }}
           aria-label="Open navigation"
         >
-          ☰
+          <PixelIcon name="menu" size={16} />
         </button>
         <h1
           className="truncate text-base font-bold sm:text-lg flex items-center gap-2"
@@ -105,6 +116,7 @@ export default function AppHeaderBar({
               />
             </span>
           )}
+          {VIEW_ICONS[currentView] && <PixelIcon name={VIEW_ICONS[currentView]} size={20} />}
           <span className="truncate">{viewTitle}</span>
         </h1>
         {officePackControl && (
@@ -136,8 +148,8 @@ export default function AppHeaderBar({
           className="header-action-btn header-action-btn-primary"
           aria-label={tasksPrimaryLabel}
         >
-          <span className="sm:hidden">📋</span>
-          <span className="hidden sm:inline">📋 {tasksPrimaryLabel}</span>
+          <PixelIcon name="tasks" size={16} />
+          <span className="hidden sm:inline">{tasksPrimaryLabel}</span>
         </button>
         <button
           onClick={onOpenDecisionInbox}
@@ -147,24 +159,22 @@ export default function AppHeaderBar({
           }`}
           aria-label={decisionLabel}
         >
-          <span className="sm:hidden">{decisionInboxLoading ? "⏳" : "🧭"}</span>
-          <span className="hidden sm:inline">
-            {decisionInboxLoading ? "⏳" : "🧭"} {decisionLabel}
-          </span>
+          <PixelIcon name={decisionInboxLoading ? "pending" : "decision"} size={16} />
+          <span className="hidden sm:inline">{decisionLabel}</span>
           {decisionInboxCount > 0 && <span className="header-decision-badge">{decisionInboxCount}</span>}
         </button>
         <button onClick={onOpenAgentStatus} className="header-action-btn header-action-btn-secondary mobile-hidden">
-          &#x1F6E0; {agentStatusLabel}
+          <PixelIcon name="robot" size={16} /> {agentStatusLabel}
         </button>
         <button onClick={onOpenReportHistory} className="header-action-btn header-action-btn-secondary mobile-hidden">
-          {reportLabel}
+          <PixelIcon name="report" size={16} /> {reportLabel}
         </button>
         <button onClick={onOpenAnnouncement} className="header-action-btn header-action-btn-secondary">
-          <span className="sm:hidden">📢</span>
+          <PixelIcon name="announcement" size={16} />
           <span className="hidden sm:inline">{announcementLabel}</span>
         </button>
         <button onClick={onOpenRoomManager} className="header-action-btn header-action-btn-secondary mobile-hidden">
-          {roomManagerLabel}
+          <PixelIcon name="office" size={16} /> {roomManagerLabel}
         </button>
         <button
           onClick={onToggleTheme}
@@ -282,7 +292,7 @@ export default function AppHeaderBar({
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:opacity-80"
                   style={{ color: "var(--th-text-primary)" }}
                 >
-                  &#x1F6E0; {agentStatusLabel}
+                  <PixelIcon name="robot" size={16} /> {agentStatusLabel}
                 </button>
                 <button
                   onClick={() => {
@@ -292,7 +302,7 @@ export default function AppHeaderBar({
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:opacity-80"
                   style={{ color: "var(--th-text-primary)" }}
                 >
-                  {reportLabel}
+                  <PixelIcon name="report" size={16} /> {reportLabel}
                 </button>
                 <button
                   onClick={() => {
@@ -302,7 +312,7 @@ export default function AppHeaderBar({
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:opacity-80"
                   style={{ color: "var(--th-text-primary)" }}
                 >
-                  {roomManagerLabel}
+                  <PixelIcon name="office" size={16} /> {roomManagerLabel}
                 </button>
               </div>
             </>

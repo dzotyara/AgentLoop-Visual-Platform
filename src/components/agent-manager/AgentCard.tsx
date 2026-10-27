@@ -3,6 +3,8 @@ import { localeName } from "../../i18n";
 import AgentAvatar from "../AgentAvatar";
 import { ROLE_BADGE, ROLE_LABEL, STATUS_DOT } from "./constants";
 import type { Translator } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 
 interface AgentCardProps {
   agent: Agent;
@@ -72,7 +74,7 @@ export default function AgentCard({
                 className="text-[10px] px-1.5 py-0.5 rounded-md"
                 style={{ background: "var(--th-bg-surface)", color: "var(--th-text-muted)" }}
               >
-                {dept.icon} {localeName(locale, dept)}
+                <PixelIcon name={iconFor(dept.icon, "office")} size={12} /> {localeName(locale, dept)}
               </span>
             )}
           </div>
@@ -128,7 +130,7 @@ export default function AgentCard({
               style={{ color: "var(--th-text-muted)" }}
               title={tr("해고", "Fire")}
             >
-              ✕
+              <PixelIcon name="close" size={16} />
             </button>
           )}
         </div>

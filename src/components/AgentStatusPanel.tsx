@@ -5,6 +5,7 @@ import type { UiLanguage } from "../i18n";
 import { pickLang, localeName } from "../i18n";
 import { getActiveAgents, getCliProcesses, killCliProcess, stopTask } from "../api";
 import AgentAvatar from "./AgentAvatar";
+import PixelIcon from "./pixel/PixelIcon";
 
 interface AgentStatusPanelProps {
   agents: Agent[];
@@ -216,7 +217,7 @@ export default function AgentStatusPanel({ agents, uiLanguage, onClose }: AgentS
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
             >
-              &#x2715;
+              <PixelIcon name="close" size={16} />
             </button>
           </div>
         </div>

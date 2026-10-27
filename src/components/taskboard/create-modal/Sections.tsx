@@ -3,12 +3,13 @@ import type { Agent, Department, Project } from "../../../types";
 import AgentSelect from "../../AgentSelect";
 import {
   TASK_TYPE_OPTIONS,
-  priorityIcon,
+  priorityDotClass,
   priorityLabel,
   taskTypeLabel,
   type MissingPathPrompt,
   type TFunction,
 } from "../constants";
+import PixelIcon from "../../pixel/PixelIcon";
 
 interface PrioritySectionProps {
   priority: number;
@@ -20,7 +21,8 @@ export function PrioritySection({ priority, t, onPriorityChange }: PrioritySecti
   return (
     <div>
       <label className="mb-2 block text-sm font-medium text-slate-300">
-        {t({ ko: "우선순위", en: "Priority", ja: "優先度", zh: "优先级" })}: {priorityIcon(priority)}{" "}
+        {t({ ko: "우선순위", en: "Priority", ja: "優先度", zh: "优先级" })}:{" "}
+        <span className={`inline-block h-2.5 w-2.5 ${priorityDotClass(priority)}`} />{" "}
         {priorityLabel(priority, t)} ({priority}/5)
       </label>
       <div className="flex gap-2">
@@ -33,7 +35,7 @@ export function PrioritySection({ priority, t, onPriorityChange }: PrioritySecti
               star <= priority ? "bg-amber-600 text-white shadow-md" : "bg-slate-800 text-slate-500 hover:bg-slate-700"
             }`}
           >
-            ★
+            <PixelIcon name="star" size={16} className={star <= priority ? "" : "opacity-40"} />
           </button>
         ))}
       </div>

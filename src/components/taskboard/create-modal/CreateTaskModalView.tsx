@@ -4,6 +4,7 @@ import { TASK_TYPE_OPTIONS, taskTypeLabel, type FormFeedback, type TFunction } f
 import CreateTaskModalOverlays from "./Overlays";
 import type { CreateTaskModalOverlaysProps } from "./overlay-types";
 import { AssigneeSection, PrioritySection, ProjectSection } from "./Sections";
+import PixelIcon from "../../pixel/PixelIcon";
 
 interface CreateTaskModalViewProps {
   t: TFunction;
@@ -97,7 +98,7 @@ export default function CreateTaskModalView({
               className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
               title={t({ ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭" })}
             >
-              ✕
+              <PixelIcon name="close" size={16} />
             </button>
           </div>
         </div>
@@ -159,7 +160,7 @@ export default function CreateTaskModalView({
                     </option>
                     {departments.map((department) => (
                       <option key={department.id} value={department.id}>
-                        {department.icon} {locale === "ko" ? department.name_ko : department.name}
+                        {locale === "ko" ? department.name_ko : department.name}
                       </option>
                     ))}
                   </select>

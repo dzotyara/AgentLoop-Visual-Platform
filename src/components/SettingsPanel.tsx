@@ -12,6 +12,7 @@ import OAuthSettingsTab from "./settings/OAuthSettingsTab";
 import SettingsTabNav from "./settings/SettingsTabNav";
 import type { AccountDraftMap, AccountDraftPatch, LocalSettings, SettingsTab } from "./settings/types";
 import { useApiProvidersState } from "./settings/useApiProvidersState";
+import PixelIcon from "./pixel/PixelIcon";
 
 interface SettingsPanelProps {
   settings: CompanySettings;
@@ -395,7 +396,7 @@ export default function SettingsPanel({
   return (
     <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
       <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: "var(--th-text-heading)" }}>
-        ⚙️ {t({ ko: "설정", en: "Settings", ja: "設定", zh: "设置" })}
+        <PixelIcon name="settings" size={20} /> {t({ ko: "설정", en: "Settings", ja: "設定", zh: "设置" })}
       </h2>
 
       <SettingsTabNav tab={tab} setTab={setTab} t={t} />

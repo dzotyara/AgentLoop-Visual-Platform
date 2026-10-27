@@ -15,6 +15,8 @@ import type {
 import AgentAvatar from "./AgentAvatar";
 import AgentDetailTabContent from "./agent-detail/AgentDetailTabContent";
 import { CLI_LABELS, oauthAccountLabel, roleLabel, STATUS_CONFIG, statusLabel } from "./agent-detail/constants";
+import PixelIcon from "./pixel/PixelIcon";
+import { iconFor } from "./pixel/emoji-to-icon";
 
 interface AgentDetailProps {
   agent: Agent;
@@ -368,7 +370,7 @@ export default function AgentDetail({
             onClick={onClose}
             className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-700/50 hover:bg-slate-600 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
           >
-            ✕
+            <PixelIcon name="close" size={16} />
           </button>
 
           <div className="flex items-center gap-4">
@@ -401,7 +403,8 @@ export default function AgentDetail({
                 </span>
               </div>
               <div className="text-sm text-slate-400 mt-0.5">
-                {department?.icon} {department ? localeName(language, department) : ""} · {roleLabel(agent.role, t)}
+                {department && <PixelIcon name={iconFor(department.icon, "office")} size={14} className="mr-1" />}
+                {department ? localeName(language, department) : ""} · {roleLabel(agent.role, t)}
               </div>
               {agent.role === "team_leader" && (
                 <label className="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-300">
@@ -434,7 +437,7 @@ export default function AgentDetail({
                   selectedCli === "codex" ? (
                     <div className="space-y-1">
                       <div className="flex w-full min-w-0 items-center gap-1 pb-0.5">
-                        <span className="shrink-0">🔧</span>
+                        <PixelIcon name="wrench" size={16} />
                         <select
                           value={selectedCli}
                           onChange={(event) => {
@@ -549,7 +552,7 @@ export default function AgentDetail({
                     </div>
                   ) : (
                     <div className="flex flex-wrap items-center gap-1">
-                      <span>🔧</span>
+                      <PixelIcon name="wrench" size={16} />
                       <select
                         value={selectedCli}
                         onChange={(event) => {
@@ -599,11 +602,12 @@ export default function AgentDetail({
                         ))}
                       {requiresApiProvider && (
                         <span className="text-[10px] text-amber-300">
+                          <PixelIcon name="settings" size={12} className="mr-1" />
                           {t({
-                            ko: "⚙️ 설정 > API 탭에서 모델을 배정하세요",
-                            en: "⚙️ Assign models in Settings > API tab",
-                            ja: "⚙️ 設定 > API タブでモデルを割り当ててください",
-                            zh: "⚙️ 请在设置 > API 标签页中分配模型",
+                            ko: "설정 > API 탭에서 모델을 배정하세요",
+                            en: "Assign models in Settings > API tab",
+                            ja: "設定 > API タブでモデルを割り当ててください",
+                            zh: "请在设置 > API 标签页中分配模型",
                           })}
                         </span>
                       )}
@@ -688,7 +692,7 @@ export default function AgentDetail({
                       zh: "点击更改 CLI",
                     })}
                   >
-                    🔧{" "}
+                    <PixelIcon name="wrench" size={14} />{" "}
                     {agent.cli_provider === "api" && agent.api_model
                       ? `API: ${agent.api_model}`
                       : agent.cli_model &&
@@ -698,7 +702,7 @@ export default function AgentDetail({
                         : agent.cli_provider === "codex" && agent.cli_reasoning_level
                           ? `${CLI_LABELS[agent.cli_provider] ?? agent.cli_provider} · (${agent.cli_reasoning_level})`
                           : (CLI_LABELS[agent.cli_provider] ?? agent.cli_provider)}
-                    <span className="text-[9px] text-slate-600 ml-0.5">✏️</span>
+                    <PixelIcon name="edit" size={12} className="ml-0.5 opacity-60" />
                   </button>
                 )}
               </div>

@@ -9,6 +9,7 @@ import SkillsGrid from "./skills-library/SkillsGrid";
 import SkillsHeader from "./skills-library/SkillsHeader";
 import SkillsMemorySection from "./skills-library/SkillsMemorySection";
 import { useSkillsLibraryState } from "./skills-library/useSkillsLibraryState";
+import PixelIcon from "./pixel/PixelIcon";
 
 interface SkillsLibraryProps {
   agents: Agent[];
@@ -40,7 +41,9 @@ export default function SkillsLibrary({ agents }: SkillsLibraryProps) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="text-center">
-          <div className="text-4xl mb-3">⚠️</div>
+          <div className="mb-3 flex justify-center">
+            <PixelIcon name="warning" size={32} />
+          </div>
           <div className="text-slate-400 text-sm">
             {t({
               ko: "스킬 데이터를 불러올 수 없습니다",

@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { Agent } from "../types";
 import { packSkinSpriteFor } from "./pack-sprite-skin";
+import PixelIcon from "./pixel/PixelIcon";
+import { iconFor } from "./pixel/emoji-to-icon";
 
 /** Map agent IDs to sprite numbers (stable order, same as OfficeView) */
 export function buildSpriteMap(agents: Agent[]): Map<string, number> {
@@ -98,9 +100,12 @@ export default function AgentAvatar({
   return (
     <div
       className={`${roundedClass} bg-gray-700 flex items-center justify-center flex-shrink-0 ${className}`}
-      style={{ width: size, height: size, fontSize: size * 0.6 }}
+      style={{ width: size, height: size }}
     >
-      {agent?.avatar_emoji ?? "🤖"}
+      <PixelIcon
+        name={iconFor(agent?.avatar_emoji, "robot")}
+        size={Math.max(16, Math.round((size * 0.6) / 16) * 16)}
+      />
     </div>
   );
 }

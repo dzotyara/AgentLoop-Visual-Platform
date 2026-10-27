@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { Department, Agent, CompanySettings } from "../types";
 import { useI18n, localeName } from "../i18n";
+import PixelIcon, { type PixelIconName } from "./pixel/PixelIcon";
+import { iconFor } from "./pixel/emoji-to-icon";
 
 type View = "office" | "agents" | "dashboard" | "tasks" | "prs" | "skills" | "settings";
 
@@ -13,14 +15,14 @@ interface SidebarProps {
   connected: boolean;
 }
 
-const NAV_ITEMS: { view: View; icon: string; sprite?: string }[] = [
-  { view: "office", icon: "🏢" },
-  { view: "agents", icon: "👥", sprite: "/sprites/3-D-1.png" },
-  { view: "skills", icon: "📚" },
-  { view: "dashboard", icon: "📊" },
-  { view: "tasks", icon: "📋" },
-  { view: "prs", icon: "🔀" },
-  { view: "settings", icon: "⚙️" },
+const NAV_ITEMS: { view: View; icon: PixelIconName; sprite?: string }[] = [
+  { view: "office", icon: "office" },
+  { view: "agents", icon: "agents", sprite: "/sprites/3-D-1.png" },
+  { view: "skills", icon: "library" },
+  { view: "dashboard", icon: "dashboard" },
+  { view: "tasks", icon: "tasks" },
+  { view: "prs", icon: "prs" },
+  { view: "settings", icon: "settings" },
 ];
 
 export default function Sidebar({ currentView, onChangeView, departments, agents, settings, connected }: SidebarProps) {
@@ -62,7 +64,11 @@ export default function Sidebar({ currentView, onChangeView, departments, agents
               className="w-8 h-8 object-contain"
               style={{ imageRendering: "pixelated" }}
             />
-            <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 text-[10px] leading-none drop-shadow">👑</span>
+            <PixelIcon
+              name="crown"
+              size={12}
+              className="absolute -top-1 left-1/2 -translate-x-1/2 drop-shadow"
+            />
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
@@ -70,7 +76,8 @@ export default function Sidebar({ currentView, onChangeView, departments, agents
                 {settings.companyName}
               </div>
               <div className="text-[10px]" style={{ color: "var(--th-text-muted)" }}>
-                👑 {settings.ceoName}
+                <PixelIcon name="crown" size={10} className="mr-1" />
+                {settings.ceoName}
               </div>
             </div>
           )}
@@ -96,7 +103,7 @@ export default function Sidebar({ currentView, onChangeView, departments, agents
                   style={{ imageRendering: "pixelated" }}
                 />
               ) : (
-                item.icon
+                <PixelIcon name={item.icon} size={16} />
               )}
             </span>
             {!collapsed && <span>{navLabels[item.view]}</span>}
@@ -122,7 +129,7 @@ export default function Sidebar({ currentView, onChangeView, departments, agents
                 className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs hover:bg-[var(--th-bg-surface-hover)] transition-colors"
                 style={{ color: "var(--th-text-secondary)" }}
               >
-                <span>{d.icon}</span>
+                <PixelIcon name={iconFor(d.icon, "office")} size={14} />
                 <span className="flex-1 truncate">{localeName(locale, d)}</span>
                 <span className={working > 0 ? "text-blue-400 font-medium" : ""}>
                   {working}/{deptAgents.length}

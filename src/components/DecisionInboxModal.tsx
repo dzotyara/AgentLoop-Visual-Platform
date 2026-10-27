@@ -6,6 +6,8 @@ import AgentAvatar, { buildSpriteMap } from "./AgentAvatar";
 import MessageContent from "./MessageContent";
 import type { DecisionInboxItem } from "./chat/decision-inbox";
 import { formatDecisionInboxTime as formatTime, type DecisionInboxModalProps } from "./chat/decision-inbox-modal.meta";
+import PixelIcon, { type PixelIconName } from "./pixel/PixelIcon";
+import { iconFor } from "./pixel/emoji-to-icon";
 
 export default function DecisionInboxModal({
   open,
@@ -203,11 +205,11 @@ export default function DecisionInboxModal({
     }
     return t({ ko: "에이전트 요청", en: "Agent Request", ja: "エージェント要請", zh: "代理请求" });
   };
-  const getKindAvatarFallback = (kind: DecisionInboxItem["kind"]) => {
-    if (kind === "project_review_ready") return "🧑‍💼";
-    if (kind === "task_timeout_resume") return "⏱️";
-    if (kind === "review_round_pick") return "🧾";
-    return "🤖";
+  const getKindAvatarFallback = (kind: DecisionInboxItem["kind"]): PixelIconName => {
+    if (kind === "project_review_ready") return "ceo";
+    if (kind === "task_timeout_resume") return "clock";
+    if (kind === "review_round_pick") return "report";
+    return "robot";
   };
 
   if (!open) return null;
@@ -220,7 +222,7 @@ export default function DecisionInboxModal({
       >
         <div className="flex items-center justify-between border-b border-slate-700/50 px-6 py-4">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🧭</span>
+            <PixelIcon name="decision" size={24} />
             <h2 className="text-lg font-bold text-white">
               {t({ ko: "미결 의사결정", en: "Pending Decisions", ja: "未決の意思決定", zh: "待处理决策" })}
             </h2>
@@ -239,7 +241,7 @@ export default function DecisionInboxModal({
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
             >
-              ✕
+              <PixelIcon name="close" size={16} />
             </button>
           </div>
         </div>
@@ -281,7 +283,7 @@ export default function DecisionInboxModal({
                             />
                           ) : (
                             <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-900 text-base">
-                              {item.agentAvatar || getKindAvatarFallback(item.kind)}
+                              <PixelIcon name={iconFor(item.agentAvatar, getKindAvatarFallback(item.kind))} size={16} />
                             </span>
                           )}
                           <div className="min-w-0">

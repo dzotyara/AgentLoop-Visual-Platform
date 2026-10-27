@@ -88,6 +88,10 @@ export const PIXEL_ICON_NAMES = [
   "lightbulb",
   "brain",
   "palette",
+  "rocket",
+  "trophy",
+  "medal",
+  "gem",
   // pr-patrol: what a PR waits for, what an agent does
   "ci",
   "reviewer",

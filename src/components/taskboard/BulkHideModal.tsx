@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Task } from "../../types";
 import { useI18n } from "../../i18n";
 import { HIDEABLE_STATUSES, isHideableStatus, taskStatusLabel, type HideableStatus } from "./constants";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface BulkHideModalProps {
   tasks: Task[];
@@ -72,7 +73,7 @@ export default function BulkHideModal({ tasks, hiddenTaskIds, onClose, onApply }
             className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
             title={t({ ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭" })}
           >
-            ✕
+            <PixelIcon name="close" size={16} />
           </button>
         </div>
 

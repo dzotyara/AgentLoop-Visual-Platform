@@ -98,7 +98,7 @@ export default function ManualAssignmentSelector({
                     <option value="all">{t({ ko: "전체 부서", en: "All Depts", ja: "全部署", zh: "所有部门" })}</option>
                     {departments.map((dept) => (
                       <option key={dept.id} value={dept.id}>
-                        {dept.icon} {language === "ko" ? dept.name_ko || dept.name : dept.name}
+                        {language === "ko" ? dept.name_ko || dept.name : dept.name}
                       </option>
                     ))}
                   </select>

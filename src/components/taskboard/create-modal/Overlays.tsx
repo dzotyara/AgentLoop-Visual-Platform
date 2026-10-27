@@ -1,5 +1,6 @@
 import { timeAgo } from "../constants";
 import type { CreateTaskModalOverlaysProps } from "./overlay-types";
+import PixelIcon from "../../pixel/PixelIcon";
 
 export default function CreateTaskModalOverlays({
   t,
@@ -280,7 +281,7 @@ export default function CreateTaskModalOverlays({
                 onClick={onCloseManualPathPicker}
                 className="rounded-md px-2 py-1 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white"
               >
-                ✕
+                <PixelIcon name="close" size={16} />
               </button>
             </div>
             <div className="space-y-3 px-4 py-4">
@@ -399,7 +400,7 @@ export default function CreateTaskModalOverlays({
                 className="rounded-md px-2 py-1 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white"
                 title={t({ ko: "닫기", en: "Close", ja: "閉じる", zh: "关闭" })}
               >
-                ✕
+                <PixelIcon name="close" size={16} />
               </button>
             </div>
 

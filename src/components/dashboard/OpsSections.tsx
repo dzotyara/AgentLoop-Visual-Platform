@@ -1,11 +1,14 @@
 import { localeName, type UiLanguage } from "../../i18n";
 import type { Agent, Task } from "../../types";
 import AgentAvatar from "../AgentAvatar";
+import PixelIcon from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 import { getRankTier, STATUS_LABELS, STATUS_LEFT_BORDER, taskStatusLabel, timeAgo, type TFunction } from "./model";
 
 export interface DepartmentPerformance {
   id: string;
   name: string;
+  /** Stored department icon: a PixelIconName or a legacy emoji. */
   icon: string;
   done: number;
   total: number;
@@ -46,7 +49,7 @@ export function DashboardDeptAndSquad({
             className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/15 text-sm"
             style={{ boxShadow: "0 0 8px rgba(59,130,246,0.3)" }}
           >
-            🏰
+            <PixelIcon name="office" size={16} />
           </span>
           {t({ ko: "부서 성과", en: "DEPT. PERFORMANCE", ja: "部署パフォーマンス", zh: "部门绩效" })}
           <span
@@ -62,7 +65,7 @@ export function DashboardDeptAndSquad({
             className="flex min-h-[200px] flex-col items-center justify-center gap-2 text-sm"
             style={{ color: "var(--th-text-muted)" }}
           >
-            <span className="text-3xl opacity-30">🏰</span>
+            <PixelIcon name="office" size={32} className="opacity-30" />
             {t({ ko: "데이터가 없습니다", en: "No data available", ja: "データがありません", zh: "暂无数据" })}
           </div>
         ) : (
@@ -78,7 +81,7 @@ export function DashboardDeptAndSquad({
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-base transition-transform duration-200 group-hover:scale-110"
                       style={{ background: "var(--th-bg-surface)" }}
                     >
-                      {dept.icon}
+                      <PixelIcon name={iconFor(dept.icon, "office")} size={16} />
                     </span>
                     <span className="text-sm font-bold" style={{ color: "var(--th-text-primary)" }}>
                       {dept.name}
@@ -123,7 +126,7 @@ export function DashboardDeptAndSquad({
               className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/15 text-sm"
               style={{ boxShadow: "0 0 8px rgba(0,240,255,0.2)" }}
             >
-              🤖
+              <PixelIcon name="robot" size={16} />
             </span>
             {t({ ko: "스쿼드", en: "SQUAD", ja: "スクワッド", zh: "小队" })}
           </h2>
@@ -225,7 +228,7 @@ export function DashboardMissionLog({
             className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15 text-sm"
             style={{ boxShadow: "0 0 8px rgba(139,92,246,0.2)" }}
           >
-            📡
+            <PixelIcon name="intel" size={16} />
           </span>
           {t({ ko: "미션 로그", en: "MISSION LOG", ja: "ミッションログ", zh: "任务日志" })}
           <span
@@ -253,7 +256,7 @@ export function DashboardMissionLog({
           className="flex flex-col items-center justify-center gap-2 py-10 text-sm"
           style={{ color: "var(--th-text-muted)" }}
         >
-          <span className="text-3xl opacity-30">📡</span>
+          <PixelIcon name="intel" size={32} className="opacity-30" />
           {t({ ko: "로그 없음", en: "No logs", ja: "ログなし", zh: "暂无日志" })}
         </div>
       ) : (
@@ -283,7 +286,7 @@ export function DashboardMissionLog({
                       color: "var(--th-text-muted)",
                     }}
                   >
-                    📄
+                    <PixelIcon name="file" size={16} />
                   </div>
                 )}
 

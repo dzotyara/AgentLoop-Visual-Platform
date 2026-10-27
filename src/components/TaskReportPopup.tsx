@@ -6,6 +6,7 @@ import type { UiLanguage } from "../i18n";
 import { pickLang } from "../i18n";
 import AgentAvatar from "./AgentAvatar";
 import { resolveReportAgent } from "./task-report-agent";
+import PixelIcon from "./pixel/PixelIcon";
 
 interface TaskReportPopupProps {
   report: TaskReportDetail;
@@ -376,7 +377,7 @@ export default function TaskReportPopup({ report, agents, departments, uiLanguag
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
           >
-            &#x2715;
+            <PixelIcon name="close" size={16} />
           </button>
         </div>
 

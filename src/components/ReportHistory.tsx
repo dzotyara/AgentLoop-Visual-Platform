@@ -7,6 +7,7 @@ import { getTaskReports, getTaskReportDetail } from "../api";
 import AgentAvatar from "./AgentAvatar";
 import TaskReportPopup from "./TaskReportPopup";
 import { resolveReportAgent } from "./task-report-agent";
+import PixelIcon from "./pixel/PixelIcon";
 
 interface ReportHistoryProps {
   agents: Agent[];
@@ -121,7 +122,7 @@ export default function ReportHistory({ agents, departments, uiLanguage, onClose
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white"
           >
-            &#x2715;
+            <PixelIcon name="close" size={16} />
           </button>
         </div>
 

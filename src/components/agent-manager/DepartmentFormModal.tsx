@@ -5,6 +5,7 @@ import * as api from "../../api";
 import { DEPT_BLANK, DEPT_COLORS } from "./constants";
 import EmojiPicker from "./EmojiPicker";
 import type { DeptForm, Translator } from "./types";
+import PixelIcon from "../pixel/PixelIcon";
 
 export default function DepartmentFormModal({
   locale,
@@ -226,7 +227,7 @@ export default function DepartmentFormModal({
             className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--th-bg-surface-hover)] transition-colors"
             style={{ color: "var(--th-text-muted)" }}
           >
-            ✕
+            <PixelIcon name="close" size={16} />
           </button>
         </div>
 

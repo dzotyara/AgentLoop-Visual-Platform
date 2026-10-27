@@ -4,10 +4,12 @@ import { useI18n } from "../../i18n";
 import AgentAvatar from "../AgentAvatar";
 import AgentSelect from "../AgentSelect";
 import DiffModal from "./DiffModal";
+import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
+import { iconFor } from "../pixel/emoji-to-icon";
 import {
   getTaskTypeBadge,
   isHideableStatus,
-  priorityIcon,
+  priorityDotClass,
   priorityLabel,
   STATUS_OPTIONS,
   taskStatusLabel,
@@ -46,11 +48,11 @@ interface TaskCardProps {
   onUnhideTask?: (id: string) => void;
 }
 
-const SUBTASK_STATUS_ICON: Record<string, string> = {
-  pending: "\u23F3",
-  in_progress: "\uD83D\uDD28",
-  done: "\u2705",
-  blocked: "\uD83D\uDEAB",
+const SUBTASK_STATUS_ICON: Record<string, PixelIconName> = {
+  pending: "pending",
+  in_progress: "wrench",
+  done: "check",
+  blocked: "error",
 };
 
 export default function TaskCard({
@@ -114,11 +116,9 @@ export default function TaskCard({
           {task.title}
         </button>
         <span
-          className="flex-shrink-0 text-base"
+          className={`mt-1 inline-block h-2.5 w-2.5 flex-shrink-0 ${priorityDotClass(task.priority)}`}
           title={`${t({ ko: "우선순위", en: "Priority", ja: "優先度", zh: "优先级" })}: ${priorityLabel(task.priority, t)}`}
-        >
-          {priorityIcon(task.priority)}
-        </span>
+        />
       </div>
 
       {task.description && (
@@ -131,7 +131,7 @@ export default function TaskCard({
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${typeBadge.color}`}>{typeBadge.label}</span>
         {isHiddenTask && (
           <span className="rounded-full bg-cyan-900/60 px-2 py-0.5 text-xs text-cyan-200">
-            🙈 {t({ ko: "숨김", en: "Hidden", ja: "非表示", zh: "隐藏" })}
+            <PixelIcon name="eye" size={12} /> {t({ ko: "숨김", en: "Hidden", ja: "非表示", zh: "隐藏" })}
           </span>
         )}
         {prLink && (
@@ -141,12 +141,13 @@ export default function TaskCard({
             rel="noreferrer"
             className="rounded-full bg-violet-900/60 px-2 py-0.5 text-xs text-violet-200 hover:underline"
           >
-            🔀 {prLink.pr.split("/")[1]}
+            <PixelIcon name="prs" size={12} /> {prLink.pr.split("/")[1]}
           </a>
         )}
         {department && (
           <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
-            {department.icon} {locale === "ko" ? department.name_ko : department.name}
+            <PixelIcon name={iconFor(department.icon, "office")} size={12} />{" "}
+            {locale === "ko" ? department.name_ko : department.name}
           </span>
         )}
       </div>
@@ -246,7 +247,7 @@ export default function TaskCard({
                   : null;
                 return (
                   <div key={subtask.id} className="flex items-center gap-1.5 text-xs">
-                    <span>{SUBTASK_STATUS_ICON[subtask.status] || "\u23F3"}</span>
+                    <PixelIcon name={SUBTASK_STATUS_ICON[subtask.status] ?? "pending"} size={12} />
                     <span
                       className={`flex-1 truncate ${subtask.status === "done" ? "line-through text-slate-500" : "text-slate-300"}`}
                     >
@@ -257,7 +258,8 @@ export default function TaskCard({
                         className="shrink-0 rounded px-1 py-0.5 text-[10px] font-medium"
                         style={{ backgroundColor: targetDepartment.color + "30", color: targetDepartment.color }}
                       >
-                        {targetDepartment.icon} {targetDepartment.name_ko}
+                        <PixelIcon name={iconFor(targetDepartment.icon, "office")} size={12} />{" "}
+                        {targetDepartment.name_ko}
                       </span>
                     )}
                     {subtask.delegated_task_id && subtask.status !== "done" && (
@@ -265,7 +267,7 @@ export default function TaskCard({
                         className="text-blue-400 shrink-0"
                         title={t({ ko: "위임됨", en: "Delegated", ja: "委任済み", zh: "已委派" })}
                       >
-                        🔗
+                        <PixelIcon name="link" size={12} />
                       </span>
                     )}
                     {subtask.status === "blocked" && subtask.blocked_reason && (
@@ -295,7 +297,7 @@ export default function TaskCard({
             title={t({ ko: "작업 실행", en: "Run task", ja: "タスク実行", zh: "运行任务" })}
             className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-green-700 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-green-600"
           >
-            ▶ {t({ ko: "실행", en: "Run", ja: "実行", zh: "运行" })}
+            <PixelIcon name="play" size={12} /> {t({ ko: "실행", en: "Run", ja: "実行", zh: "运行" })}
           </button>
         )}
         {canPause && (
@@ -304,7 +306,7 @@ export default function TaskCard({
             title={t({ ko: "작업 일시중지", en: "Pause task", ja: "タスク一時停止", zh: "暂停任务" })}
             className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-orange-700 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-orange-600"
           >
-            ⏸ {t({ ko: "일시중지", en: "Pause", ja: "一時停止", zh: "暂停" })}
+            <PixelIcon name="pause" size={12} /> {t({ ko: "일시중지", en: "Pause", ja: "一時停止", zh: "暂停" })}
           </button>
         )}
         {canStop && (
@@ -326,7 +328,7 @@ export default function TaskCard({
             title={t({ ko: "작업 중지", en: "Cancel task", ja: "タスク停止", zh: "取消任务" })}
             className="flex items-center justify-center gap-1 rounded-lg bg-red-800 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-red-700"
           >
-            ⏹ {t({ ko: "중지", en: "Cancel", ja: "キャンセル", zh: "取消" })}
+            <PixelIcon name="stop" size={12} /> {t({ ko: "중지", en: "Cancel", ja: "キャンセル", zh: "取消" })}
           </button>
         )}
         {canResume && (
@@ -353,7 +355,7 @@ export default function TaskCard({
               })}
               className="flex items-center justify-center rounded-lg bg-slate-700 px-2 py-1.5 text-xs text-slate-300 transition hover:bg-slate-600 hover:text-white"
             >
-              &#128421;
+              <PixelIcon name="terminal" size={16} />
             </button>
           )}
         {(task.status === "planned" ||
@@ -373,7 +375,7 @@ export default function TaskCard({
               })}
               className="flex items-center justify-center rounded-lg bg-cyan-800/70 px-2 py-1.5 text-xs text-cyan-200 transition hover:bg-cyan-700 hover:text-white"
             >
-              📝
+              <PixelIcon name="meeting" size={16} />
             </button>
           )}
         {task.status === "review" && (
@@ -401,7 +403,7 @@ export default function TaskCard({
             })}
             className="flex items-center justify-center gap-1 rounded-lg bg-slate-700 px-2 py-1.5 text-xs text-slate-300 transition hover:bg-slate-600 hover:text-white"
           >
-            🙈 {t({ ko: "숨김", en: "Hide", ja: "非表示", zh: "隐藏" })}
+            <PixelIcon name="eye" size={12} /> {t({ ko: "숨김", en: "Hide", ja: "非表示", zh: "隐藏" })}
           </button>
         )}
         {canHideTask && !!isHiddenTask && onUnhideTask && (
@@ -410,7 +412,7 @@ export default function TaskCard({
             title={t({ ko: "숨긴 작업 복원", en: "Restore hidden task", ja: "非表示タスクを復元", zh: "恢复隐藏任务" })}
             className="flex items-center justify-center gap-1 rounded-lg bg-blue-800 px-2 py-1.5 text-xs text-blue-200 transition hover:bg-blue-700 hover:text-white"
           >
-            👁 {t({ ko: "복원", en: "Restore", ja: "復元", zh: "恢复" })}
+            <PixelIcon name="eye" size={12} /> {t({ ko: "복원", en: "Restore", ja: "復元", zh: "恢复" })}
           </button>
         )}
         {canDelete && (
@@ -431,7 +433,7 @@ export default function TaskCard({
             title={t({ ko: "작업 삭제", en: "Delete task", ja: "タスク削除", zh: "删除任务" })}
             className="flex items-center justify-center rounded-lg bg-red-900/60 px-2 py-1.5 text-xs text-red-400 transition hover:bg-red-800 hover:text-red-300"
           >
-            🗑
+            <PixelIcon name="trash" size={16} />
           </button>
         )}
       </div>

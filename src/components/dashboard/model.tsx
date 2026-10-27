@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { UiLanguage } from "../../i18n";
+import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
 
 export type Locale = UiLanguage;
 export type TFunction = (messages: Record<Locale, string>) => string;
@@ -50,20 +51,27 @@ export function timeAgo(timestamp: number, localeTag: string): string {
   return relativeTimeFormat.format(-days, "day");
 }
 
-export const RANK_TIERS = [
-  { name: "BRONZE", nameKo: "브론즈", minXp: 0, color: "#CD7F32", glow: "rgba(205,127,50,0.35)", icon: "⚔️" },
-  { name: "SILVER", nameKo: "실버", minXp: 100, color: "#C0C0C0", glow: "rgba(192,192,192,0.35)", icon: "🛡️" },
-  { name: "GOLD", nameKo: "골드", minXp: 500, color: "#FFD700", glow: "rgba(255,215,0,0.35)", icon: "⭐" },
+export const RANK_TIERS: {
+  name: string;
+  nameKo: string;
+  minXp: number;
+  color: string;
+  glow: string;
+  icon: PixelIconName;
+}[] = [
+  { name: "BRONZE", nameKo: "브론즈", minXp: 0, color: "#CD7F32", glow: "rgba(205,127,50,0.35)", icon: "medal" },
+  { name: "SILVER", nameKo: "실버", minXp: 100, color: "#C0C0C0", glow: "rgba(192,192,192,0.35)", icon: "shield" },
+  { name: "GOLD", nameKo: "골드", minXp: 500, color: "#FFD700", glow: "rgba(255,215,0,0.35)", icon: "star" },
   {
     name: "PLATINUM",
     nameKo: "플래티넘",
     minXp: 2000,
     color: "#00c8b4",
     glow: "rgba(0,200,180,0.35)",
-    icon: "💎",
+    icon: "gem",
   },
-  { name: "DIAMOND", nameKo: "다이아", minXp: 5000, color: "#7df9ff", glow: "rgba(125,249,255,0.35)", icon: "💠" },
-  { name: "MASTER", nameKo: "마스터", minXp: 15000, color: "#c45ff6", glow: "rgba(196,95,246,0.35)", icon: "👑" },
+  { name: "DIAMOND", nameKo: "다이아", minXp: 5000, color: "#7df9ff", glow: "rgba(125,249,255,0.35)", icon: "sparkle" },
+  { name: "MASTER", nameKo: "마스터", minXp: 15000, color: "#c45ff6", glow: "rgba(196,95,246,0.35)", icon: "crown" },
 ];
 
 export function getRankTier(xp: number) {
@@ -159,7 +167,7 @@ export function RankBadge({ xp, size = "md" }: { xp: number; size?: "sm" | "md" 
         textShadow: `0 0 6px ${tier.glow}`,
       }}
     >
-      {tier.icon} {tier.name}
+      <PixelIcon name={tier.icon} size={size === "lg" ? 16 : 12} /> {tier.name}
     </span>
   );
 }
