@@ -88,7 +88,8 @@ export const STATIONS: Record<StationKey, Station> = {
   },
 };
 
-export const STATION_BY_AGENT: Record<string, StationKey> = {
+/** Station of each crew seat (see api/crew-seats.ts): the seat, not the agent's editable name. */
+export const STATION_BY_SEAT: Record<string, StationKey> = {
   Argus: "argus",
   Patch: "patch",
   Rivet: "patch",
@@ -126,7 +127,16 @@ export function fz(units: number, scale: number, min = 11): number {
   return Math.max(min, Math.round(units * scale));
 }
 
-/** Idle spots for the helper fixers that share Patch's workbench (Rivet, Splice). */
+/** The seat whose agent's name goes on each station's plate (the Patch station is shared by the fixers). */
+export const STATION_OWNER: Record<StationKey, string> = {
+  argus: "Argus",
+  patch: "Patch",
+  medic: "Medic",
+  weaver: "Weaver",
+  gate: "Gate",
+};
+
+/** Idle spots for the helper fixers that share Patch's workbench (Rivet, Splice seats). */
 export const HELPER_HOMES: Record<string, { x: number; y: number }> = {
   Rivet: { x: 30, y: 234 },
   Splice: { x: 62, y: 234 },

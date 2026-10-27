@@ -40,6 +40,7 @@ import { setPackSpriteSkin } from "../components/pack-sprite-skin";
 import OfficeHub from "../components/warroom/OfficeHub";
 import CommandPalette, { type PaletteView } from "../components/shell/CommandPalette";
 import { useLoopNotifications } from "../components/shell/loop-notifications";
+import { useCrewSeats } from "../api/crew-seats";
 import { requestPrSelection } from "../components/warroom/pr-selection";
 import PipelineGraph from "../components/pipeline/PipelineGraph";
 import MetricsPage from "../components/metrics/MetricsPage";
@@ -383,7 +384,8 @@ export default function AppMainLayout({
     },
     [setView],
   );
-  useLoopNotifications(openPrPage);
+  useLoopNotifications(openPrPage); // its status polls also load the crew seats
+  useCrewSeats(); // re-render avatars once seats arrive: renamed crew keep their operator sprite
   const openRun = useCallback(
     (taskId: string) => {
       openRunRequest(taskId);

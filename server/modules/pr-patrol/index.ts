@@ -25,81 +25,13 @@ import { ACTION_PREFIX, buildPatrolPrompt } from "./prompts.ts";
 import { createPipelineStore, effectiveConfig, registerPipelineRoutes, stepPolicy } from "./pipeline.ts";
 import { registerMetricsRoutes } from "./metrics.ts";
 import { createPrPatrolStore, ensurePrPatrolSchema, prKey } from "./store.ts";
+import { createCrew, FIXER_HELPERS, PATROL_AGENTS, type AgentRole } from "./crew.ts";
 import { registerRunRoutes } from "./runs.ts";
 import { preparePrWorktree, pushAgentCommits, type PrWorkspace, type PushOutcome } from "./workspace.ts";
 
 export const PR_PATROL_SOURCE = "pr-patrol";
 
 type RunDecision = Extract<Decision, { kind: "run" }>;
-type AgentRole = "reviewer" | "fixer" | "ci" | "conflict" | "gate";
-
-/** The patrol's own staff: they sit in the pixel office and pick up the loop's tasks. */
-const PATROL_AGENTS: Record<
-  AgentRole,
-  { name: string; dept: string; role: string; emoji: string; sprite: number; personality: string }
-> = {
-  reviewer: {
-    name: "Argus",
-    dept: "qa",
-    role: "senior",
-    emoji: "scope",
-    sprite: 7,
-    personality: "PR reviewer: correctness, silent failures, security",
-  },
-  fixer: {
-    name: "Patch",
-    dept: "dev",
-    role: "senior",
-    emoji: "wrench",
-    sprite: 3,
-    personality: "Applies review findings and reviewer comments",
-  },
-  ci: {
-    name: "Medic",
-    dept: "devsecops",
-    role: "senior",
-    emoji: "medkit",
-    sprite: 9,
-    personality: "Reads failing CI logs and fixes the branch",
-  },
-  conflict: {
-    name: "Weaver",
-    dept: "dev",
-    role: "junior",
-    emoji: "bomb",
-    sprite: 11,
-    personality: "Merges the base branch and resolves conflicts",
-  },
-  gate: {
-    name: "Gate",
-    dept: "operations",
-    role: "senior",
-    emoji: "shield",
-    sprite: 5,
-    personality: "Declares a PR ready once checks, threads and review are clean",
-  },
-};
-
-/** Extra fixers beyond Patch, enabled by PR_PATROL_FIXERS (each works a different PR). */
-const FIXER_HELPERS: Array<(typeof PATROL_AGENTS)[AgentRole]> = [
-  {
-    name: "Rivet",
-    dept: "dev",
-    role: "junior",
-    emoji: "wrench",
-    sprite: 4,
-    personality: "Second fixer: review findings and comments on another PR",
-  },
-  {
-    name: "Splice",
-    dept: "dev",
-    role: "junior",
-    emoji: "wrench",
-    sprite: 6,
-    personality: "Third fixer: review findings and comments on another PR",
-  },
-];
-
 type CrewMember = { id: string; name: string };
 
 const ACTION_ROLE: Record<ActionKind, AgentRole> = {
@@ -140,70 +72,21 @@ export function createPrPatrol(ctx: RuntimeContext) {
   let ticking = false;
   let lastTick: { at: number; error: string | null; prs: number } = { at: 0, error: null, prs: 0 };
 
-  /** Agent row for a crew member, created on first use; avatars are pixel-icon names. */
-  function ensureAgent(a: (typeof PATROL_AGENTS)[AgentRole]): string {
-    const existing = db.prepare("SELECT id FROM agents WHERE name = ?").get(a.name) as { id: string } | undefined;
-    if (existing) {
-      db.prepare("UPDATE agents SET avatar_emoji = ? WHERE id = ? AND avatar_emoji != ?").run(
-        a.emoji,
-        existing.id,
-        a.emoji,
-      );
-      return existing.id;
-    }
-    const id = randomUUID();
-    db.prepare(
-      `INSERT INTO agents (id, name, name_ko, department_id, role, cli_provider, avatar_emoji, sprite_number, personality)
-       VALUES (?, ?, ?, ?, ?, 'claude', ?, ?, ?)`,
-    ).run(id, a.name, a.name, a.dept, a.role, a.emoji, a.sprite, a.personality);
-    broadcast("agent_created", db.prepare("SELECT * FROM agents WHERE id = ?").get(id));
-    return id;
-  }
+  /** Crew seats bound to agent rows by id: renaming an agent in the office keeps its seat. */
+  const crewSeats = createCrew(db, (row) => broadcast("agent_created", row));
+  const agentId = (role: AgentRole) => crewSeats.agentId(PATROL_AGENTS[role]);
+  const member = (id: string, seatKey: string): CrewMember => ({ id, name: crewSeats.name(id, seatKey) });
 
-  function ensureAgents(): Record<AgentRole, string> {
-    const ids = {} as Record<AgentRole, string>;
-    for (const [role, a] of Object.entries(PATROL_AGENTS) as Array<[AgentRole, (typeof PATROL_AGENTS)[AgentRole]]>) {
-      if (role === "fixer") {
-        ids[role] = ensureAgent(a);
-        continue;
-      }
-      const existing = db.prepare("SELECT id FROM agents WHERE name = ?").get(a.name) as { id: string } | undefined;
-      if (existing) {
-        // avatars are pixel-icon names now (the UI shows no emoji); migrate rows created with emoji
-        db.prepare("UPDATE agents SET avatar_emoji = ? WHERE id = ? AND avatar_emoji != ?").run(
-          a.emoji,
-          existing.id,
-          a.emoji,
-        );
-        ids[role] = existing.id;
-        continue;
-      }
-      const id = randomUUID();
-      db.prepare(
-        `INSERT INTO agents (id, name, name_ko, department_id, role, cli_provider, avatar_emoji, sprite_number, personality)
-         VALUES (?, ?, ?, ?, ?, 'claude', ?, ?, ?)`,
-      ).run(id, a.name, a.name, a.dept, a.role, a.emoji, a.sprite, a.personality);
-      broadcast("agent_created", db.prepare("SELECT * FROM agents WHERE id = ?").get(id));
-      ids[role] = id;
-    }
-    return ids;
-  }
-
-  let agentIds: Record<AgentRole, string> | null = null;
-  const agentId = (role: AgentRole) => (agentIds ??= ensureAgents())[role];
-
-  let fixerCrew: CrewMember[] | null = null;
-  /** Patch first, then as many helpers as PR_PATROL_FIXERS allows. */
+  /** Patch first, then as many helpers as PR_PATROL_FIXERS allows; names are read fresh (agents get renamed). */
   const fixers = (): CrewMember[] =>
-    (fixerCrew ??= [
-      { id: agentId("fixer"), name: PATROL_AGENTS.fixer.name },
-      ...FIXER_HELPERS.slice(0, cfg.fixers - 1).map((a) => ({ id: ensureAgent(a), name: a.name })),
-    ]);
+    [PATROL_AGENTS.fixer, ...FIXER_HELPERS.slice(0, cfg.fixers - 1)].map((seat) =>
+      member(crewSeats.agentId(seat), seat.key),
+    );
 
   /** A free crew member for the role, or null when all of them are on other PRs. */
   function pickAgent(role: AgentRole): CrewMember | null {
     const busy = new Set([...running.values()].map((r) => r.agentId));
-    const pool = role === "fixer" ? fixers() : [{ id: agentId(role), name: PATROL_AGENTS[role].name }];
+    const pool = role === "fixer" ? fixers() : [member(agentId(role), PATROL_AGENTS[role].key)];
     return pool.find((m) => !busy.has(m.id)) ?? null;
   }
 
@@ -324,7 +207,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
           const body = formatReviewComment({
             findings,
             summary,
-            reviewer: PATROL_AGENTS.reviewer.name,
+            reviewer: crewSeats.name(agentId("reviewer"), PATROL_AGENTS.reviewer.key),
             headSha: ws.startSha,
             autoFix: true,
             nitRounds: cfg.maxNitRounds,
@@ -580,7 +463,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
             const body = formatReviewComment({
               findings: d.approval.minor,
               summary: "",
-              reviewer: PATROL_AGENTS.reviewer.name,
+              reviewer: crewSeats.name(agentId("reviewer"), PATROL_AGENTS.reviewer.key),
               headSha: d.approval.sha,
               autoFix: true,
               final: true,
@@ -609,8 +492,11 @@ export function createPrPatrol(ctx: RuntimeContext) {
         const crew = pickAgent(ACTION_ROLE[d.action]);
         if (!crew) {
           const role = ACTION_ROLE[d.action];
-          const who = role === "fixer" ? `all ${fixers().length} fixers are` : `${PATROL_AGENTS[role].name} is`;
-          store.setPhase(key, "watching", `queued: ${who} busy on other PRs`, [], "agent");
+          const who =
+            role === "fixer"
+              ? `all ${fixers().length} fixers are`
+              : `${crewSeats.name(agentId(role), PATROL_AGENTS[role].key)} is`;
+          store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]} (${who} busy on other PRs)`, [], "agent");
           return;
         }
         // Not awaited: a first clone of a big repo would otherwise stall the tick and idle the other slots.
@@ -657,6 +543,8 @@ export function createPrPatrol(ctx: RuntimeContext) {
       maxConcurrent: effectiveConfig(cfg, pipeline.get()).maxConcurrent,
       lastTick,
       running: Object.fromEntries(running),
+      /** Agent id -> crew seat (Argus, Patch, Rivet, Splice, Medic, Weaver, Gate), stable across renames. */
+      crew: crewSeats.seats(),
       prs: store.listPrs().map((r) => {
         const run = running.get(r.pr_key);
         return {
@@ -710,8 +598,8 @@ export function createPrPatrol(ctx: RuntimeContext) {
     db.prepare(
       "UPDATE tasks SET status = 'cancelled', updated_at = ? WHERE status = 'in_progress' AND workflow_meta_json LIKE ?",
     ).run(nowMs(), `%"source":"${PR_PATROL_SOURCE}"%`);
-    agentIds = ensureAgents();
-    fixers(); // create the helper fixers up front so they show in the office
+    for (const role of Object.keys(PATROL_AGENTS) as AgentRole[]) agentId(role); // bind every seat up front
+    fixers(); // and the helper fixers, so they show in the office
     console.log(
       `[pr-patrol] on: query "${cfg.searchQuery}", every ${cfg.intervalMs / 1000}s, write=${cfg.write}, review=${cfg.review}` +
         (interrupted ? `, ${interrupted} interrupted action(s) will retry` : ""),

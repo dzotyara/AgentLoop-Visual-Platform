@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { Agent } from "../../types";
 import { formatUsd, getClaudeCosts, getPrPatrolStatus, type PrPatrolPhase, type PrPatrolPr } from "../../api";
+import { crewSeatOf, useCrewSeats } from "../../api/crew-seats";
 import { usePolling } from "../../hooks/usePolling";
 import { buildSpriteMap } from "../AgentAvatar";
 import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
@@ -12,7 +13,8 @@ import {
   SCENE_H,
   SCENE_W,
   STATIONS,
-  STATION_BY_AGENT,
+  STATION_BY_SEAT,
+  STATION_OWNER,
   HELPER_HOMES,
   STRIPE_H,
   TABLE,
@@ -87,7 +89,15 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
   const prs = useMemo(() => (data?.prs ?? []).filter((p) => p.phase !== "skipped"), [data]);
   const slots = useMemo(() => pinSlots(prs.map((p) => p.pr_key)), [prs]);
   const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
-  const crew = agents.filter((a) => STATION_BY_AGENT[a.name]);
+  useCrewSeats(); // re-place the crew once the seat map arrives
+  // Crew members by seat, not by name: agents renamed in the office keep their station, sprite and plate.
+  const seated = agents.flatMap((agent) => {
+    const seat = crewSeatOf(agent);
+    return seat && STATION_BY_SEAT[seat] ? [{ agent, seat, station: STATION_BY_SEAT[seat] }] : [];
+  });
+  /** Name on a station's plate and screen: whoever sits in the station's own seat right now. */
+  const plateName = (key: StationKey) =>
+    (seated.find((c) => c.seat === STATION_OWNER[key])?.agent.name ?? STATIONS[key].label).toUpperCase();
   const readyPrs = prs.filter((p) => p.phase === "ready");
   const queuedPrs = prs
     .filter((p) => p.phase === "merging")
@@ -142,13 +152,14 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
         },
       };
     }
-    return { spot: HELPER_HOMES[agent.name] ?? station.home, working: false, job: undefined, bubble: null };
+    const seat = crewSeatOf(agent);
+    return { spot: (seat && HELPER_HOMES[seat]) || station.home, working: false, job: undefined, bubble: null };
   };
 
-  const placed = crew.map((agent, i) => ({
+  const placed = seated.map(({ agent, station }, i) => ({
     agent,
-    key: STATION_BY_AGENT[agent.name],
-    ...placeAgent(agent, STATION_BY_AGENT[agent.name], i),
+    key: station,
+    ...placeAgent(agent, station, i),
   }));
   const s = scale;
 
@@ -222,8 +233,8 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="warroom-pixel" style={{ color: "#e8e8e0" }}>
-                    {st.label}
+                  <span className="warroom-pixel truncate" style={{ color: "#e8e8e0" }}>
+                    {plateName(st.key)}
                     {crewHere.length > 1 ? ` ${busyHere}/${crewHere.length}` : ""}
                   </span>
                   <span>{state}</span>
@@ -247,22 +258,27 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
         <div style={box(s, TABLE.x, TABLE.y, TABLE.w, TABLE.h, tex("table.png", "#6b4f2e"))} />
 
         {/* stations and nameplates */}
-        {Object.values(STATIONS).map((st) => (
-          <div key={st.key}>
-            <div style={box(s, st.x, st.y, 64, 48, tex(`station-${st.key}.png`, "rgba(70,72,60,0.6)"))} />
-            <div
-              className="warroom-pixel flex items-center justify-center gap-1"
-              style={box(s, st.x + 8, st.y + 48, 48, 12, {
-                ...tex("plate.png", "#4a4c50"),
-                fontSize: fz(4.6, s, 12),
-                color: "#1c1b22",
-              })}
-            >
-              <PixelIcon name={st.icon as PixelIconName} size={6 * s} />
-              {st.label}
+        {Object.values(STATIONS).map((st) => {
+          const name = plateName(st.key);
+          const long = name.length > 7;
+          return (
+            <div key={st.key}>
+              <div style={box(s, st.x, st.y, 64, 48, tex(`station-${st.key}.png`, "rgba(70,72,60,0.6)"))} />
+              <div
+                className="warroom-pixel flex items-center justify-center gap-1 overflow-hidden whitespace-nowrap"
+                style={box(s, st.x + 8, st.y + 48, 48, 12, {
+                  ...tex("plate.png", "#4a4c50"),
+                  fontSize: fz(long ? 3.8 : 4.6, s, long ? 10 : 12),
+                  color: "#1c1b22",
+                })}
+                title={name}
+              >
+                <PixelIcon name={st.icon as PixelIconName} size={6 * s} />
+                <span className="truncate">{name}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* PR pins on the map */}
         {prs.map((pr) => {

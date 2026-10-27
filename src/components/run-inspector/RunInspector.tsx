@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getRun, listRuns, type PrPatrolRunDetail, type PrPatrolRunList } from "../../api";
+import { crewSeatOf } from "../../api/crew-seats";
 import type { Agent } from "../../types";
 import { buildSpriteMap } from "../AgentAvatar";
 import PixelIcon from "../pixel/PixelIcon";
@@ -16,7 +17,6 @@ export { openRunRequest, takeRunRequest } from "./run-request";
 const LIST_POLL_MS = 15_000;
 const DETAIL_POLL_MS = 5_000;
 const SEARCH_DEBOUNCE_MS = 300;
-const PATROL_AGENTS = ["Argus", "Patch", "Medic", "Weaver"];
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -239,7 +239,7 @@ export default function RunInspector({ initialTaskId, agents }: { initialTaskId?
 
   const agentNames = useMemo(() => {
     const names = new Set(knownAgents);
-    for (const a of agents) if (PATROL_AGENTS.includes(a.name)) names.add(a.name);
+    for (const a of agents) if (crewSeatOf(a)) names.add(a.name);
     return [...names].sort();
   }, [knownAgents, agents]);
 

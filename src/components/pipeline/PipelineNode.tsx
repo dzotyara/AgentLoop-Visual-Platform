@@ -4,7 +4,8 @@ import PixelIcon from "../pixel/PixelIcon";
 import { usePipelineEditor } from "./pipeline-context";
 import { LIVE_COLOR, LIVE_LABEL, PR_WIRE, type NodeLive, type StepDef } from "./pipeline-model";
 
-export type PipelineNodeData = { def: StepDef; live: NodeLive; sprite: number | null };
+/** `agentName`: the current name of the agent in the step's crew seat (def.agent), which can be renamed. */
+export type PipelineNodeData = { def: StepDef; live: NodeLive; sprite: number | null; agentName?: string };
 export type PipelineFlowNode = Node<PipelineNodeData, "step">;
 
 const PANEL = "#2a2c33";
@@ -146,7 +147,7 @@ function LiveStrip({ live }: { live: NodeLive }) {
 }
 
 function PipelineNodeImpl({ data }: NodeProps<PipelineFlowNode>) {
-  const { def, live, sprite } = data;
+  const { def, live, sprite, agentName } = data;
   const glow =
     live.active && live.state ? LIVE_COLOR[live.state] : live.state === "blocked" ? LIVE_COLOR.blocked : null;
   const { draft } = usePipelineEditor();
@@ -200,7 +201,7 @@ function PipelineNodeImpl({ data }: NodeProps<PipelineFlowNode>) {
           {sprite ? (
             <img
               src={`/sprites/${sprite}-D-1.png`}
-              alt={def.agent ?? ""}
+              alt={agentName ?? def.agent ?? ""}
               width={32}
               height={32}
               draggable={false}
@@ -213,7 +214,7 @@ function PipelineNodeImpl({ data }: NodeProps<PipelineFlowNode>) {
             </span>
           )}
           <div className="min-w-0">
-            <div className="text-xs font-medium text-slate-100">{def.agent ?? "GitHub"}</div>
+            <div className="text-xs font-medium text-slate-100">{agentName ?? def.agent ?? "GitHub"}</div>
             <div className="line-clamp-2 text-[10px] leading-snug text-slate-400">{def.blurb}</div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { post, put, request } from "./core";
+import { setCrewSeats } from "./crew-seats";
 
 export type PrPatrolPhase = "watching" | "working" | "waiting" | "blocked" | "ready" | "merging" | "skipped" | "error";
 
@@ -82,11 +83,15 @@ export type PrPatrolStatus = {
   intervalMs: number;
   maxConcurrent: number;
   lastTick: { at: number; error: string | null; prs: number };
+  /** Agent id -> crew seat (Argus, Patch, Rivet, Splice, Medic, Weaver, Gate); stable when agents are renamed. */
+  crew?: Record<string, string>;
   prs: PrPatrolPr[];
 };
 
-export function getPrPatrolStatus(): Promise<PrPatrolStatus> {
-  return request<PrPatrolStatus>("/api/pr-patrol/status");
+export async function getPrPatrolStatus(): Promise<PrPatrolStatus> {
+  const status = await request<PrPatrolStatus>("/api/pr-patrol/status");
+  setCrewSeats(status.crew);
+  return status;
 }
 
 export function triggerPrPatrolTick(): Promise<{ ok: boolean }> {

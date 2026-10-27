@@ -24,6 +24,7 @@ import {
 } from "../../api";
 import { usePolling } from "../../hooks/usePolling";
 import { buildSpriteMap } from "../AgentAvatar";
+import { crewSeatOf, useCrewSeats } from "../../api/crew-seats";
 import PixelIcon from "../pixel/PixelIcon";
 import { PHASE_META } from "../pr-patrol/pr-ui";
 import { PipelineEditorContext, type PipelineEditor } from "./pipeline-context";
@@ -155,21 +156,24 @@ export default function PipelineGraph({ agents, onOpenRun }: { agents: Agent[]; 
 
   // live overlay of the picked PR
   const overlay = useMemo(() => overlayFor(pr), [pr]);
-  const spriteFor = useMemo(() => {
+  const seats = useCrewSeats();
+  /** Sprite and current name of the agent in a step's crew seat (def.agent is the seat, e.g. "Argus"). */
+  const seatAgent = useMemo(() => {
     const map = buildSpriteMap(agents);
-    return (name: string | null, fallback: number | null): number | null => {
-      if (!name) return null;
-      const agent = agents.find((a) => a.name === name);
-      return (agent && map.get(agent.id)) || fallback;
+    return (seat: string | null, fallback: number | null): { sprite: number | null; agentName?: string } => {
+      if (!seat) return { sprite: null };
+      const agent = agents.find((a) => crewSeatOf(a) === seat);
+      return { sprite: (agent && map.get(agent.id)) || fallback, agentName: agent?.name };
     };
-  }, [agents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seats: crewSeatOf reads the seat store
+  }, [agents, seats]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<PipelineFlowNode>(
     STEPS.map((def, i) => ({
       id: def.id,
       type: "step",
       position: nodePosition(i),
-      data: { def, live: overlay[def.id], sprite: spriteFor(def.agent, def.fallbackSprite) },
+      data: { def, live: overlay[def.id], ...seatAgent(def.agent, def.fallbackSprite) },
     })),
   );
   useEffect(() => {
@@ -178,11 +182,11 @@ export default function PipelineGraph({ agents, onOpenRun }: { agents: Agent[]; 
         const def = STEPS.find((s) => s.id === n.id) ?? n.data.def;
         return {
           ...n,
-          data: { def, live: overlay[n.id as PipelineNodeId], sprite: spriteFor(def.agent, def.fallbackSprite) },
+          data: { def, live: overlay[n.id as PipelineNodeId], ...seatAgent(def.agent, def.fallbackSprite) },
         };
       }),
     );
-  }, [overlay, spriteFor, setNodes]);
+  }, [overlay, seatAgent, setNodes]);
 
   const edges: Edge[] = useMemo(() => {
     const upTo = activeIndex(overlay);
