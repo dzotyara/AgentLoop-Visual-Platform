@@ -32,7 +32,7 @@ const PATROL_AGENTS: Record<
     name: "Argus",
     dept: "qa",
     role: "senior",
-    emoji: "🔍",
+    emoji: "scope",
     sprite: 7,
     personality: "PR reviewer: correctness, silent failures, security",
   },
@@ -40,7 +40,7 @@ const PATROL_AGENTS: Record<
     name: "Patch",
     dept: "dev",
     role: "senior",
-    emoji: "🩹",
+    emoji: "wrench",
     sprite: 3,
     personality: "Applies review findings and reviewer comments",
   },
@@ -48,7 +48,7 @@ const PATROL_AGENTS: Record<
     name: "Medic",
     dept: "devsecops",
     role: "senior",
-    emoji: "🚑",
+    emoji: "medkit",
     sprite: 9,
     personality: "Reads failing CI logs and fixes the branch",
   },
@@ -56,7 +56,7 @@ const PATROL_AGENTS: Record<
     name: "Weaver",
     dept: "dev",
     role: "junior",
-    emoji: "🧵",
+    emoji: "bomb",
     sprite: 11,
     personality: "Merges the base branch and resolves conflicts",
   },
@@ -64,7 +64,7 @@ const PATROL_AGENTS: Record<
     name: "Gate",
     dept: "operations",
     role: "senior",
-    emoji: "✅",
+    emoji: "shield",
     sprite: 5,
     personality: "Declares a PR ready once checks, threads and review are clean",
   },
@@ -111,6 +111,12 @@ export function createPrPatrol(ctx: RuntimeContext) {
     for (const [role, a] of Object.entries(PATROL_AGENTS) as Array<[AgentRole, (typeof PATROL_AGENTS)[AgentRole]]>) {
       const existing = db.prepare("SELECT id FROM agents WHERE name = ?").get(a.name) as { id: string } | undefined;
       if (existing) {
+        // avatars are pixel-icon names now (the UI shows no emoji); migrate rows created with emoji
+        db.prepare("UPDATE agents SET avatar_emoji = ? WHERE id = ? AND avatar_emoji != ?").run(
+          a.emoji,
+          existing.id,
+          a.emoji,
+        );
         ids[role] = existing.id;
         continue;
       }
@@ -472,7 +478,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
             note,
             "ready",
           );
-          notifyCeo?.(`✅ ${repo}#${number} is ready — ${s.title}`);
+          notifyCeo?.(`[ready] ${repo}#${number} is ready to merge — ${s.title}`);
         }
         return;
       case "run":
