@@ -256,7 +256,9 @@ export function registerRoutesPartB(ctx: RuntimeContext): RouteCollabExports {
     const hasJapanese = /[ぁ-んァ-ン一-龯]/.test(content);
     const hasChinese = /[\u4e00-\u9fff]/.test(content) && !hasJapanese;
     const displayName = normalizeMessengerTextLine(agent.name_ko || agent.name || "Agent");
-    const avatar = normalizeMessengerTextLine(agent.avatar_emoji || "🤖");
+    // The UI now stores pixel-icon names (e.g. "scope") in avatar_emoji; messengers still get an emoji.
+    const storedAvatar = normalizeMessengerTextLine(agent.avatar_emoji || "🤖");
+    const avatar = /^[a-z][a-z-]*$/.test(storedAvatar) ? "🤖" : storedAvatar;
     const taskTitle = extractTaskTitleFromReportText(content, requestLine);
 
     if (hasKorean) {
