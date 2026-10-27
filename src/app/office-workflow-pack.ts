@@ -1,13 +1,14 @@
 import type { Agent, AgentRole, CliProvider, Department, RoomTheme, WorkflowPackKey } from "../types";
+import type { PixelIconName } from "../components/pixel/PixelIcon";
 
 export type UiLanguageLike = "ko" | "en" | "ja" | "zh";
 
 type Localized = { ko: string; en: string; ja: string; zh: string };
 type DeptPreset = {
   name: Localized;
-  icon: string;
+  icon: PixelIconName;
   agentPrefix: Localized;
-  avatarPool: string[];
+  avatarPool: PixelIconName[];
 };
 
 type StaffPreset = {
@@ -223,39 +224,39 @@ const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
     departments: {
       planning: {
         name: { ko: "Intel Center", en: "Intel Center", ja: "Intel Center", zh: "Intel Center" },
-        icon: "🗺️",
+        icon: "intel",
         agentPrefix: { ko: "Scout", en: "Scout", ja: "Scout", zh: "Scout" },
-        avatarPool: ["🗺️", "📡", "🧭"],
+        avatarPool: ["intel", "scope", "decision"],
       },
       dev: {
         name: { ko: "Workbench", en: "Workbench", ja: "Workbench", zh: "Workbench" },
-        icon: "🔧",
+        icon: "workbench",
         agentPrefix: { ko: "Mechanic", en: "Mechanic", ja: "Mechanic", zh: "Mechanic" },
-        avatarPool: ["🔧", "🛠️", "🔩"],
+        avatarPool: ["workbench", "wrench", "bomb"],
       },
       design: {
         name: { ko: "Camo Workshop", en: "Camo Workshop", ja: "Camo Workshop", zh: "Camo Workshop" },
-        icon: "🎨",
+        icon: "camo",
         agentPrefix: { ko: "Painter", en: "Painter", ja: "Painter", zh: "Painter" },
-        avatarPool: ["🎨", "🪖", "🧵"],
+        avatarPool: ["camo", "palette", "design"],
       },
       qa: {
         name: { ko: "Medstation", en: "Medstation", ja: "Medstation", zh: "Medstation" },
-        icon: "🩺",
+        icon: "medstation",
         agentPrefix: { ko: "Medic", en: "Medic", ja: "Medic", zh: "Medic" },
-        avatarPool: ["🩺", "💉", "🩹"],
+        avatarPool: ["medstation", "medkit", "heart"],
       },
       devsecops: {
         name: { ko: "Security", en: "Security", ja: "Security", zh: "Security" },
-        icon: "🛡️",
+        icon: "security",
         agentPrefix: { ko: "Sentry", en: "Sentry", ja: "Sentry", zh: "Sentry" },
-        avatarPool: ["🛡️", "🔒", "🚨"],
+        avatarPool: ["security", "shield", "lock"],
       },
       operations: {
         name: { ko: "Generator", en: "Generator", ja: "Generator", zh: "Generator" },
-        icon: "⚡",
+        icon: "generator",
         agentPrefix: { ko: "Quartermaster", en: "Quartermaster", ja: "Quartermaster", zh: "Quartermaster" },
-        avatarPool: ["⚡", "⛽", "📦"],
+        avatarPool: ["generator", "bolt", "operations"],
       },
     },
     decorStyle: "tarkov",
@@ -288,27 +289,27 @@ const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
     departments: {
       planning: {
         name: { ko: "편집기획실", en: "Editorial Planning", ja: "編集企画室", zh: "编辑企划室" },
-        icon: "📚",
+        icon: "library",
         agentPrefix: { ko: "편집 PM", en: "Editorial PM", ja: "編集PM", zh: "编辑PM" },
-        avatarPool: ["📚", "🗂️", "🧭"],
+        avatarPool: ["library", "folder", "decision"],
       },
       dev: {
         name: { ko: "리서치엔진팀", en: "Research Engine", ja: "リサーチエンジン", zh: "调研引擎组" },
-        icon: "🧠",
+        icon: "brain",
         agentPrefix: { ko: "리서처", en: "Researcher", ja: "リサーチャー", zh: "研究员" },
-        avatarPool: ["🧠", "📊", "📝"],
+        avatarPool: ["brain", "chart", "edit"],
       },
       design: {
         name: { ko: "문서디자인팀", en: "Doc Design", ja: "ドキュメントデザイン", zh: "文档设计组" },
-        icon: "🧾",
+        icon: "report",
         agentPrefix: { ko: "문서 디자이너", en: "Doc Designer", ja: "資料デザイナー", zh: "文档设计师" },
-        avatarPool: ["🧾", "🎨", "📐"],
+        avatarPool: ["report", "design", "file"],
       },
       qa: {
         name: { ko: "검수팀", en: "Review Desk", ja: "レビュー班", zh: "审校组" },
-        icon: "🔎",
+        icon: "review",
         agentPrefix: { ko: "검수관", en: "Reviewer", ja: "レビュア", zh: "审校员" },
-        avatarPool: ["🔎", "✅", "🧪"],
+        avatarPool: ["review", "check", "test"],
       },
     },
     staff: {
@@ -343,21 +344,21 @@ const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
     departments: {
       planning: {
         name: { ko: "조사전략실", en: "Research Strategy", ja: "調査戦略室", zh: "调研战略室" },
-        icon: "🧭",
+        icon: "decision",
         agentPrefix: { ko: "전략 분석가", en: "Strategy Analyst", ja: "戦略アナリスト", zh: "策略分析师" },
-        avatarPool: ["🧭", "🗺️", "📌"],
+        avatarPool: ["decision", "intel", "pin"],
       },
       dev: {
         name: { ko: "크롤링팀", en: "Crawler Team", ja: "クロール班", zh: "爬取组" },
-        icon: "🕸️",
+        icon: "globe",
         agentPrefix: { ko: "수집 엔지니어", en: "Collection Engineer", ja: "収集エンジニア", zh: "采集工程师" },
-        avatarPool: ["🕸️", "🔗", "🧠"],
+        avatarPool: ["globe", "link", "brain"],
       },
       qa: {
         name: { ko: "팩트체크팀", en: "Fact Check", ja: "ファクトチェック", zh: "事实核验组" },
-        icon: "✅",
+        icon: "check",
         agentPrefix: { ko: "검증관", en: "Verifier", ja: "検証官", zh: "核验员" },
-        avatarPool: ["✅", "🔍", "📎"],
+        avatarPool: ["check", "search", "link"],
       },
     },
     staff: {
@@ -392,27 +393,27 @@ const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
     departments: {
       planning: {
         name: { ko: "세계관실", en: "Worldbuilding", ja: "世界観室", zh: "世界观组" },
-        icon: "🌌",
+        icon: "globe",
         agentPrefix: { ko: "세계관 작가", en: "Lore Writer", ja: "設定作家", zh: "设定作者" },
-        avatarPool: ["🌌", "📜", "🧭"],
+        avatarPool: ["globe", "book", "decision"],
       },
       dev: {
         name: { ko: "서사엔진팀", en: "Narrative Engine", ja: "物語エンジン", zh: "叙事引擎组" },
-        icon: "✍️",
+        icon: "edit",
         agentPrefix: { ko: "서사 설계자", en: "Narrative Architect", ja: "物語設計者", zh: "叙事架构师" },
-        avatarPool: ["✍️", "🖋️", "📘"],
+        avatarPool: ["edit", "file", "book"],
       },
       design: {
         name: { ko: "캐릭터 아트팀", en: "Character Art", ja: "キャラアート", zh: "角色美术组" },
-        icon: "🎭",
+        icon: "palette",
         agentPrefix: { ko: "캐릭터 디자이너", en: "Character Designer", ja: "キャラデザ", zh: "角色设计师" },
-        avatarPool: ["🎭", "🧵", "🎨"],
+        avatarPool: ["palette", "user", "design"],
       },
       qa: {
         name: { ko: "톤 검수팀", en: "Tone QA", ja: "トーン検証", zh: "语气审校组" },
-        icon: "🪶",
+        icon: "review",
         agentPrefix: { ko: "문체 검수관", en: "Style Reviewer", ja: "文体レビュア", zh: "文风审校员" },
-        avatarPool: ["🪶", "📖", "✅"],
+        avatarPool: ["review", "book", "check"],
       },
     },
     staff: {
@@ -447,27 +448,27 @@ const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
     departments: {
       planning: {
         name: { ko: "프리프로덕션팀", en: "Pre-production", ja: "プリプロ班", zh: "前期策划组" },
-        icon: "🎬",
+        icon: "video",
         agentPrefix: { ko: "프로듀서", en: "Producer", ja: "プロデューサ", zh: "制片" },
-        avatarPool: ["🎬", "📽️", "🧭"],
+        avatarPool: ["video", "camera", "decision"],
       },
       dev: {
         name: { ko: "씬 엔진팀", en: "Scene Engine", ja: "シーン設計", zh: "场景引擎组" },
-        icon: "🎞️",
+        icon: "image",
         agentPrefix: { ko: "씬 디렉터", en: "Scene Director", ja: "シーン監督", zh: "场景导演" },
-        avatarPool: ["🎞️", "🧱", "🔧"],
+        avatarPool: ["image", "workbench", "wrench"],
       },
       design: {
         name: { ko: "아트/촬영팀", en: "Art & Camera", ja: "アート撮影", zh: "美术摄影组" },
-        icon: "📷",
+        icon: "camera",
         agentPrefix: { ko: "촬영 디자이너", en: "Camera Designer", ja: "撮影デザイナ", zh: "摄影设计师" },
-        avatarPool: ["📷", "🎨", "💡"],
+        avatarPool: ["camera", "palette", "lightbulb"],
       },
       qa: {
         name: { ko: "컷 검수팀", en: "Cut QA", ja: "カット検証", zh: "镜头审校组" },
-        icon: "🧪",
+        icon: "test",
         agentPrefix: { ko: "컷 검수관", en: "Cut Reviewer", ja: "カットレビュア", zh: "镜头审校员" },
-        avatarPool: ["🧪", "✅", "📌"],
+        avatarPool: ["test", "check", "pin"],
       },
     },
     staff: {
@@ -502,27 +503,27 @@ const PACK_PRESETS: Record<WorkflowPackKey, PackPreset> = {
     departments: {
       planning: {
         name: { ko: "캐릭터기획실", en: "Character Planning", ja: "キャラ企画室", zh: "角色企划室" },
-        icon: "🎭",
+        icon: "palette",
         agentPrefix: { ko: "캐릭터 플래너", en: "Character Planner", ja: "キャラ企画", zh: "角色策划" },
-        avatarPool: ["🎭", "🧠", "📜"],
+        avatarPool: ["palette", "brain", "file"],
       },
       dev: {
         name: { ko: "대사엔진팀", en: "Dialogue Engine", ja: "会話エンジン", zh: "对话引擎组" },
-        icon: "🗣️",
+        icon: "chat",
         agentPrefix: { ko: "대사 연출가", en: "Dialogue Director", ja: "台詞演出", zh: "台词导演" },
-        avatarPool: ["🗣️", "💬", "🎙️"],
+        avatarPool: ["chat", "music", "user"],
       },
       design: {
         name: { ko: "연출아트팀", en: "Stage Art", ja: "演出アート", zh: "演出美术组" },
-        icon: "🎨",
+        icon: "design",
         agentPrefix: { ko: "연출 디자이너", en: "Stage Designer", ja: "演出デザイナ", zh: "演出设计师" },
-        avatarPool: ["🎨", "✨", "🎬"],
+        avatarPool: ["design", "sparkle", "video"],
       },
       qa: {
         name: { ko: "캐릭터검수팀", en: "Character QA", ja: "キャラ検証", zh: "角色审校组" },
-        icon: "🔐",
+        icon: "lock",
         agentPrefix: { ko: "설정 검수관", en: "Lore Reviewer", ja: "設定レビュア", zh: "设定审校员" },
-        avatarPool: ["🔐", "✅", "🧪"],
+        avatarPool: ["lock", "check", "test"],
       },
     },
     staff: {
@@ -858,7 +859,7 @@ export function buildOfficePackStarterAgents(params: {
     if (presetInfo && presetInfo.avatarPool.length > 0) {
       return presetInfo.avatarPool[(order - 1) % presetInfo.avatarPool.length] ?? presetInfo.icon;
     }
-    return departmentById.get(deptId)?.icon ?? "🤖";
+    return departmentById.get(deptId)?.icon ?? "robot";
   };
 
   const pushAgent = (deptId: string, role: AgentRole) => {
