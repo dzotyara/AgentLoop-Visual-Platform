@@ -42,12 +42,14 @@ import CommandPalette, { type PaletteView } from "../components/shell/CommandPal
 import { useLoopNotifications } from "../components/shell/loop-notifications";
 import { requestPrSelection } from "../components/warroom/pr-selection";
 import PipelineGraph from "../components/pipeline/PipelineGraph";
+import MetricsPage from "../components/metrics/MetricsPage";
 
 /** Views reachable from the Command-K palette. */
 const PALETTE_VIEWS: PaletteView[] = [
   { view: "office", label: "War room", icon: "office" },
   { view: "prs", label: "Pull requests", icon: "prs" },
   { view: "pipeline", label: "Pipeline", icon: "branch" },
+  { view: "metrics", label: "Metrics", icon: "chart" },
   { view: "tasks", label: "Tasks", icon: "tasks" },
   { view: "agents", label: "Agents", icon: "agents" },
   { view: "dashboard", label: "Dashboard", icon: "dashboard" },
@@ -597,6 +599,8 @@ export default function AppMainLayout({
             )}
 
             {view === "prs" && <PrPatrolView agents={agents} onOpenTerminal={onOpenTerminal} />}
+
+            {view === "metrics" && <MetricsPage />}
 
             {view === "pipeline" && (
               <div className="h-[calc(100dvh-140px)] min-h-[560px]">

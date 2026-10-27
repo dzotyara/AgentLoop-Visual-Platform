@@ -75,6 +75,13 @@ export function useAppLabels({
           ja: "パイプライン",
           zh: "流水线",
         })}`;
+      case "metrics":
+        return `${pickLang(uiLanguage, {
+          ko: "지표",
+          en: "Metrics",
+          ja: "メトリクス",
+          zh: "指标",
+        })}`;
       case "agents":
         return `${pickLang(uiLanguage, {
           ko: "직원관리",
