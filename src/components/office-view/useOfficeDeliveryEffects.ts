@@ -10,6 +10,7 @@ import {
   resolveMeetingDecision,
   type SupportedLocale,
 } from "./themes-locale";
+import { createDocGlyph, createInitialGlyph } from "./pixel-glyphs";
 
 interface MeetingPresenceSyncParams {
   meetingPresence?: MeetingPresence[];
@@ -85,9 +86,7 @@ export function useMeetingPresenceSync({
         animSprite.gotoAndStop(0);
         actor.addChild(animSprite);
       } else {
-        const fallback = new Text({ text: "🧑‍💼", style: new TextStyle({ fontSize: 20 }) });
-        fallback.anchor.set(0.5, 1);
-        actor.addChild(fallback);
+        actor.addChild(createInitialGlyph(null, 20));
       }
 
       const badge = new Graphics();
@@ -200,15 +199,11 @@ export function useCrossDeptDeliveryAnimations({
         animSprite.position.set(0, 0);
         actor.addChild(animSprite);
       } else {
-        const fallback = new Text({ text: "🧑‍💼", style: new TextStyle({ fontSize: 20 }) });
-        fallback.anchor.set(0.5, 1);
-        actor.addChild(fallback);
+        actor.addChild(createInitialGlyph(null, 20));
       }
 
       const docHolder = new Container();
-      const docEmoji = new Text({ text: "📋", style: new TextStyle({ fontSize: 13 }) });
-      docEmoji.anchor.set(0.5, 0.5);
-      docHolder.addChild(docEmoji);
+      docHolder.addChild(createDocGlyph(13));
       docHolder.position.set(0, -50);
       actor.addChild(docHolder);
 
@@ -401,9 +396,7 @@ export function useCeoOfficeCallAnimations({
         animSprite.play();
         actor.addChild(animSprite);
       } else {
-        const fallback = new Text({ text: "🧑‍💼", style: new TextStyle({ fontSize: 20 }) });
-        fallback.anchor.set(0.5, 1);
-        actor.addChild(fallback);
+        actor.addChild(createInitialGlyph(agents.find((a) => a.id === call.fromAgentId)?.name, 20));
       }
 
       const badge = new Graphics();

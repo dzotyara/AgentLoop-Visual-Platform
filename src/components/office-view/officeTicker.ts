@@ -226,7 +226,7 @@ export function runOfficeTickerStep(ctx: OfficeTickerContext): void {
       sprite.position.y = baseY - (Math.sin(tick * 0.55 + (agentId ? agentId.length : 0)) > 0.3 ? 0.9 : 0);
       if (tick % 14 === 0) {
         const colors = [0x55aaff, 0x55ff88, 0xffaa33, 0xff5577, 0xaa77ff];
-        const glyphs = ["</>", "{ }", "✓", "( )", "#", "=>", "git"];
+        const glyphs = ["</>", "{ }", "ok", "( )", "#", "=>", "git"];
         const particle = new Text({
           text: glyphs[Math.floor(Math.random() * glyphs.length)],
           style: new TextStyle({

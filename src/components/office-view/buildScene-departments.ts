@@ -132,7 +132,7 @@ export function buildDepartmentRooms({
     signBg.on("pointerdown", () => cbRef.current.onSelectDepartment(dept));
     room.addChild(signBg);
     const signTxt = new Text({
-      text: `${dept.icon || "🏢"} ${localeName(activeLocale, dept)}`,
+      text: localeName(activeLocale, dept),
       style: new TextStyle({
         fontSize: 9,
         fill: 0xffffff,

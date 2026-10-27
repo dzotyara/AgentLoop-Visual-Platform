@@ -248,22 +248,22 @@ export function buildCeoAndHallway({
   const inProgress = tasks.filter((task) => task.status === "in_progress").length;
   const stats = [
     {
-      icon: "🤖",
+      color: 0x55aaff,
       label: pickLocale(activeLocale, LOCALE_TEXT.statsEmployees),
       val: formatPeopleCount(agents.length, activeLocale),
     },
     {
-      icon: "⚡",
+      color: 0xffaa33,
       label: pickLocale(activeLocale, LOCALE_TEXT.statsWorking),
       val: formatPeopleCount(workingCount, activeLocale),
     },
     {
-      icon: "📋",
+      color: 0xaa77ff,
       label: pickLocale(activeLocale, LOCALE_TEXT.statsProgress),
       val: formatTaskCount(inProgress, activeLocale),
     },
     {
-      icon: "✅",
+      color: 0x55cc77,
       label: pickLocale(activeLocale, LOCALE_TEXT.statsDone),
       val: `${doneCount}/${tasks.length}`,
     },
@@ -279,9 +279,10 @@ export function buildCeoAndHallway({
       .roundRect(sx, sy, 74, 26, 4)
       .stroke({ width: 1, color: isTarkov ? TARKOV_PALETTE.hazard : 0xe8c870, alpha: 0.5 });
     ceoLayer.addChild(statCard);
-    const iconText = new Text({ text: stat.icon, style: new TextStyle({ fontSize: 10 }) });
-    iconText.position.set(sx + 4, sy + 4);
-    ceoLayer.addChild(iconText);
+    // Pixel marker in the stat colour (emoji glyphs used to sit here).
+    const marker = new Graphics();
+    marker.rect(sx + 5, sy + 6, 7, 7).fill(stat.color).stroke({ width: 1, color: 0x000000, alpha: 0.25 });
+    ceoLayer.addChild(marker);
     ceoLayer.addChild(
       Object.assign(
         new Text({

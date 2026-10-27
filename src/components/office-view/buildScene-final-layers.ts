@@ -2,6 +2,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { Container, Graphics, Sprite, Text, TextStyle, type Application, type Texture } from "pixi.js";
 import type { Task } from "../../types";
 import { CEO_SIZE, DESK_H, type Delivery } from "./model";
+import { createDocGlyph } from "./pixel-glyphs";
 
 interface BuildFinalLayersParams {
   app: Application;
@@ -58,7 +59,8 @@ export function buildFinalLayers({
     ceoCharacter.addChild(fallback);
   }
 
-  const crown = new Text({ text: "👑", style: new TextStyle({ fontSize: 14 }) });
+  // Gold marker above the CEO; kept as Text because crownRef (owned by OfficeView) is typed Text.
+  const crown = new Text({ text: "▲", style: new TextStyle({ fontSize: 10, fill: 0xffd700, fontWeight: "bold" }) });
   crown.anchor.set(0.5, 1);
   crown.position.set(0, -CEO_SIZE / 2 + 2);
   ceoCharacter.addChild(crown);
@@ -92,9 +94,7 @@ export function buildFinalLayers({
     if (!target) continue;
 
     const deliverySprite = new Container();
-    const docEmoji = new Text({ text: "📋", style: new TextStyle({ fontSize: 16 }) });
-    docEmoji.anchor.set(0.5, 0.5);
-    deliverySprite.addChild(docEmoji);
+    deliverySprite.addChild(createDocGlyph(16));
     deliverySprite.position.set(ceoPosRef.current.x, ceoPosRef.current.y);
     deliveryLayer.addChild(deliverySprite);
 

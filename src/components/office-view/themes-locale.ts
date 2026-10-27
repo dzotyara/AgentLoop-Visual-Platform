@@ -101,10 +101,10 @@ const LOCALE_TEXT = {
     zh: "暂无分配员工",
   },
   breakRoom: {
-    ko: "☕ 휴게실",
-    en: "☕ Break Room",
-    ja: "☕ 休憩室",
-    zh: "☕ 休息室",
+    ko: "휴게실",
+    en: "Break Room",
+    ja: "休憩室",
+    zh: "休息室",
   },
   role: {
     team_leader: { ko: "팀장", en: "Lead", ja: "リーダー", zh: "组长" },
@@ -120,34 +120,34 @@ const LOCALE_TEXT = {
     zh: "兼职",
   },
   collabBadge: {
-    ko: "🤝 협업",
-    en: "🤝 Collaboration",
-    ja: "🤝 協業",
-    zh: "🤝 协作",
+    ko: "협업",
+    en: "Collaboration",
+    ja: "協業",
+    zh: "协作",
   },
   meetingBadgeKickoff: {
-    ko: "📣 회의",
-    en: "📣 Meeting",
-    ja: "📣 会議",
-    zh: "📣 会议",
+    ko: "회의",
+    en: "Meeting",
+    ja: "会議",
+    zh: "会议",
   },
   meetingBadgeReviewing: {
-    ko: "🔎 검토중",
-    en: "🔎 Reviewing",
-    ja: "🔎 検討中",
-    zh: "🔎 评审中",
+    ko: "검토중",
+    en: "Reviewing",
+    ja: "検討中",
+    zh: "评审中",
   },
   meetingBadgeApproved: {
-    ko: "✅ 승인",
-    en: "✅ Approval",
-    ja: "✅ 承認",
-    zh: "✅ 审批",
+    ko: "승인",
+    en: "Approval",
+    ja: "承認",
+    zh: "审批",
   },
   meetingBadgeHold: {
-    ko: "⚠ 보류",
-    en: "⚠ Hold",
-    ja: "⚠ 保留",
-    zh: "⚠ 暂缓",
+    ko: "보류",
+    en: "Hold",
+    ja: "保留",
+    zh: "暂缓",
   },
   kickoffLines: {
     ko: ["유관부서 영향도 확인중", "리스크/의존성 공유중", "일정/우선순위 조율중", "담당 경계 정의중"],
@@ -172,10 +172,10 @@ const LOCALE_TEXT = {
     zh: ["正在确认补充项是否反映", "正在审阅最终审批方案", "正在共享修改思路", "正在交叉评审交付物"],
   },
   meetingTableHint: {
-    ko: "📝 회의 중: 테이블 클릭해 회의록 보기",
-    en: "📝 Meeting live: click table for minutes",
-    ja: "📝 会議中: テーブルをクリックして会議録を見る",
-    zh: "📝 会议进行中：点击桌子查看纪要",
+    ko: "회의 중: 테이블 클릭해 회의록 보기",
+    en: "Meeting live: click table for minutes",
+    ja: "会議中: テーブルをクリックして会議録を見る",
+    zh: "会议进行中：点击桌子查看纪要",
   },
   cliUsageTitle: {
     ko: "CLI 사용량",
@@ -318,7 +318,7 @@ const BREAK_CHAT_MESSAGES: Record<SupportedLocale, string[]> = {
 const TARKOV_LOCALE_TEXT = {
   ceoOffice: { ko: "COMMAND POST", en: "COMMAND POST", ja: "COMMAND POST", zh: "COMMAND POST" },
   collabTable: { ko: "BRIEFING TABLE", en: "BRIEFING TABLE", ja: "BRIEFING TABLE", zh: "BRIEFING TABLE" },
-  breakRoom: { ko: "🔥 Hideout", en: "🔥 Hideout", ja: "🔥 Hideout", zh: "🔥 Hideout" },
+  breakRoom: { ko: "Hideout", en: "Hideout", ja: "Hideout", zh: "Hideout" },
 };
 
 const TARKOV_BREAK_CHAT_LINES = [

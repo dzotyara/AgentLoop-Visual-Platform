@@ -30,6 +30,7 @@ import {
 import { drawPlant } from "./drawing-furniture-a";
 import { drawCoffeeMachine, drawCoffeeTable, drawHighTable, drawSofa, drawVendingMachine } from "./drawing-furniture-b";
 import { drawTarkovHideoutDecor } from "./drawing-tarkov";
+import { createInitialGlyph, createMugGlyph } from "./pixel-glyphs";
 
 interface BuildBreakRoomParams {
   app: Application;
@@ -180,9 +181,7 @@ export function buildBreakRoom({
       sprite.scale.set(scale);
       charContainer.addChild(sprite);
     } else {
-      const fallback = new Text({ text: agent.avatar_emoji || "🤖", style: new TextStyle({ fontSize: 20 }) });
-      fallback.anchor.set(0.5, 1);
-      charContainer.addChild(fallback);
+      charContainer.addChild(createInitialGlyph(agent.name, 20));
     }
     breakRoom.addChild(charContainer);
 
@@ -192,10 +191,9 @@ export function buildBreakRoom({
       baseY: spotY,
     });
 
-    const coffeeEmoji = new Text({ text: isTarkov ? "🥫" : "☕", style: new TextStyle({ fontSize: 10 }) });
-    coffeeEmoji.anchor.set(0.5, 0.5);
-    coffeeEmoji.position.set(spotX + 14, spotY - 10);
-    breakRoom.addChild(coffeeEmoji);
+    const mug = createMugGlyph(isTarkov);
+    mug.position.set(spotX + 14, spotY - 10);
+    breakRoom.addChild(mug);
 
     const nameTag = new Text({
       text: localeName(activeLocale, agent),

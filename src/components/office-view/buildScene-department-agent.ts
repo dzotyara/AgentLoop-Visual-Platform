@@ -14,6 +14,7 @@ import {
 import { hashStr } from "./drawing-core";
 import { drawDesk } from "./drawing-furniture-a";
 import { getLiveAgentWork, liveVersion } from "../pr-patrol/live-store";
+import { createInitialGlyph } from "./pixel-glyphs";
 
 interface RenderDeskAgentAndSubClonesParams {
   room: Container;
@@ -81,9 +82,7 @@ export function renderDeskAgentAndSubClones({
     }
     charContainer.addChild(animSprite);
   } else {
-    const fallback = new Text({ text: agent.avatar_emoji || "🤖", style: new TextStyle({ fontSize: 24 }) });
-    fallback.anchor.set(0.5, 1);
-    charContainer.addChild(fallback);
+    charContainer.addChild(createInitialGlyph(agent.name, 24));
   }
   room.addChild(charContainer);
 
@@ -137,8 +136,8 @@ export function renderDeskAgentAndSubClones({
   if (activeTask || isWorking) {
     // Live bubble: pr-patrol agents show their PR and current tool call; others keep the task title.
     const fallback = activeTask
-      ? `💬 ${activeTask.title.length > 16 ? `${activeTask.title.slice(0, 16)}...` : activeTask.title}`
-      : "💬 working…";
+      ? `${activeTask.title.length > 16 ? `${activeTask.title.slice(0, 16)}...` : activeTask.title}`
+      : "working…";
     const bubble = new Container();
     const bubbleG = new Graphics();
     const bubbleText = new Text({
@@ -182,7 +181,7 @@ export function renderDeskAgentAndSubClones({
       const live = getLiveAgentWork(agent.id);
       const activity = live && live.activity.length > 34 ? `${live.activity.slice(0, 33)}…` : live?.activity;
       const next = live
-        ? `🔀 ${live.prLabel} · ${live.action}\n▸ ${activity}${live.toolCalls ? ` · ${live.toolCalls} tools` : ""}`
+        ? `${live.prLabel} · ${live.action}\n▸ ${activity}${live.toolCalls ? ` · ${live.toolCalls} tools` : ""}`
         : fallback;
       if (next === shown) return;
       shown = next;
@@ -262,7 +261,7 @@ export function renderDeskAgentAndSubClones({
   }
 
   if (isOffline) {
-    const zzz = new Text({ text: "💤", style: new TextStyle({ fontSize: 12 }) });
+    const zzz = new Text({ text: "zzz", style: new TextStyle({ fontSize: 9, fill: 0x8899aa, fontWeight: "bold" }) });
     zzz.anchor.set(0.5, 0.5);
     zzz.position.set(ax + 20, charFeetY - TARGET_CHAR_H / 2);
     room.addChild(zzz);
