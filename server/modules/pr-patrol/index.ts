@@ -15,6 +15,7 @@ import {
 } from "./github.ts";
 import { activityFromStreamLines, createLineSplitter } from "./activity.ts";
 import { ACTION_PREFIX, buildPatrolPrompt } from "./prompts.ts";
+import { createPipelineStore, effectiveConfig, registerPipelineRoutes, stepPolicy } from "./pipeline.ts";
 import { createPrPatrolStore, ensurePrPatrolSchema, prKey } from "./store.ts";
 import { preparePrWorktree, pushAgentCommits, type PrWorkspace, type PushOutcome } from "./workspace.ts";
 
@@ -101,6 +102,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
   const cfg = loadPrPatrolConfig();
   ensurePrPatrolSchema(db);
   const store = createPrPatrolStore(db, nowMs);
+  const pipeline = createPipelineStore(db, nowMs);
   const running = new Map<string, Running>();
   let timer: ReturnType<typeof setInterval> | null = null;
   let ticking = false;
@@ -312,8 +314,13 @@ export function createPrPatrol(ctx: RuntimeContext) {
     };
   }
 
-  /** Model for a run: the agent's own pick, then Settings → Claude main model, then PR_PATROL_MODEL; none = CLI default. */
-  function resolveModel(agentId: string): string | undefined {
+  /**
+   * Model for a run: the pipeline's per-step override, then the agent's own pick, then Settings → Claude main
+   * model, then PR_PATROL_MODEL; none = CLI default.
+   */
+  function resolveModel(agentId: string, action: ActionKind): string | undefined {
+    const stepModel = pipeline.get().steps[action]?.model;
+    if (stepModel) return stepModel;
     const agent = db.prepare("SELECT cli_model FROM agents WHERE id = ?").get(agentId) as
       | { cli_model: string | null }
       | undefined;
@@ -399,7 +406,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
     fs.mkdirSync(resultDir, { recursive: true });
     const resultPath = path.join(resultDir, `${taskId}.json`);
     const prompt = buildPatrolPrompt(s, d, resultPath);
-    const model = resolveModel(aId);
+    const model = resolveModel(aId, d.action);
     if (model) appendTaskLog(taskId, "system", `${PR_PATROL_SOURCE}: model ${model}`);
     const child = spawnCliAgent(taskId, "claude", prompt, ws.path, path.join(logsDir, `${taskId}.log`), model);
     setActivity(key, "Starting Claude Code");
@@ -457,7 +464,10 @@ export function createPrPatrol(ctx: RuntimeContext) {
     });
     if (running.has(key)) return;
 
-    const d = decide(s, cfg, store.memory(key));
+    // Pipeline settings (edited from the loop graph) are re-read on every tick, layered over the env config.
+    const pipe = pipeline.get();
+    const eff = effectiveConfig(cfg, pipe);
+    const d = decide(s, eff, store.memory(key), stepPolicy(pipe));
     switch (d.kind) {
       case "skip":
         store.setPhase(key, "skipped", d.reason);
@@ -487,7 +497,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
         }
         return;
       case "run":
-        if (running.size >= cfg.maxConcurrent) {
+        if (running.size >= eff.maxConcurrent) {
           store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]} (all agent slots busy)`, [], "agent");
           return;
         }
@@ -541,7 +551,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
       replyToThreads: cfg.replyToThreads,
       review: cfg.review,
       intervalMs: cfg.intervalMs,
-      maxConcurrent: cfg.maxConcurrent,
+      maxConcurrent: effectiveConfig(cfg, pipeline.get()).maxConcurrent,
       lastTick,
       running: Object.fromEntries(running),
       prs: store.listPrs().map((r) => {
@@ -580,6 +590,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
       void tick();
       res.json({ ok: true });
     });
+    registerPipelineRoutes(app, pipeline, cfg);
   }
 
   function start(): void {

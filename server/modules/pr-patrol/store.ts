@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ActionState, PatrolMemory, ReviewFinding } from "./decide.ts";
+import { ensurePipelineSchema } from "./pipeline.ts";
 
 export type PrPhase = "watching" | "working" | "waiting" | "blocked" | "ready" | "merging" | "skipped" | "error";
 
@@ -68,6 +69,7 @@ CREATE TABLE IF NOT EXISTS pr_patrol_actions (
   const cols = db.prepare("PRAGMA table_info(pr_patrol_prs)").all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "snapshot_json")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN snapshot_json TEXT");
   if (!cols.some((c) => c.name === "waiting_on")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN waiting_on TEXT");
+  ensurePipelineSchema(db); // pipeline settings edited from the loop graph (pipeline.ts)
 }
 
 export function prKey(repo: string, number: number): string {

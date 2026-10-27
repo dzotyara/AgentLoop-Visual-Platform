@@ -63,6 +63,9 @@ Checks that no commit can fix (e.g. merge-queue gates) go in `PR_PATROL_IGNORE_C
 - `server/modules/pr-patrol/github.ts` — `gh` reads: PR state, checks, review threads/comments
 - `server/modules/pr-patrol/workspace.ts` — per-repo partial clones, per-PR worktrees, fast-forward push
 - `server/modules/pr-patrol/prompts.ts` — role prompts built from the vendored agents
+- `server/modules/pr-patrol/pipeline.ts` — pipeline settings edited from the loop graph (per step on/off, model,
+  max attempts; max concurrent agents, max review rounds), `GET`/`PUT /api/pr-patrol/pipeline`, layered over the env
+  config on every tick
 - `pr-patrol/agents/vendor/` — open-source agent prompts, pinned by commit, with their licenses ([SOURCES.md](pr-patrol/agents/vendor/SOURCES.md))
 
 ## Vendored agents

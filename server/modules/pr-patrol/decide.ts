@@ -18,6 +18,20 @@ export type ReviewFinding = {
 
 export type ActionState = { status: "running" | "done" | "failed"; attempts: number };
 
+/**
+ * Per-step pipeline overrides (see pipeline.ts): a disabled step is never run, and its condition blocks
+ * readiness with "<step> disabled" instead; `maxAttempts` replaces the global cap for that step.
+ */
+export type StepPolicy = Partial<Record<ActionKind, { enabled?: boolean; maxAttempts?: number | null }>>;
+
+const DISABLED_LABEL: Record<ActionKind, string> = {
+  fix_conflict: "conflict fixes disabled",
+  fix_ci: "CI fixes disabled",
+  address_feedback: "comment fixes disabled",
+  review: "own review disabled",
+  fix_review: "review fixes disabled",
+};
+
 export type PatrolMemory = {
   actions: Map<string, ActionState>;
   /** Keys (id + text hash) of feedback already handled; see PrFeedback.key. */
@@ -66,7 +80,7 @@ function shortHash(parts: string[]): string {
  * One step of the auto-fix loop for a single PR, in Auto-fix priority order:
  * merge conflict → failing CI → unhandled review feedback → own review (+ fixing its findings) → wait for CI → ready.
  */
-export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory): Decision {
+export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, steps: StepPolicy = {}): Decision {
   if (s.state !== "OPEN") return { kind: "skip", reason: `PR is ${s.state.toLowerCase()}` };
   if (s.isDraft && !cfg.includeDrafts) return { kind: "skip", reason: "draft" };
   if (s.isCrossRepository) return { kind: "skip", reason: "fork PR: its branch cannot be pushed from here" };
@@ -80,24 +94,27 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory): D
   const head = s.headRefOid;
   const blocked: string[] = [];
   const notes: string[] = [];
-  const gate = (key: string): "go" | "done" | "exhausted" => {
+  const gate = (key: string, action: ActionKind): "go" | "done" | "exhausted" | "disabled" => {
     const a = mem.actions.get(key);
     if (a?.status === "done") return "done";
-    if (a && a.attempts >= cfg.maxAttempts) return "exhausted";
+    if (steps[action]?.enabled === false) return "disabled";
+    if (a && a.attempts >= (steps[action]?.maxAttempts ?? cfg.maxAttempts)) return "exhausted";
     return "go";
   };
 
   if (s.mergeable === "CONFLICTING") {
     const key = `conflict:${head}:${s.baseRefOid}`;
-    const g = gate(key);
+    const g = gate(key, "fix_conflict");
     if (g === "go") return { kind: "run", action: "fix_conflict", key };
-    // Checks on a conflicting head are moot, so nothing below is worth an agent run yet.
+    // Checks on a conflicting head are moot, so nothing below is worth an agent run yet (also when disabled).
     return {
       kind: "blocked",
       reasons: [
         g === "done"
           ? "merge conflict resolved locally, not pushed (dry run)"
-          : "merge conflict: fix attempts exhausted",
+          : g === "disabled"
+            ? `merge conflict: ${DISABLED_LABEL.fix_conflict}`
+            : "merge conflict: fix attempts exhausted",
       ],
       notes,
     };
@@ -106,38 +123,49 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory): D
   const failing = checks.filter((c) => c.state === "failure");
   if (failing.length > 0) {
     const key = `ci:${head}`;
-    const g = gate(key);
+    const g = gate(key, "fix_ci");
     if (g === "go") return { kind: "run", action: "fix_ci", key, failingChecks: failing };
+    const names = failing.map((c) => c.name).join(", ");
     blocked.push(
       g === "done"
-        ? `CI failing (${failing.map((c) => c.name).join(", ")}); fix done, waiting for a new head or rerun`
-        : `CI failing (${failing.map((c) => c.name).join(", ")}): fix attempts exhausted`,
+        ? `CI failing (${names}); fix done, waiting for a new head or rerun`
+        : g === "disabled"
+          ? `CI failing (${names}): ${DISABLED_LABEL.fix_ci}`
+          : `CI failing (${names}): fix attempts exhausted`,
     );
   }
 
   const pending = s.feedback.filter((f) => !mem.handledFeedbackIds.has(f.key));
   if (pending.length > 0) {
     const key = `feedback:${head}:${shortHash(pending.map((f) => f.key))}`;
-    const g = gate(key);
+    const g = gate(key, "address_feedback");
     if (g === "go") return { kind: "run", action: "address_feedback", key, feedback: pending };
-    blocked.push(`${pending.length} review comment(s) unhandled: fix attempts exhausted`);
+    blocked.push(
+      `${pending.length} review comment(s) unhandled: ${g === "disabled" ? DISABLED_LABEL.address_feedback : "fix attempts exhausted"}`,
+    );
   }
 
-  if (cfg.review) {
+  // A disabled own review behaves like PR_PATROL_REVIEW=0 (its stale findings no longer block either).
+  const reviewOn = cfg.review && steps.review?.enabled !== false;
+  if (cfg.review && !reviewOn) notes.push(DISABLED_LABEL.review);
+  if (reviewOn) {
     if (mem.lastReview?.sha === head) {
       if (mem.lastReview.blocking.length > 0) {
         const key = `fixreview:${head}`;
-        const g = gate(key);
+        const g = gate(key, "fix_review");
         if (g === "go") return { kind: "run", action: "fix_review", key, findings: mem.lastReview.blocking };
+        const n = mem.lastReview.blocking.length;
         blocked.push(
           g === "done"
-            ? `${mem.lastReview.blocking.length} review finding(s) fixed locally, not pushed (dry run)`
-            : `${mem.lastReview.blocking.length} blocking review finding(s): fix attempts exhausted`,
+            ? `${n} review finding(s) fixed locally, not pushed (dry run)`
+            : g === "disabled"
+              ? `${n} blocking review finding(s): ${DISABLED_LABEL.fix_review}`
+              : `${n} blocking review finding(s): fix attempts exhausted`,
         );
       }
     } else if (mem.reviewRounds < cfg.maxReviewRounds) {
       const key = `review:${head}`;
-      const g = gate(key);
+      const g = gate(key, "review");
       if (g === "go") return { kind: "run", action: "review", key };
       if (g === "exhausted") blocked.push("own review failed to run");
     } else {

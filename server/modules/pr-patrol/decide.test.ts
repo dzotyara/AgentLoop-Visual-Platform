@@ -321,3 +321,73 @@ describe("extractFeedback", () => {
     expect(fb.map((f) => f.id)).toEqual(["T1", "R1", "C2"]);
   });
 });
+
+describe("decide with pipeline step overrides", () => {
+  const failingCheck = {
+    name: "test",
+    workflow: null,
+    state: "failure" as const,
+    rawConclusion: "FAILURE",
+    detailsUrl: null,
+  };
+  const comment = {
+    id: "T1",
+    key: "T1:v1",
+    kind: "review_thread" as const,
+    author: "bob",
+    body: "x",
+    path: "a.ts",
+    line: 3,
+    url: null,
+    createdAt: "",
+  };
+
+  it("skips disabled CI fixes, falls through to feedback, and blocks readiness with a reason", () => {
+    const steps = { fix_ci: { enabled: false } };
+    const s = snap({ checks: [failingCheck], feedback: [comment] });
+    expect(decide(s, cfg, mem(), steps)).toMatchObject({ kind: "run", action: "address_feedback" });
+
+    const d = decide(snap({ checks: [failingCheck] }), cfg, mem(), steps);
+    expect(d.kind).toBe("blocked");
+    if (d.kind === "blocked") expect(d.reasons).toEqual(["CI failing (test): CI fixes disabled"]);
+  });
+
+  it("falls through a disabled comment fixer to the own review", () => {
+    const d = decide(snap({ headRefOid: "head2", feedback: [comment] }), cfg, mem(), {
+      address_feedback: { enabled: false },
+    });
+    expect(d).toMatchObject({ kind: "run", action: "review", key: "review:head2" });
+  });
+
+  it("blocks on a conflict without running anything when conflict fixes are disabled", () => {
+    const d = decide(snap({ mergeable: "CONFLICTING" }), cfg, mem(), { fix_conflict: { enabled: false } });
+    expect(d).toMatchObject({ kind: "blocked", reasons: ["merge conflict: conflict fixes disabled"] });
+  });
+
+  it("treats a disabled own review like review off, and blocks on findings when review fixes are disabled", () => {
+    const off = decide(snap({ headRefOid: "head2" }), cfg, mem(), { review: { enabled: false } });
+    expect(off.kind).toBe("ready");
+    if (off.kind === "ready") expect(off.notes).toContain("own review disabled");
+
+    const findings = mem({ lastReview: { sha: "head1", blocking: [{ severity: "P1", title: "bug" }] } });
+    const d = decide(snap(), cfg, findings, { fix_review: { enabled: false } });
+    expect(d).toMatchObject({ kind: "blocked", reasons: ["1 blocking review finding(s): review fixes disabled"] });
+  });
+
+  it("uses the per-step max attempts instead of the global cap", () => {
+    const s = snap({ checks: [failingCheck] });
+    const tried = mem({ actions: new Map([["ci:head1", { status: "failed" as const, attempts: 2 }]]) });
+    // global cap is 2: exhausted
+    expect(decide(s, cfg, tried).kind).toBe("blocked");
+    // step cap 4: retry
+    expect(decide(s, cfg, tried, { fix_ci: { maxAttempts: 4 } })).toMatchObject({ kind: "run", action: "fix_ci" });
+    // step cap 1 on a fresh-ish action: exhausted after one attempt
+    const once = mem({ actions: new Map([["ci:head1", { status: "failed" as const, attempts: 1 }]]) });
+    expect(decide(s, cfg, once).kind).toBe("run");
+    const d = decide(s, cfg, once, { fix_ci: { maxAttempts: 1 } });
+    expect(d.kind).toBe("blocked");
+    if (d.kind === "blocked") expect(d.reasons[0]).toContain("fix attempts exhausted");
+    // a null override keeps the global cap
+    expect(decide(s, cfg, once, { fix_ci: { maxAttempts: null } }).kind).toBe("run");
+  });
+});
