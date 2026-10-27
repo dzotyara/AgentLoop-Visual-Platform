@@ -141,6 +141,48 @@ OPERATORS = {
             "V": "#2d4f9a", "P": "#2d4f9a", "A": "#2a4890", "B": "#24407e", "L": "#2d4f9a", "K": "#3a3a40",
         },
     },
+    # Rivet — second fixer: grey cap with welding goggles, urban grey kit, hammer
+    106: {
+        "head": [
+            "...OOOOOOO...",
+            "..OHHHHHHHO..",
+            ".OHggHHHggHO.",
+            ".OHggHHHggHO.",
+            "OHHHHHHHHHHHO",
+            ".OSSSSSSSSSO.",
+            ".OSSSSSSSSSO.",
+            ".OSSGSSSGSSO.",
+            ".OSSSSSSSSSO.",
+            ".OSSbbbbbSSO.",
+            "..ObbbbbbbO..",
+        ],
+        "overrides": {(4, 11): "T", (3, 12): "T"},
+        "colors": {
+            "H": "#3f4448", "g": "#c27a2c", "b": "#5a3e2b", "T": "#9aa0a6",
+            "V": "#50565c", "P": "#3d4247", "A": "#5d646b", "B": "#2a2a2e", "L": "#474d53", "K": "#1f1f22",
+        },
+    },
+    # Splice — third fixer: beanie with headlamp, neck gaiter, tan kit, copper wire spool
+    107: {
+        "head": [
+            "...OOOOOOO...",
+            "..OHHHHHHHO..",
+            ".OHHHHHHHHHO.",
+            ".OwwwWWWwwwO.",
+            ".OHHHHHHHHHO.",
+            ".OSSSSSSSSSO.",
+            ".OSSSSSSSSSO.",
+            ".OSSGSSSGSSO.",
+            ".OSSSSSSSSSO.",
+            ".OMMMMMMMMMO.",
+            "..OMMMMMMMO..",
+        ],
+        "overrides": {(4, 11): "C", (3, 12): "C"},
+        "colors": {
+            "H": "#2f3a2a", "w": "#26262b", "W": "#f4f0c8", "M": "#6b6f4a", "C": "#c8642a",
+            "V": "#9c8a62", "P": "#7f6f4c", "A": "#8a7d58", "B": "#3a3326", "L": "#6c6448", "K": "#2c2722",
+        },
+    },
 }
 
 

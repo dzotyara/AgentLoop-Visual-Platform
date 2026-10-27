@@ -11,6 +11,7 @@ const cfg: PrPatrolConfig = {
   includeDrafts: false,
   intervalMs: 60_000,
   maxConcurrent: 2,
+  fixers: 3,
   maxAttempts: 2,
   maxReviewRounds: 3,
   searchQuery: "author:@me",

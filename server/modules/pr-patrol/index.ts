@@ -70,6 +70,28 @@ const PATROL_AGENTS: Record<
   },
 };
 
+/** Extra fixers beyond Patch, enabled by PR_PATROL_FIXERS (each works a different PR). */
+const FIXER_HELPERS: Array<(typeof PATROL_AGENTS)[AgentRole]> = [
+  {
+    name: "Rivet",
+    dept: "dev",
+    role: "junior",
+    emoji: "wrench",
+    sprite: 4,
+    personality: "Second fixer: review findings and comments on another PR",
+  },
+  {
+    name: "Splice",
+    dept: "dev",
+    role: "junior",
+    emoji: "wrench",
+    sprite: 6,
+    personality: "Third fixer: review findings and comments on another PR",
+  },
+];
+
+type CrewMember = { id: string; name: string };
+
 const ACTION_ROLE: Record<ActionKind, AgentRole> = {
   review: "reviewer",
   fix_review: "fixer",
@@ -90,6 +112,7 @@ type Running = {
   taskId: string;
   action: ActionKind;
   agentId: string;
+  agentName: string;
   /** What the agent is doing right now, from its tool calls ("Editing foo.ts"). */
   activity: string;
   activityAt: number;
@@ -106,9 +129,33 @@ export function createPrPatrol(ctx: RuntimeContext) {
   let ticking = false;
   let lastTick: { at: number; error: string | null; prs: number } = { at: 0, error: null, prs: 0 };
 
+  /** Agent row for a crew member, created on first use; avatars are pixel-icon names. */
+  function ensureAgent(a: (typeof PATROL_AGENTS)[AgentRole]): string {
+    const existing = db.prepare("SELECT id FROM agents WHERE name = ?").get(a.name) as { id: string } | undefined;
+    if (existing) {
+      db.prepare("UPDATE agents SET avatar_emoji = ? WHERE id = ? AND avatar_emoji != ?").run(
+        a.emoji,
+        existing.id,
+        a.emoji,
+      );
+      return existing.id;
+    }
+    const id = randomUUID();
+    db.prepare(
+      `INSERT INTO agents (id, name, name_ko, department_id, role, cli_provider, avatar_emoji, sprite_number, personality)
+       VALUES (?, ?, ?, ?, ?, 'claude', ?, ?, ?)`,
+    ).run(id, a.name, a.name, a.dept, a.role, a.emoji, a.sprite, a.personality);
+    broadcast("agent_created", db.prepare("SELECT * FROM agents WHERE id = ?").get(id));
+    return id;
+  }
+
   function ensureAgents(): Record<AgentRole, string> {
     const ids = {} as Record<AgentRole, string>;
     for (const [role, a] of Object.entries(PATROL_AGENTS) as Array<[AgentRole, (typeof PATROL_AGENTS)[AgentRole]]>) {
+      if (role === "fixer") {
+        ids[role] = ensureAgent(a);
+        continue;
+      }
       const existing = db.prepare("SELECT id FROM agents WHERE name = ?").get(a.name) as { id: string } | undefined;
       if (existing) {
         // avatars are pixel-icon names now (the UI shows no emoji); migrate rows created with emoji
@@ -134,6 +181,21 @@ export function createPrPatrol(ctx: RuntimeContext) {
   let agentIds: Record<AgentRole, string> | null = null;
   const agentId = (role: AgentRole) => (agentIds ??= ensureAgents())[role];
 
+  let fixerCrew: CrewMember[] | null = null;
+  /** Patch first, then as many helpers as PR_PATROL_FIXERS allows. */
+  const fixers = (): CrewMember[] =>
+    (fixerCrew ??= [
+      { id: agentId("fixer"), name: PATROL_AGENTS.fixer.name },
+      ...FIXER_HELPERS.slice(0, cfg.fixers - 1).map((a) => ({ id: ensureAgent(a), name: a.name })),
+    ]);
+
+  /** A free crew member for the role, or null when all of them are on other PRs. */
+  function pickAgent(role: AgentRole): CrewMember | null {
+    const busy = new Set([...running.values()].map((r) => r.agentId));
+    const pool = role === "fixer" ? fixers() : [{ id: agentId(role), name: PATROL_AGENTS[role].name }];
+    return pool.find((m) => !busy.has(m.id)) ?? null;
+  }
+
   function setAgent(id: string, working: boolean, taskId: string | null, success = false): void {
     if (working) {
       db.prepare("UPDATE agents SET status = 'working', current_task_id = ? WHERE id = ?").run(taskId, id);
@@ -153,6 +215,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
     status: "in_progress" | "done",
     description: string,
     action: string,
+    assignee?: string,
   ): string {
     const id = randomUUID();
     const t = nowMs();
@@ -166,7 +229,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
       title,
       description,
       a.dept,
-      agentId(role),
+      assignee ?? agentId(role),
       status,
       JSON.stringify({ source: PR_PATROL_SOURCE, pr: prKey(s.repo, s.number), url: s.url, action }),
       t,
@@ -350,9 +413,9 @@ export function createPrPatrol(ctx: RuntimeContext) {
     });
   }
 
-  async function launch(key: string, s: PrSnapshot, d: RunDecision): Promise<void> {
+  async function launch(key: string, s: PrSnapshot, d: RunDecision, crew: CrewMember): Promise<void> {
     const role = ACTION_ROLE[d.action];
-    const aId = agentId(role);
+    const aId = crew.id;
     const title =
       `${ACTION_PREFIX[d.action]} [${s.repo.split("/")[1]}#${s.number}] ${ACTION_LABEL[d.action]}: ${s.title}`.slice(
         0,
@@ -365,17 +428,19 @@ export function createPrPatrol(ctx: RuntimeContext) {
       "in_progress",
       `${s.url}\nhead ${s.headRefOid}\naction ${d.key}`,
       d.action,
+      aId,
     );
     running.set(key, {
       taskId,
       action: d.action,
       agentId: aId,
+      agentName: crew.name,
       activity: "Preparing the worktree",
       activityAt: nowMs(),
       toolCalls: 0,
     });
     store.startAction(key, d.key, d.action, taskId);
-    store.setPhase(key, "working", `${PATROL_AGENTS[role].name}: ${ACTION_LABEL[d.action]}`);
+    store.setPhase(key, "working", `${crew.name}: ${ACTION_LABEL[d.action]}`);
     setAgent(aId, true, taskId);
 
     const done = async (ok: boolean, note: string) => {
@@ -491,19 +556,16 @@ export function createPrPatrol(ctx: RuntimeContext) {
           store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]} (all agent slots busy)`, [], "agent");
           return;
         }
-        if ([...running.values()].some((r) => r.agentId === agentId(ACTION_ROLE[d.action]))) {
-          store.setPhase(
-            key,
-            "watching",
-            `queued: ${PATROL_AGENTS[ACTION_ROLE[d.action]].name} is busy on another PR`,
-            [],
-            "agent",
-          );
+        const crew = pickAgent(ACTION_ROLE[d.action]);
+        if (!crew) {
+          const role = ACTION_ROLE[d.action];
+          const who = role === "fixer" ? `all ${fixers().length} fixers are` : `${PATROL_AGENTS[role].name} is`;
+          store.setPhase(key, "watching", `queued: ${who} busy on other PRs`, [], "agent");
           return;
         }
         // Not awaited: a first clone of a big repo would otherwise stall the tick and idle the other slots.
         // launch() claims its `running` slot synchronously, before its first await.
-        void launch(key, s, d).catch((err) => {
+        void launch(key, s, d, crew).catch((err) => {
           running.delete(key);
           store.setPhase(key, "error", `launch failed: ${(err as Error).message.slice(0, 400)}`, [], "you");
         });
@@ -553,7 +615,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
           agent: run
             ? {
                 id: run.agentId,
-                name: PATROL_AGENTS[ACTION_ROLE[run.action]].name,
+                name: run.agentName,
                 action: run.action,
                 taskId: run.taskId,
                 activity: run.activity,
@@ -595,6 +657,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
       "UPDATE tasks SET status = 'cancelled', updated_at = ? WHERE status = 'in_progress' AND workflow_meta_json LIKE ?",
     ).run(nowMs(), `%"source":"${PR_PATROL_SOURCE}"%`);
     agentIds = ensureAgents();
+    fixers(); // create the helper fixers up front so they show in the office
     console.log(
       `[pr-patrol] on: query "${cfg.searchQuery}", every ${cfg.intervalMs / 1000}s, write=${cfg.write}, review=${cfg.review}` +
         (interrupted ? `, ${interrupted} interrupted action(s) will retry` : ""),

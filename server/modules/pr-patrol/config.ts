@@ -10,6 +10,8 @@ export type PrPatrolConfig = {
   includeDrafts: boolean;
   intervalMs: number;
   maxConcurrent: number;
+  /** Fixer pool size (Patch + helpers): fix_review / address_feedback runs on different PRs in parallel. */
+  fixers: number;
   maxAttempts: number;
   maxReviewRounds: number;
   searchQuery: string;
@@ -50,7 +52,8 @@ export function loadPrPatrolConfig(): PrPatrolConfig {
     review: envFlag("PR_PATROL_REVIEW", true),
     includeDrafts: envFlag("PR_PATROL_INCLUDE_DRAFTS", false),
     intervalMs: envInt("PR_PATROL_INTERVAL_MS", 120_000, 15_000),
-    maxConcurrent: envInt("PR_PATROL_MAX_CONCURRENT", 2, 1),
+    maxConcurrent: envInt("PR_PATROL_MAX_CONCURRENT", 4, 1),
+    fixers: Math.min(3, envInt("PR_PATROL_FIXERS", 3, 1)),
     maxAttempts: envInt("PR_PATROL_MAX_ATTEMPTS", 2, 1),
     maxReviewRounds: envInt("PR_PATROL_MAX_REVIEW_ROUNDS", 3, 0),
     searchQuery: process.env.PR_PATROL_QUERY?.trim() || "author:@me",

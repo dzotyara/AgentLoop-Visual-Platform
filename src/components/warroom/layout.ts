@@ -91,6 +91,8 @@ export const STATIONS: Record<StationKey, Station> = {
 export const STATION_BY_AGENT: Record<string, StationKey> = {
   Argus: "argus",
   Patch: "patch",
+  Rivet: "patch",
+  Splice: "patch",
   Medic: "medic",
   Weaver: "weaver",
   Gate: "gate",
@@ -123,3 +125,9 @@ export function workSpot(pin: { x: number; y: number }, slotIndex: number): { x:
 export function fz(units: number, scale: number, min = 11): number {
   return Math.max(min, Math.round(units * scale));
 }
+
+/** Idle spots for the helper fixers that share Patch's workbench (Rivet, Splice). */
+export const HELPER_HOMES: Record<string, { x: number; y: number }> = {
+  Rivet: { x: 30, y: 234 },
+  Splice: { x: 62, y: 234 },
+};

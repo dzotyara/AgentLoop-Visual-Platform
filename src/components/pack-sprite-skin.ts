@@ -8,13 +8,15 @@ import type { Agent } from "../types";
 const TARKOV_SPRITES: Record<string, number> = {
   Argus: 101, // recon / marksman: reviews
   Patch: 102, // engineer: review fixes
+  Rivet: 106, // second fixer
+  Splice: 107, // third fixer
   Medic: 103, // medic: CI fixes
   Weaver: 104, // sapper: merge conflicts
   Gate: 105, // checkpoint sentry: readiness
 };
 
 /** Sprite numbers the office must preload so switching packs never shows a missing texture. */
-export const PACK_SKIN_SPRITE_NUMS = [101, 102, 103, 104, 105];
+export const PACK_SKIN_SPRITE_NUMS = [101, 102, 103, 104, 105, 106, 107];
 
 let activeSkin: Record<string, number> | null = null;
 

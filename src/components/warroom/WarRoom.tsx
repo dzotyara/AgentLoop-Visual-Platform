@@ -13,6 +13,7 @@ import {
   SCENE_W,
   STATIONS,
   STATION_BY_AGENT,
+  HELPER_HOMES,
   STRIPE_H,
   TABLE,
   WALL_H,
@@ -141,7 +142,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
         },
       };
     }
-    return { spot: station.home, working: false, job: undefined, bubble: null };
+    return { spot: HELPER_HOMES[agent.name] ?? station.home, working: false, job: undefined, bubble: null };
   };
 
   const placed = crew.map((agent, i) => ({
@@ -200,7 +201,10 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
 
         {/* wall monitors: one per station */}
         {Object.values(STATIONS).map((st) => {
-          const p = placed.find((x) => x.key === st.key);
+          // a station can host several crew (the fixer pool): show whoever is busiest
+          const crewHere = placed.filter((x) => x.key === st.key);
+          const p = crewHere.find((x) => x.working) ?? crewHere.find((x) => x.bubble) ?? crewHere[0];
+          const busyHere = crewHere.filter((x) => x.working).length;
           const inQueue = p?.job?.phase === "merging";
           const state = p?.working ? "WORKING" : inQueue ? "QUEUE" : p?.bubble ? "READY" : p ? "STANDBY" : "OFFLINE";
           const color = p?.working ? "#8fd0ff" : inQueue ? "#c4a8ff" : p?.bubble ? "#8fe39a" : "#9a9a92";
@@ -220,6 +224,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
                 <div className="flex items-center justify-between">
                   <span className="warroom-pixel" style={{ color: "#e8e8e0" }}>
                     {st.label}
+                    {crewHere.length > 1 ? ` ${busyHere}/${crewHere.length}` : ""}
                   </span>
                   <span>{state}</span>
                 </div>
