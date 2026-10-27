@@ -20,6 +20,7 @@ export type ActionState = { status: "running" | "done" | "failed"; attempts: num
 
 export type PatrolMemory = {
   actions: Map<string, ActionState>;
+  /** Keys (id + text hash) of feedback already handled; see PrFeedback.key. */
   handledFeedbackIds: Set<string>;
   /** Latest finished review of this PR, if any. */
   lastReview: { sha: string; blocking: ReviewFinding[] } | null;
@@ -114,9 +115,9 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory): D
     );
   }
 
-  const pending = s.feedback.filter((f) => !mem.handledFeedbackIds.has(f.id));
+  const pending = s.feedback.filter((f) => !mem.handledFeedbackIds.has(f.key));
   if (pending.length > 0) {
-    const key = `feedback:${head}:${shortHash(pending.map((f) => f.id))}`;
+    const key = `feedback:${head}:${shortHash(pending.map((f) => f.key))}`;
     const g = gate(key);
     if (g === "go") return { kind: "run", action: "address_feedback", key, feedback: pending };
     blocked.push(`${pending.length} review comment(s) unhandled: fix attempts exhausted`);

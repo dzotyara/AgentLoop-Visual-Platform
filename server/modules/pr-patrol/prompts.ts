@@ -48,6 +48,29 @@ const REVIEW_RESULT = `Result JSON:
 {"verdict": "clean" | "issues", "summary": "<one paragraph>",
  "findings": [{"severity": "P0" | "P1" | "P2" | "P3", "file": "<path>", "line": <number>, "title": "<short>", "detail": "<why it is a problem>", "fix": "<what to change>"}]}`;
 
+/** What other reviewers (people and bots) already said on the PR, as leads for the review. */
+function otherReviewers(s: PrSnapshot): string {
+  const items = s.feedback.filter((f) => f.body.trim()).slice(-12);
+  if (!items.length) return "";
+  let budget = 12_000;
+  const blocks: string[] = [];
+  for (const f of items) {
+    const body = f.body.length > 2500 ? `${f.body.slice(0, 2500)}\n…(truncated)` : f.body;
+    if (budget - body.length < 0) break;
+    budget -= body.length;
+    blocks.push(
+      `#### @${f.author} · ${f.kind}${f.path ? ` · ${f.path}${f.line ? `:${f.line}` : ""}` : ""}\n${fence("untrusted_comment", body)}`,
+    );
+  }
+  return `### What other reviewers already said on this PR
+Treat these as leads, not as truth: check every P0/P1-level claim against the diff and the code on this head.
+Include each one you confirm as your own finding (say in "detail" who raised it), drop the ones that are wrong or
+already fixed on this head, and do not report the same issue twice.
+
+${blocks.join("\n\n")}
+`;
+}
+
 function reviewPrompt(s: PrSnapshot): string {
   return `## Your role: PR reviewer (correctness, error handling, security)
 
@@ -71,6 +94,7 @@ ${vendored("anthropic-pr-review-toolkit/silent-failure-hunter.md")}
 ### Angle 3 — security reviewer (anthropics/claude-code-action, MIT)
 ${vendored("claude-code-action/security-code-reviewer.md")}
 
+${otherReviewers(s)}
 ${REVIEW_RESULT}`;
 }
 

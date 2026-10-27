@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { PrPatrolConfig } from "./config.ts";
@@ -17,6 +18,11 @@ export type PrCheck = {
 export type PrFeedback = {
   /** Stable id: GraphQL node id of the thread / review / issue comment. */
   id: string;
+  /**
+   * id + hash of the text. "Handled" is remembered per key, so a comment edited in place (bots post a
+   * placeholder and rewrite it with the real review) comes back as new feedback.
+   */
+  key: string;
   kind: "review_thread" | "review_body" | "pr_comment";
   author: string;
   body: string;
@@ -188,6 +194,10 @@ type FeedbackResponse = {
   };
 };
 
+function feedbackKey(id: string, body: string): string {
+  return `${id}:${createHash("sha1").update(body).digest("hex").slice(0, 12)}`;
+}
+
 export function extractFeedback(resp: FeedbackResponse, me: string, ignored: string[]): PrFeedback[] {
   const pr = resp.data.repository.pullRequest;
   const skip = (login: string | undefined) => !login || login === me || ignored.includes(login);
@@ -198,11 +208,13 @@ export function extractFeedback(resp: FeedbackResponse, me: string, ignored: str
     const last = comments[comments.length - 1];
     // The PR author answered last: the thread waits on the reviewer, not on us.
     if (!last || skip(last.author?.login)) continue;
+    const threadBody = comments.map((c) => `@${c.author?.login ?? "?"}: ${c.body}`).join("\n\n---\n\n");
     out.push({
       id: t.id,
+      key: feedbackKey(t.id, threadBody),
       kind: "review_thread",
       author: last.author?.login ?? "?",
-      body: comments.map((c) => `@${c.author?.login ?? "?"}: ${c.body}`).join("\n\n---\n\n"),
+      body: threadBody,
       path: t.path,
       line: t.line,
       url: last.url,
@@ -214,6 +226,7 @@ export function extractFeedback(resp: FeedbackResponse, me: string, ignored: str
     if (r.state !== "CHANGES_REQUESTED" && r.state !== "COMMENTED") continue;
     out.push({
       id: r.id,
+      key: feedbackKey(r.id, r.body),
       kind: "review_body",
       author: r.author?.login ?? "?",
       body: r.body,
@@ -227,6 +240,7 @@ export function extractFeedback(resp: FeedbackResponse, me: string, ignored: str
     if (skip(c.author?.login) || !c.body?.trim()) continue;
     out.push({
       id: c.id,
+      key: feedbackKey(c.id, c.body),
       kind: "pr_comment",
       author: c.author?.login ?? "?",
       body: c.body,

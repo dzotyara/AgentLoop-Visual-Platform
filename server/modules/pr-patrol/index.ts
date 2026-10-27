@@ -286,7 +286,12 @@ export function createPrPatrol(ctx: RuntimeContext) {
 
     // address_feedback
     if (!(advanced(push) || push.status === "no_changes")) return { ok: false, note: `${pushNote(push)}. ${summary}` };
-    const handled = items.filter((i) => i.verdict !== "blocked").map((i) => String(i.feedback_id));
+    // The agent answers per comment id; remember the exact version it saw (id + text hash).
+    const keyById = new Map((d.feedback ?? []).map((f) => [f.id, f.key]));
+    const handled = items
+      .filter((i) => i.verdict !== "blocked")
+      .map((i) => keyById.get(String(i.feedback_id)))
+      .filter((k): k is string => Boolean(k));
     store.addHandledFeedback(key, handled);
     let replied = 0;
     if (cfg.write && cfg.replyToThreads && push.status !== "dry_run") {
@@ -446,7 +451,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
         line: f.line,
         url: f.url,
         excerpt: f.body.slice(0, 280),
-        handled: handled.has(f.id),
+        handled: handled.has(f.key),
       })),
       fetchedAt: nowMs(),
     });

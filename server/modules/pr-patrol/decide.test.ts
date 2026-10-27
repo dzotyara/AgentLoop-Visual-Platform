@@ -74,11 +74,21 @@ describe("decide", () => {
 
     const fb = snap({
       feedback: [
-        { id: "T1", kind: "review_thread", author: "bob", body: "x", path: "a.ts", line: 3, url: null, createdAt: "" },
+        {
+          id: "T1",
+          key: "T1:v1",
+          kind: "review_thread",
+          author: "bob",
+          body: "x",
+          path: "a.ts",
+          line: 3,
+          url: null,
+          createdAt: "",
+        },
       ],
     });
     expect(decide(fb, cfg, mem())).toMatchObject({ kind: "run", action: "address_feedback" });
-    expect(decide(fb, cfg, mem({ handledFeedbackIds: new Set(["T1"]) })).kind).toBe("ready");
+    expect(decide(fb, cfg, mem({ handledFeedbackIds: new Set(["T1:v1"]) })).kind).toBe("ready");
 
     expect(decide(snap({ headRefOid: "head2" }), cfg, mem())).toMatchObject({
       kind: "run",
@@ -106,7 +116,17 @@ describe("decide", () => {
     const fb = snap({
       reviewDecision: "CHANGES_REQUESTED",
       feedback: [
-        { id: "R1", kind: "review_body", author: "bob", body: "x", path: null, line: null, url: null, createdAt: "" },
+        {
+          id: "R1",
+          key: "R1:v1",
+          kind: "review_body",
+          author: "bob",
+          body: "x",
+          path: null,
+          line: null,
+          url: null,
+          createdAt: "",
+        },
       ],
     });
     expect(decide(fb, cfg, mem())).toMatchObject({ kind: "run", action: "address_feedback" });
@@ -174,6 +194,36 @@ describe("normalizeChecks", () => {
       lint: "pending",
       skip: "neutral",
       ext: "failure",
+    });
+  });
+});
+
+describe("feedback keys", () => {
+  it("treats a comment edited in place as new feedback", () => {
+    const fb = (body: string) =>
+      extractFeedback(
+        {
+          data: {
+            repository: {
+              pullRequest: {
+                reviewThreads: { nodes: [] },
+                reviews: { nodes: [] },
+                comments: { nodes: [{ id: "C1", body, url: "", createdAt: "", author: { login: "claude" } }] },
+              },
+            },
+          },
+        },
+        "me",
+        [],
+      )[0];
+    const placeholder = fb("Claude is working on it…");
+    const review = fb("Review: [P1] the shard timeout is ignored");
+    expect(placeholder.id).toBe(review.id);
+    expect(placeholder.key).not.toBe(review.key);
+    const handled = new Set([placeholder.key]);
+    expect(decide(snap({ feedback: [review] }), cfg, mem({ handledFeedbackIds: handled }))).toMatchObject({
+      kind: "run",
+      action: "address_feedback",
     });
   });
 });
