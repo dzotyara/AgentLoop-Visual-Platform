@@ -1,5 +1,6 @@
 import { formatUsd, type ClaudeCostSummary, type PrPatrolPr } from "../../api";
 import { checksSummary, timeAgo } from "./pr-ui";
+import PixelIcon from "../pixel/PixelIcon";
 
 /**
  * PRs the loop has cleared: checks green, no conflicts, feedback handled, own review clean.
@@ -23,7 +24,9 @@ export default function ReadyToMergeBlock({
       style={{ borderColor: "rgba(16,185,129,0.45)", background: "rgba(16,185,129,0.07)" }}
     >
       <header className="mb-2 flex items-center gap-2">
-        <h3 className="text-sm font-semibold text-emerald-500">✅ Ready to merge</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-emerald-500">
+          <PixelIcon name="ready" size={16} /> Ready to merge
+        </h3>
         <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-500">
           {prs.length}
         </span>
@@ -79,7 +82,9 @@ export default function ReadyToMergeBlock({
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-x-2 text-[11px]">
-                <span className="text-emerald-500">✓ {checks.text}</span>
+                <span className="inline-flex items-center gap-1 text-emerald-500">
+                  <PixelIcon name="check" size={12} /> {checks.text}
+                </span>
                 {spend && <span className="text-violet-400">· {formatUsd(spend.costUsd)} agent spend</span>}
               </div>
               {pr.notes.length > 0 && (

@@ -6,6 +6,7 @@ import AgentAvatar from "../AgentAvatar";
 import { setLiveFromStatus } from "./live-store";
 import ReadyToMergeBlock from "./ReadyToMergeBlock";
 import { ACTION_LABEL, PHASE_META, TONE_TEXT, WaitReason, checksSummary } from "./pr-ui";
+import PixelIcon from "../pixel/PixelIcon";
 
 const ORDER: PrPatrolPhase[] = ["working", "blocked", "waiting", "watching", "ready", "error"];
 
@@ -40,12 +41,17 @@ export default function PrPatrolOfficeBoard({ agents, onOpenPrs }: { agents: Age
       style={{ borderColor: "var(--th-card-border)", background: "var(--th-card-bg)" }}
     >
       <header className="mb-2 flex items-center gap-3">
-        <h3 className="text-sm font-semibold" style={{ color: "var(--th-text-heading)" }}>
-          🔀 PR Patrol
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--th-text-heading)" }}>
+          <PixelIcon name="prs" size={16} /> PR Patrol
         </h3>
         <span className="text-xs" style={{ color: "var(--th-text-muted)" }}>
           {working} agent{working === 1 ? "" : "s"} working · {prs.length + ready.length} open PRs
-          {costs ? ` · 💸 today ${formatUsd(costs.today.costUsd)}` : ""}
+          {costs && (
+            <>
+              {" · "}
+              <PixelIcon name="spend" size={12} /> today {formatUsd(costs.today.costUsd)}
+            </>
+          )}
         </span>
         <span
           className={`rounded-full border px-2 py-0.5 text-[11px] ${

@@ -3,6 +3,7 @@ import type { Agent } from "../../types";
 import { formatUsd, type ClaudeCostBreakdown, type PrPatrolPr } from "../../api";
 import AgentAvatar from "../AgentAvatar";
 import { ACTION_LABEL, CheckIcon, ExternalLink, PhaseChip, Section, TONE_TEXT, checksSummary, timeAgo } from "./pr-ui";
+import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
 
 const MERGEABLE_TEXT: Record<string, { text: string; tone: string }> = {
   MERGEABLE: { text: "No conflicts with base", tone: "text-emerald-500" },
@@ -16,10 +17,22 @@ const REVIEW_TEXT: Record<string, { text: string; tone: string }> = {
   REVIEW_REQUIRED: { text: "Review required", tone: "text-amber-500" },
 };
 
-function StatusRow({ icon, label, value, tone }: { icon: string; label: string; value: string; tone: string }) {
+function StatusRow({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: PixelIconName;
+  label: string;
+  value: string;
+  tone: string;
+}) {
   return (
     <div className="flex items-center gap-3 py-1.5 text-sm">
-      <span className="w-5 text-center">{icon}</span>
+      <span className="flex w-5 justify-center">
+        <PixelIcon name={icon} size={16} />
+      </span>
       <span className="w-28 shrink-0" style={{ color: "var(--th-text-muted)" }}>
         {label}
       </span>
@@ -117,27 +130,27 @@ export default function PrDetail({
       {/* Merge status */}
       <Section title="Status">
         <StatusRow
-          icon={summary.tone === "bad" ? "✕" : summary.tone === "wait" ? "◌" : "✓"}
+          icon={summary.tone === "bad" ? "cross" : summary.tone === "wait" ? "pending" : "check"}
           label="Checks"
           value={summary.text}
           tone={TONE_TEXT[summary.tone]}
         />
-        <StatusRow icon="⇄" label="Merge" value={mergeable.text} tone={mergeable.tone} />
+        <StatusRow icon="merge" label="Merge" value={mergeable.text} tone={mergeable.tone} />
         <StatusRow
-          icon="💬"
+          icon="chat"
           label="Comments"
           value={unhandled.length ? `${unhandled.length} unhandled` : "All handled"}
           tone={unhandled.length ? "text-amber-500" : "text-emerald-500"}
         />
-        {review && <StatusRow icon="👤" label="Review" value={review.text} tone={review.tone} />}
+        {review && <StatusRow icon="reviewer" label="Review" value={review.text} tone={review.tone} />}
         <StatusRow
-          icon="🔍"
+          icon="review"
           label="Own review"
           value={pr.review_rounds ? `${pr.review_rounds} round(s)` : "Not yet"}
           tone="text-slate-400"
         />
         <StatusRow
-          icon="💸"
+          icon="spend"
           label="Agent spend"
           value={spend ? `${formatUsd(spend.costUsd)} · ${spend.runs} run(s)` : "No runs yet"}
           tone="text-violet-400"
@@ -197,7 +210,11 @@ export default function PrDetail({
             {snap!.feedback.map((f) => (
               <li key={f.id} className="text-sm">
                 <div className="flex items-center gap-2 text-xs" style={{ color: "var(--th-text-muted)" }}>
-                  <span className={f.handled ? "text-emerald-500" : "text-amber-500"}>{f.handled ? "✓" : "●"}</span>
+                  {f.handled ? (
+                    <PixelIcon name="check" size={12} title="handled" />
+                  ) : (
+                    <span className="text-amber-500">●</span>
+                  )}
                   <b style={{ color: "var(--th-text-secondary)" }}>@{f.author}</b>
                   {f.path && (
                     <span className="truncate font-mono">

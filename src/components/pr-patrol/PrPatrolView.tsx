@@ -13,6 +13,7 @@ import PrDetail from "./PrDetail";
 import ReadyToMergeBlock from "./ReadyToMergeBlock";
 import { takeRequestedPr } from "../warroom/pr-selection";
 import { PHASE_META, TONE_TEXT, WaitReason, checksSummary, timeAgo } from "./pr-ui";
+import PixelIcon from "../pixel/PixelIcon";
 
 const PHASE_ORDER: PrPatrolPhase[] = [
   "working",
@@ -147,7 +148,7 @@ export default function PrPatrolView({
           </span>
           {costs && (
             <span title="Claude spend today, all runs (API list prices)" style={{ color: "var(--th-text-secondary)" }}>
-              💸 today {formatUsd(costs.today.costUsd)}
+              <PixelIcon name="spend" size={12} /> today {formatUsd(costs.today.costUsd)}
             </span>
           )}
           <span style={{ color: "var(--th-text-muted)" }}>
