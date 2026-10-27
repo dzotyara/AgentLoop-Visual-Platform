@@ -85,7 +85,8 @@ export function DashboardHeroHeader({
           </div>
           {reviewQueue > 0 && (
             <span className="flex items-center gap-1.5 rounded-lg border border-orange-400/30 bg-orange-500/15 px-3 py-1.5 text-xs font-bold text-orange-300 animate-neon-pulse-orange">
-              <PixelIcon name="bell" size={12} /> {t({ ko: "대기", en: "Queued", ja: "待機", zh: "待处理" })} {numberFormatter.format(reviewQueue)}
+              <PixelIcon name="bell" size={12} /> {t({ ko: "대기", en: "Queued", ja: "待機", zh: "待处理" })}{" "}
+              {numberFormatter.format(reviewQueue)}
               {t({ ko: "건", en: "", ja: "件", zh: "项" })}
             </span>
           )}

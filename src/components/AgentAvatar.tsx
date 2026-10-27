@@ -102,10 +102,7 @@ export default function AgentAvatar({
       className={`${roundedClass} bg-gray-700 flex items-center justify-center flex-shrink-0 ${className}`}
       style={{ width: size, height: size }}
     >
-      <PixelIcon
-        name={iconFor(agent?.avatar_emoji, "robot")}
-        size={Math.max(16, Math.round((size * 0.6) / 16) * 16)}
-      />
+      <PixelIcon name={iconFor(agent?.avatar_emoji, "robot")} size={Math.max(16, Math.round((size * 0.6) / 16) * 16)} />
     </div>
   );
 }

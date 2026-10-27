@@ -81,7 +81,8 @@ export default function AgentDetailTabContent({
             onClick={() => onAssignTask(agent.id)}
             className="flex-1 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition-colors"
           >
-            <PixelIcon name="tasks" size={16} /> {t({ ko: "업무 배정", en: "Assign Task", ja: "タスク割り当て", zh: "分配任务" })}
+            <PixelIcon name="tasks" size={16} />{" "}
+            {t({ ko: "업무 배정", en: "Assign Task", ja: "タスク割り当て", zh: "分配任务" })}
           </button>
         </div>
         {agent.status === "working" && agent.current_task_id && onOpenTerminal && (
@@ -89,7 +90,8 @@ export default function AgentDetailTabContent({
             onClick={() => onOpenTerminal(agent.current_task_id!)}
             className="w-full mt-2 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
           >
-            <PixelIcon name="terminal" size={16} /> {t({ ko: "터미널 보기", en: "View Terminal", ja: "ターミナル表示", zh: "查看终端" })}
+            <PixelIcon name="terminal" size={16} />{" "}
+            {t({ ko: "터미널 보기", en: "View Terminal", ja: "ターミナル表示", zh: "查看终端" })}
           </button>
         )}
       </div>

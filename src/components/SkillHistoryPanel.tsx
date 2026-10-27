@@ -316,7 +316,9 @@ export default function SkillHistoryPanel({
                     >
                       <AgentAvatar agent={agent ?? undefined} agents={agents} size={20} rounded="xl" />
                       {unlearnEffect === "pot" && <PixelIcon name="break" size={16} className="unlearn-pot-drop-sm" />}
-                      {unlearnEffect === "hammer" && <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing-sm" />}
+                      {unlearnEffect === "hammer" && (
+                        <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing-sm" />
+                      )}
                       {unlearnEffect && <span className="unlearn-hit-text-sm">Bonk!</span>}
                     </div>
                     <span className="truncate">
@@ -386,7 +388,9 @@ export default function SkillHistoryPanel({
                     >
                       <AgentAvatar agent={agent ?? undefined} agents={agents} size={20} rounded="xl" />
                       {unlearnEffect === "pot" && <PixelIcon name="break" size={16} className="unlearn-pot-drop-sm" />}
-                      {unlearnEffect === "hammer" && <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing-sm" />}
+                      {unlearnEffect === "hammer" && (
+                        <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing-sm" />
+                      )}
                       {unlearnEffect && <span className="unlearn-hit-text-sm">Bonk!</span>}
                     </div>
                     <span className="truncate">

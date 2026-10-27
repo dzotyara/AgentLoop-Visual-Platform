@@ -511,7 +511,11 @@ export default function AgentManager({
             label: tr("직원관리", "Agents"),
             icon: <StackedSpriteIcon sprites={randomIconSprites.tab} />,
           },
-          { key: "departments" as const, label: tr("부서관리", "Departments"), icon: <PixelIcon name="office" size={16} /> },
+          {
+            key: "departments" as const,
+            label: tr("부서관리", "Departments"),
+            icon: <PixelIcon name="office" size={16} />,
+          },
         ].map((tab) => (
           <button
             key={tab.key}

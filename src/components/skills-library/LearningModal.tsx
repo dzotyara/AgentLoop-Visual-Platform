@@ -185,7 +185,9 @@ export default function LearningModal({
                       <AgentAvatar agent={row.agent ?? undefined} agents={agents} size={50} rounded="xl" />
                       {isAnimating && <PixelIcon name="book" size={16} className="learn-reading-book" />}
                       {unlearnEffect === "pot" && <PixelIcon name="break" size={16} className="unlearn-pot-drop" />}
-                      {unlearnEffect === "hammer" && <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing" />}
+                      {unlearnEffect === "hammer" && (
+                        <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing" />
+                      )}
                       {isHitAnimating && (
                         <span className="unlearn-hit-text">
                           {t({ ko: "깡~", en: "Bonk!", ja: "ゴン!", zh: "咣~" })}

@@ -9,7 +9,9 @@ import { Container, Graphics, Text, TextStyle } from "pixi.js";
 export function createDocGlyph(h = 16): Graphics {
   const w = Math.round(h * 0.75);
   const g = new Graphics();
-  g.rect(-w / 2, -h / 2, w, h).fill(0xf8f4e8).stroke({ width: 1, color: 0x5a4020 });
+  g.rect(-w / 2, -h / 2, w, h)
+    .fill(0xf8f4e8)
+    .stroke({ width: 1, color: 0x5a4020 });
   g.rect(-w / 2 + 2, -h / 2 - 1, w - 4, 3).fill(0x8b6b3a);
   for (let y = -h / 2 + 5; y < h / 2 - 2; y += 3) g.rect(-w / 2 + 2, y, w - 4, 1).fill(0x9a8a70);
   return g;

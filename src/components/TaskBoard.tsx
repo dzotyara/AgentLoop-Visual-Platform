@@ -212,7 +212,8 @@ export function TaskBoard({
             onClick={() => setShowProjectManager(true)}
             className="taskboard-project-manage-btn rounded-lg border px-3 py-1.5 text-xs font-semibold transition"
           >
-            <PixelIcon name="folder" size={12} /> {t({ ko: "프로젝트 관리", en: "Project Manager", ja: "プロジェクト管理", zh: "项目管理" })}
+            <PixelIcon name="folder" size={12} />{" "}
+            {t({ ko: "프로젝트 관리", en: "Project Manager", ja: "プロジェクト管理", zh: "项目管理" })}
           </button>
           <button
             onClick={() => setShowCreate(true)}

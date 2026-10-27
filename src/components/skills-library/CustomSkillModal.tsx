@@ -121,7 +121,9 @@ export default function CustomSkillModal({
                 className="hidden"
               />
               {customSkillFileName && (
-                <span className="text-xs text-emerald-300 truncate max-w-[200px]"><PixelIcon name="file" size={12} /> {customSkillFileName}</span>
+                <span className="text-xs text-emerald-300 truncate max-w-[200px]">
+                  <PixelIcon name="file" size={12} /> {customSkillFileName}
+                </span>
               )}
             </div>
             {customSkillContent && (

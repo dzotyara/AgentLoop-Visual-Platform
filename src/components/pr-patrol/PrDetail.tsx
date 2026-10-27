@@ -17,17 +17,7 @@ const REVIEW_TEXT: Record<string, { text: string; tone: string }> = {
   REVIEW_REQUIRED: { text: "Review required", tone: "text-amber-500" },
 };
 
-function StatusRow({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: PixelIconName;
-  label: string;
-  value: string;
-  tone: string;
-}) {
+function StatusRow({ icon, label, value, tone }: { icon: PixelIconName; label: string; value: string; tone: string }) {
   return (
     <div className="flex items-center gap-3 py-1.5 text-sm">
       <span className="flex w-5 justify-center">

@@ -281,7 +281,10 @@ export function buildCeoAndHallway({
     ceoLayer.addChild(statCard);
     // Pixel marker in the stat colour (emoji glyphs used to sit here).
     const marker = new Graphics();
-    marker.rect(sx + 5, sy + 6, 7, 7).fill(stat.color).stroke({ width: 1, color: 0x000000, alpha: 0.25 });
+    marker
+      .rect(sx + 5, sy + 6, 7, 7)
+      .fill(stat.color)
+      .stroke({ width: 1, color: 0x000000, alpha: 0.25 });
     ceoLayer.addChild(marker);
     ceoLayer.addChild(
       Object.assign(

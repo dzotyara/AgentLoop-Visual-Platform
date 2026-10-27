@@ -22,8 +22,8 @@ export function PrioritySection({ priority, t, onPriorityChange }: PrioritySecti
     <div>
       <label className="mb-2 block text-sm font-medium text-slate-300">
         {t({ ko: "우선순위", en: "Priority", ja: "優先度", zh: "优先级" })}:{" "}
-        <span className={`inline-block h-2.5 w-2.5 ${priorityDotClass(priority)}`} />{" "}
-        {priorityLabel(priority, t)} ({priority}/5)
+        <span className={`inline-block h-2.5 w-2.5 ${priorityDotClass(priority)}`} /> {priorityLabel(priority, t)} (
+        {priority}/5)
       </label>
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map((star) => (

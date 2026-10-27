@@ -12,7 +12,8 @@ import { describe, expect, it } from "vitest";
 
 // Pictographs, misc symbols, dingbats, arrows/shapes blocks, plus the emoji-presentation
 // clock/media glyphs in U+23xx (watch, hourglass, stopwatch, play/pause/stop...).
-const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}]\u{FE0F}?/u;
+const EMOJI =
+  /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{231A}\u{231B}\u{23E9}-\u{23F3}\u{23F8}-\u{23FA}]\u{FE0F}?/u;
 
 const SRC_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const ESCAPE_ALLOWED = new Set([path.join("components", "pixel", "emoji-to-icon.ts")]);

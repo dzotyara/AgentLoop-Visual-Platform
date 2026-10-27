@@ -144,7 +144,9 @@ export function WaitReason({
   const who = WAITING_ON[waitingOn] ?? { label: waitingOn, icon: "info", chip: WAITING_ON.github.chip };
   return (
     <span className="flex min-w-0 items-start gap-1.5 text-[11px]">
-      <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px font-medium ${who.chip}`}>
+      <span
+        className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px font-medium ${who.chip}`}
+      >
         <PixelIcon name={who.icon} size={12} />
         {who.label}
       </span>

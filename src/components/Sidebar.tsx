@@ -64,11 +64,7 @@ export default function Sidebar({ currentView, onChangeView, departments, agents
               className="w-8 h-8 object-contain"
               style={{ imageRendering: "pixelated" }}
             />
-            <PixelIcon
-              name="crown"
-              size={12}
-              className="absolute -top-1 left-1/2 -translate-x-1/2 drop-shadow"
-            />
+            <PixelIcon name="crown" size={12} className="absolute -top-1 left-1/2 -translate-x-1/2 drop-shadow" />
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
