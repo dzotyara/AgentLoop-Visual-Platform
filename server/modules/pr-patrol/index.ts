@@ -3,7 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import type { RuntimeContext } from "../../types/runtime-context.ts";
 import { loadPrPatrolConfig } from "./config.ts";
-import { BLOCKING_SEVERITIES, decide, type ActionKind, type Decision, type ReviewFinding } from "./decide.ts";
+import {
+  BLOCKING_SEVERITIES,
+  decide,
+  nitRoundsUsed,
+  type ActionKind,
+  type Decision,
+  type ReviewFinding,
+} from "./decide.ts";
 import { formatReviewComment, normalizeSeverity } from "./review-comment.ts";
 import {
   fetchPrSnapshot,
@@ -299,18 +306,20 @@ export function createPrPatrol(ctx: RuntimeContext) {
         (f: ReviewFinding) => ({ ...f, severity: normalizeSeverity(f.severity) }),
       );
       const blocking = findings.filter((f) => BLOCKING_SEVERITIES.has(f.severity));
-      store.recordReview(
-        key,
-        ws.startSha,
-        blocking,
-        findings.filter((f) => !BLOCKING_SEVERITIES.has(f.severity)),
-      );
+      const minor = findings.filter((f) => !BLOCKING_SEVERITIES.has(f.severity));
+      // An approving final review gets its card from Gate on "ready" (one card per head, with the verdict);
+      // a final review with P0/P1 posts "Not approved" now, and one whose P2/P3 still get a round posts as usual.
+      const approving =
+        d.final === true &&
+        blocking.length === 0 &&
+        (minor.length === 0 || nitRoundsUsed(store.memory(key)) >= cfg.maxNitRounds);
+      store.recordReview(key, ws.startSha, blocking, minor);
       const list = findings
         .map((f) => `- [${f.severity}] ${f.file ?? ""}${f.line ? `:${f.line}` : ""} ${f.title}`)
         .join("\n");
       // The review goes on the PR as a [review] comment (write mode only); the fixes follow as [fix] commits.
-      let posted = "not posted (dry run)";
-      if (cfg.write) {
+      let posted = approving ? "final review approved: Gate posts the card on ready" : "not posted (dry run)";
+      if (cfg.write && !approving) {
         try {
           const body = formatReviewComment({
             findings,
@@ -319,6 +328,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
             headSha: ws.startSha,
             autoFix: true,
             nitRounds: cfg.maxNitRounds,
+            final: d.final === true && blocking.length > 0,
           });
           posted = `posted ${await postPrComment(s.repo, s.number, body)}`;
         } catch (err) {
@@ -557,8 +567,28 @@ export function createPrPatrol(ctx: RuntimeContext) {
         store.setPhase(key, "merging", d.reason, d.notes, "github");
         return;
       case "ready":
-        store.setPhase(key, "ready", "checks green, no conflicts, feedback handled, review clean", d.notes);
+        store.setPhase(
+          key,
+          "ready",
+          d.approval
+            ? "checks green, no conflicts, feedback handled, final review approved"
+            : "checks green, no conflicts, feedback handled",
+          d.notes,
+        );
         if (store.markReady(key, s.headRefOid)) {
+          if (d.approval && cfg.write) {
+            const body = formatReviewComment({
+              findings: d.approval.minor,
+              summary: "",
+              reviewer: PATROL_AGENTS.reviewer.name,
+              headSha: d.approval.sha,
+              autoFix: true,
+              final: true,
+            });
+            await postPrComment(s.repo, s.number, body).catch((err) =>
+              console.warn(`[pr-patrol] final review card on ${key} failed: ${(err as Error).message}`),
+            );
+          }
           const note = `Ready: ${s.url}${d.notes.length ? ` (${d.notes.join("; ")})` : ""}`;
           createTask(
             s,
@@ -571,7 +601,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
           notifyCeo?.(`[ready] ${repo}#${number} is ready to merge — ${s.title}`);
         }
         return;
-      case "run":
+      case "run": {
         if (running.size >= eff.maxConcurrent) {
           store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]} (all agent slots busy)`, [], "agent");
           return;
@@ -589,6 +619,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
           running.delete(key);
           store.setPhase(key, "error", `launch failed: ${(err as Error).message.slice(0, 400)}`, [], "you");
         });
+      }
     }
   }
 

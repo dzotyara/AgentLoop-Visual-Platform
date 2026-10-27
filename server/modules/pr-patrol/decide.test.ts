@@ -113,10 +113,45 @@ describe("decide", () => {
     expect(d).toMatchObject({ kind: "run", action: "fix_review", key: "fixreview:head1" });
   });
 
-  it("caps review rounds and notes it instead of blocking", () => {
-    const d = decide(snap({ headRefOid: "head9" }), cfg, mem({ reviewRounds: 3 }));
-    expect(d.kind).toBe("ready");
-    if (d.kind === "ready") expect(d.notes.join()).toContain("review round cap");
+  it("past the review round cap, reviews the final head once everything else is clean", () => {
+    const capped = mem({ reviewRounds: 3 });
+    // CI still running on the new head: no final review yet, the loop waits for CI first
+    const running = snap({
+      headRefOid: "head9",
+      checks: [{ name: "build", workflow: "CI", state: "pending", rawConclusion: "", detailsUrl: null }],
+    });
+    expect(decide(running, cfg, capped)).toMatchObject({ kind: "wait", on: "ci" });
+    // all clear: the final review of head9 runs, and only it can make the PR ready
+    expect(decide(snap({ headRefOid: "head9" }), cfg, capped)).toMatchObject({
+      kind: "run",
+      action: "review",
+      key: "review:head9",
+      final: true,
+    });
+    const failed = mem({ reviewRounds: 3, actions: new Map([["review:head9", { status: "failed", attempts: 2 }]]) });
+    expect(decide(snap({ headRefOid: "head9" }), cfg, failed)).toMatchObject({
+      kind: "blocked",
+      reasons: ["final review failed to run"],
+    });
+  });
+
+  it("is ready only with an approving review of this exact head", () => {
+    const minor = [{ severity: "P3" as const, title: "nit" }];
+    const d = decide(snap(), { ...cfg, maxNitRounds: 0 }, mem({ lastReview: { sha: "head1", blocking: [], minor } }));
+    expect(d).toMatchObject({ kind: "ready", approval: { sha: "head1", minor } });
+    const blocked = decide(
+      snap(),
+      cfg,
+      mem({
+        reviewRounds: 3,
+        lastReview: { sha: "head1", blocking: [{ severity: "P1", title: "bug" }] },
+        actions: new Map([["fixreview:head1", { status: "failed", attempts: 2 }]]),
+      }),
+    );
+    expect(blocked.kind).toBe("blocked");
+    const noReview = decide(snap(), { ...cfg, review: false }, mem({ lastReview: null }));
+    expect(noReview).toMatchObject({ kind: "ready" });
+    if (noReview.kind === "ready") expect(noReview.approval).toBeUndefined();
   });
 
   it("keeps a PR with a standing changes-requested review in work", () => {

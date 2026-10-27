@@ -58,4 +58,21 @@ describe("review comment", () => {
     });
     expect(body.split("\n")[1]).toBe("**No blocking findings** \u00b7 P0 0 \u00b7 P1 0 \u00b7 P2 1 \u00b7 P3 0");
   });
+
+  it("renders the final review verdict: Approved for merge, or Not approved with the blockers", () => {
+    const base = { summary: "", reviewer: "Argus", headSha: "abcdef1234", autoFix: true, final: true };
+    const clean = formatReviewComment({ ...base, findings: [] }).split("\n");
+    expect(clean[0]).toBe("### 🤖 Review Agent · Final review · `abcdef1`");
+    expect(clean[1]).toBe("**✅ Approved for merge** · P0 0 · P1 0 · P2 0 · P3 0");
+    expect(clean.at(-1)).toContain("final review: no findings");
+
+    const nits = formatReviewComment({ ...base, findings: [{ severity: "P3", file: "a.ts", title: "nit" }] });
+    expect(nits.split("\n")[1]).toBe("**✅ Approved for merge** · P0 0 · P1 0 · P2 0 · P3 1");
+    expect(nits).toContain("| ⚪ P3 | `a.ts` | nit |");
+    expect(nits).not.toContain("No blocking findings");
+
+    const bad = formatReviewComment({ ...base, findings: [{ severity: "P1", title: "bug" }] });
+    expect(bad.split("\n")[1]).toBe("**❌ Not approved: 1 blocking** · P0 0 · P1 1 · P2 0 · P3 0");
+    expect(bad).toContain("reviewed again");
+  });
 });

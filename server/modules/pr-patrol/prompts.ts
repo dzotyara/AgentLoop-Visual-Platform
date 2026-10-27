@@ -71,9 +71,16 @@ ${blocks.join("\n\n")}
 `;
 }
 
-function reviewPrompt(s: PrSnapshot): string {
+function reviewPrompt(s: PrSnapshot, final = false): string {
+  const finalNote = final
+    ? `
+This is the FINAL review: the head after all fixes, with CI green and comments handled. Your verdict decides the
+merge: no P0/P1 means the PR is approved for merge, any P0/P1 sends it back for another fix round. Re-check the
+whole diff, including code the fix commits touched.
+`
+    : "";
   return `## Your role: PR reviewer (correctness, error handling, security)
-
+${finalNote}
 Review ONLY what this PR changes: \`git diff origin/${s.baseRefName}...HEAD\` (read surrounding code as needed).
 You may delegate the three angles below to subagents in parallel, or do them yourself in sequence.
 Do not modify files and do not commit.
@@ -187,7 +194,7 @@ Result JSON:
 export function buildPatrolPrompt(s: PrSnapshot, d: Extract<Decision, { kind: "run" }>, resultPath: string): string {
   const body =
     d.action === "review"
-      ? reviewPrompt(s)
+      ? reviewPrompt(s, d.final === true)
       : d.action === "fix_review"
         ? fixReviewPrompt(d)
         : d.action === "address_feedback"

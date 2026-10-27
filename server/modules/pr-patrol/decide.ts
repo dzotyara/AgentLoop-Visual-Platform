@@ -50,10 +50,17 @@ export type Decision =
       failingChecks?: PrCheck[];
       feedback?: PrFeedback[];
       findings?: ReviewFinding[];
+      /** The review of the final head, run once everything else is clean: it authorises the merge. */
+      final?: boolean;
     }
   | { kind: "wait"; reason: string; on: WaitingOn; notes: string[] }
   | { kind: "blocked"; reasons: string[]; notes: string[] }
-  | { kind: "ready"; notes: string[] }
+  | {
+      kind: "ready";
+      notes: string[];
+      /** Own review of this exact head that approved it (no P0/P1); absent when the own review is off. */
+      approval?: { sha: string; minor: ReviewFinding[] };
+    }
   | { kind: "merging"; reason: string; notes: string[] };
 
 const MERGE_QUEUE_STATE: Record<string, string> = {
@@ -68,6 +75,11 @@ const MERGE_QUEUE_STATE: Record<string, string> = {
 export type WaitingOn = "ci" | "reviewer" | "github" | "you" | "agent";
 
 export const BLOCKING_SEVERITIES = new Set<Severity>(["P0", "P1"]);
+
+/** P2/P3 fix rounds already spent on this PR (comment and review nits together). */
+export function nitRoundsUsed(mem: PatrolMemory): number {
+  return [...mem.actions].filter(([k, a]) => k.includes("-nit:") && a.status === "done").length;
+}
 
 function shortHash(parts: string[]): string {
   return createHash("sha1")
@@ -138,8 +150,7 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
   // P0/P1 (and every human comment) are always fixed; P2/P3 get at most cfg.maxNitRounds rounds per PR, and a
   // round starts only once CI on the head has finished, so every push gets a full CI run instead of a cancelled one.
   // Bot placeholders and status summaries with nothing to act on never cost a run.
-  const nitRounds = [...mem.actions].filter(([k, a]) => k.includes("-nit:") && a.status === "done").length;
-  const nitBudget = nitRounds < cfg.maxNitRounds;
+  const nitBudget = nitRoundsUsed(mem) < cfg.maxNitRounds;
   const ciRunning = checks.some((c) => c.state === "pending");
   const pending = s.feedback.filter(
     (f) => !mem.handledFeedbackIds.has(f.key) && !f.inProgress && f.severity !== "none",
@@ -201,9 +212,8 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
       const g = gate(key, "review");
       if (g === "go") return { kind: "run", action: "review", key };
       if (g === "exhausted") blocked.push("own review failed to run");
-    } else {
-      notes.push(`review round cap (${cfg.maxReviewRounds}) reached: head ${head.slice(0, 7)} not re-reviewed`);
     }
+    // Past the round cap the head is still reviewed once, as the final review below, before it can be ready.
   } else if (s.reviewDecision === "REVIEW_REQUIRED") notes.push("waiting for a human approval");
   if (s.mergeStateStatus === "BEHIND") notes.push("branch is behind its base");
 
@@ -222,6 +232,21 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
       on: "reviewer",
       notes,
     };
+  }
+  // Final review: Argus must have reviewed this exact head with no P0/P1 before Gate may call it ready. After
+  // fixes past the review round cap that review runs here, once CI, conflicts, comments and reviewers are clear.
+  if (reviewOn) {
+    if (mem.lastReview?.sha !== head) {
+      const key = `review:${head}`;
+      const g = gate(key, "review");
+      if (g === "go") return { kind: "run", action: "review", key, final: true };
+      return {
+        kind: "blocked",
+        reasons: [g === "done" ? `final review of ${head.slice(0, 7)} left no result` : "final review failed to run"],
+        notes,
+      };
+    }
+    return { kind: "ready", notes, approval: { sha: head, minor: mem.lastReview.minor ?? [] } };
   }
   return { kind: "ready", notes };
 }
