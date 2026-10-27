@@ -118,3 +118,8 @@ export function workSpot(pin: { x: number; y: number }, slotIndex: number): { x:
   const side = slotIndex % 2 === 0 ? -1 : 1;
   return { x: pin.x + side * 13, y: pin.y + 18 };
 }
+
+/** Font size in CSS px for `units` at `scale`, never below what stays readable in a small window. */
+export function fz(units: number, scale: number, min = 11): number {
+  return Math.max(min, Math.round(units * scale));
+}

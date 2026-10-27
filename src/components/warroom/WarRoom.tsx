@@ -7,6 +7,7 @@ import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
 import { setLiveFromStatus } from "../pr-patrol/live-store";
 import { ACTION_LABEL, checksSummary } from "../pr-patrol/pr-ui";
 import WarRoomAgent from "./WarRoomAgent";
+import { fz } from "./layout";
 import {
   SCENE_H,
   SCENE_W,
@@ -187,7 +188,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
                 className="warroom-font absolute overflow-hidden"
                 style={{
                   inset: 4 * s,
-                  fontSize: 4.2 * s,
+                  fontSize: fz(4.2, s),
                   lineHeight: 1.3,
                   color,
                   background: "rgba(8,14,10,0.55)",
@@ -195,7 +196,9 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
                 }}
               >
                 <div className="flex items-center justify-between">
-                  <span style={{ color: "#e8e8e0" }}>{st.label}</span>
+                  <span className="warroom-pixel" style={{ color: "#e8e8e0" }}>
+                    {st.label}
+                  </span>
                   <span>{state}</span>
                 </div>
                 <div className="truncate">{p?.job ? short(p.job) : st.role}</div>
@@ -215,10 +218,10 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
           <div key={st.key}>
             <div style={box(s, st.x, st.y, 64, 48, tex(`station-${st.key}.png`, "rgba(70,72,60,0.6)"))} />
             <div
-              className="warroom-font flex items-center justify-center gap-1"
+              className="warroom-pixel flex items-center justify-center gap-1"
               style={box(s, st.x + 8, st.y + 48, 48, 12, {
                 ...tex("plate.png", "#4a4c50"),
-                fontSize: 4.2 * s,
+                fontSize: fz(4.6, s, 12),
                 color: "#1c1b22",
               })}
             >
@@ -250,7 +253,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
                 className="warroom-font pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap"
                 style={{
                   top: 18 * s,
-                  fontSize: 4 * s,
+                  fontSize: fz(4, s),
                   lineHeight: 1,
                   padding: `${0.5 * s}px ${1 * s}px`,
                   color: "#f2efe4",
@@ -268,7 +271,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
                   top: -2 * s,
                   width: 120 * s,
                   zIndex: 500,
-                  fontSize: 4.2 * s,
+                  fontSize: fz(4.2, s),
                   lineHeight: 1.3,
                   color: "#1c1b22",
                   background: "#f2efe4",
@@ -312,7 +315,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
           style={{
             left: 100 * s,
             top: 47 * s,
-            fontSize: 4.4 * s,
+            fontSize: fz(4.4, s),
             color: "#f2efe4",
             background: "rgba(20,20,26,0.72)",
             padding: `${1 * s}px ${2.5 * s}px`,

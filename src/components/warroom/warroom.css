@@ -1,7 +1,14 @@
+/* small text: the UI font, heavy enough to read on textures */
 .warroom-font {
+  font-family: var(--th-font-body, ui-sans-serif, system-ui, sans-serif);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+/* big labels only (nameplates, monitor headers): the pixel face, 12px and up */
+.warroom-pixel {
   font-family: "Pixelify Sans", "Silkscreen", ui-monospace, monospace;
-  -webkit-font-smoothing: none;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .warroom-tex {

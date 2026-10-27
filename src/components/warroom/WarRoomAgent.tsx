@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AGENT_H, AGENT_W } from "./layout";
+import { AGENT_H, AGENT_W, fz } from "./layout";
 
 const SPEED = 70; // logical units per second
 const STEP_MS = 140;
@@ -112,7 +112,7 @@ export default function WarRoomAgent({
         className="warroom-font absolute left-1/2 -translate-x-1/2 whitespace-nowrap px-1"
         style={{
           bottom: -5 * scale,
-          fontSize: 4.2 * scale,
+          fontSize: fz(4.2, scale),
           lineHeight: 1,
           color: "#e8e8e0",
           background: "rgba(20,20,26,0.75)",
@@ -127,7 +127,7 @@ export default function WarRoomAgent({
           style={{
             bottom: (AGENT_H + 3) * scale,
             width: 96 * scale,
-            fontSize: 4.2 * scale,
+            fontSize: fz(4.2, scale),
             lineHeight: 1.25,
             color: "#1c1b22",
             background: bubble.tone === "ready" ? "#d8f0d0" : "#f2efe4",
