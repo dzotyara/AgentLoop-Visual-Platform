@@ -6,7 +6,7 @@ import type { PixelIconName } from "../pixel/PixelIcon";
  * around it. Sprites and textures are pixel art scaled with `image-rendering: pixelated`.
  */
 export const SCENE_W = 400;
-export const SCENE_H = 230;
+export const SCENE_H = 244;
 export const WALL_H = 40;
 export const STRIPE_H = 4;
 
