@@ -214,8 +214,6 @@ export function createPrPatrol(ctx: RuntimeContext) {
             summary,
             reviewer: crewSeats.name(agentId("reviewer"), PATROL_AGENTS.reviewer.key),
             headSha: ws.startSha,
-            autoFix: true,
-            nitRounds: cfg.maxNitRounds,
             final: d.final === true && blocking.length > 0,
           });
           posted = `posted ${await postPrComment(s.repo, s.number, body)}`;
@@ -470,7 +468,6 @@ export function createPrPatrol(ctx: RuntimeContext) {
               summary: "",
               reviewer: crewSeats.name(agentId("reviewer"), PATROL_AGENTS.reviewer.key),
               headSha: d.approval.sha,
-              autoFix: true,
               final: true,
             });
             await postPrComment(s.repo, s.number, body).catch((err) =>
