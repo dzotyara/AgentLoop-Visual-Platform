@@ -99,24 +99,29 @@ OPERATORS = {
             "V": "#56603f", "P": "#6a7450", "A": "#5e6846", "B": "#2f2b22", "L": "#4e5638", "K": "#2a261f",
         },
     },
-    # Weaver — sapper (resolves merge conflicts): NVG mount, black balaclava, hazard-striped pouch
+    # Weaver seat (Veronica) — sapper (resolves merge conflicts): helmet with NVG mount, auburn hair with a braid
+    # over the shoulder, dark kit, hazard-striped pouch
     104: {
         "head": [
             "...OOOOOOO...",
             "..OHHHNNHHO..",
             ".OHHHNNNHHHO.",
             ".OHHHHHHHHHO.",
-            ".OHHHHHHHHHO.",
-            "OEHMMMMMMMHEO",
-            "OEMMMMMMMMMEO",
-            "OEMSGSSSGSMEO",
-            "OEMMMMMMMMMEO",
-            ".OMMMMMMMMMO.",
-            "..OMMMMMMMO..",
+            "OrHHHHHHHHHrO",
+            "OrrSSSSSSSrrO",
+            "OrrSSSSSSSrrO",
+            "OrSlGSSSlGSrO",
+            "OrSSSSSSSSSrO",
+            "OrrSbSmmSbrrO",
+            ".OrrSSSSSrrO.",
         ],
-        "overrides": {(3, 4): "Y", (3, 5): "N", (3, 6): "Y", (3, 7): "N", (3, 8): "Y"},
+        "overrides": {
+            (0, 10): "r", (1, 10): "r", (2, 10): "R", (3, 10): "r", (4, 10): "q",
+            (3, 4): "Y", (3, 5): "N", (3, 6): "Y", (3, 7): "N", (3, 8): "Y",
+        },
         "colors": {
-            "H": "#3c4045", "N": "#15151a", "E": "#222226", "M": "#34343b", "Y": "#d9b200",
+            "H": "#3c4045", "N": "#15151a", "r": "#8a3a22", "R": "#6a2816", "q": "#26262b", "l": "#1c1b22",
+            "m": "#b8505a", "b": "#e59a8a", "Y": "#d9b200",
             "V": "#2f3136", "P": "#44474d", "A": "#3a3d42", "B": "#1f2024", "L": "#2c2e33", "K": "#18181b",
         },
     },
