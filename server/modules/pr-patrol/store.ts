@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { ActionState, PatrolMemory, ReviewFinding } from "./decide.ts";
 
-export type PrPhase = "watching" | "working" | "waiting" | "blocked" | "ready" | "skipped" | "error";
+export type PrPhase = "watching" | "working" | "waiting" | "blocked" | "ready" | "merging" | "skipped" | "error";
 
 export type PrRow = {
   pr_key: string;

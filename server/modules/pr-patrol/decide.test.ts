@@ -112,6 +112,18 @@ describe("decide", () => {
     expect(decide(fb, cfg, mem())).toMatchObject({ kind: "run", action: "address_feedback" });
   });
 
+  it("leaves a PR in the merge queue alone, even with failing checks or new comments", () => {
+    const d = decide(
+      snap({
+        mergeQueue: { state: "AWAITING_CHECKS", position: 2, enqueuedAt: "" },
+        checks: [{ name: "t", workflow: null, state: "failure", rawConclusion: "FAILURE", detailsUrl: null }],
+      }),
+      cfg,
+      mem(),
+    );
+    expect(d).toMatchObject({ kind: "merging", reason: "In merge queue: position 2, queue checks running" });
+  });
+
   it("ignores configured checks", () => {
     const gated = snap({
       checks: [{ name: "merge-gate", workflow: null, state: "failure", rawConclusion: "FAILURE", detailsUrl: null }],

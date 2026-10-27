@@ -1,6 +1,6 @@
 import { post, request } from "./core";
 
-export type PrPatrolPhase = "watching" | "working" | "waiting" | "blocked" | "ready" | "skipped" | "error";
+export type PrPatrolPhase = "watching" | "working" | "waiting" | "blocked" | "ready" | "merging" | "skipped" | "error";
 
 export type PrPatrolCheck = {
   name: string;
@@ -22,7 +22,11 @@ export type PrPatrolFeedback = {
   handled: boolean;
 };
 
+export type PrPatrolMergeQueue = { state: string; position: number; enqueuedAt: string };
+
 export type PrPatrolSnapshot = {
+  /** Set while the PR sits in GitHub's merge queue. */
+  mergeQueue?: PrPatrolMergeQueue | null;
   headRefName: string;
   baseRefName: string;
   isDraft: boolean;

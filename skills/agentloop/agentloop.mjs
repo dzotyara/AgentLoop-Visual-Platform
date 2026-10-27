@@ -70,10 +70,11 @@ const PHASE = {
   waiting: "🟡 waiting",
   watching: "⚪ queued",
   ready: "🟢 ready",
+  merging: "🟣 merge queue",
   error: "❗ error",
   skipped: "· skipped",
 };
-const ORDER = ["working", "blocked", "waiting", "watching", "ready", "error", "skipped"];
+const ORDER = ["working", "blocked", "waiting", "watching", "ready", "merging", "error", "skipped"];
 const ACTION = {
   review: "Review",
   fix_review: "Fix review findings",
@@ -169,8 +170,11 @@ async function pr(arg) {
 
 async function ready() {
   const s = await api("/api/pr-patrol/status");
+  const queued = s.prs.filter((p) => p.phase === "merging");
+  for (const p of queued) console.log(`🟣 ${p.pr_key}  ${p.title.slice(0, 80)}\n   ${p.summary}\n   ${p.url}`);
   const prs = s.prs.filter((p) => p.phase === "ready");
-  if (!prs.length) return console.log("Nothing is ready to merge yet.");
+  if (!prs.length)
+    return console.log(queued.length ? "Nothing else is ready to merge." : "Nothing is ready to merge yet.");
   console.log(`Ready to merge (${prs.length}):`);
   for (const p of prs)
     console.log(

@@ -42,5 +42,5 @@ prefer `log` over guessing from `pr` notes.
 - Spend figures are Claude Code's own API list-price numbers, not the user's subscription bill — say so when quoting money.
 - If the script says AgentLoop is not reachable, tell the user and offer to start it
   (`cd ~/Projects/pr-loop && pnpm dev:local`); do not start it unasked.
-- Phases: working (agent on it) · needs you (blocked: attempts exhausted or a dry-run fix awaiting push) ·
+- Phases: working (agent on it) · merge queue (in GitHub's merge queue; agents keep off) · needs you (blocked) ·
   waiting (CI running, or a reviewer's changes-requested still standing) · queued · ready · skipped (merged/closed/draft/fork).

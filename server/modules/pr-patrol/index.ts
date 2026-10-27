@@ -430,6 +430,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
       mergeable: s.mergeable,
       mergeStateStatus: s.mergeStateStatus,
       reviewDecision: s.reviewDecision,
+      mergeQueue: s.mergeQueue ?? null,
       checks: s.checks.map((c) => ({ ...c, ignored: cfg.ignoredChecks.includes(c.name) })),
       feedback: s.feedback.map((f) => ({
         id: f.id,
@@ -455,6 +456,9 @@ export function createPrPatrol(ctx: RuntimeContext) {
         return;
       case "blocked":
         store.setPhase(key, "blocked", d.reasons.join("; "), d.notes, "you");
+        return;
+      case "merging":
+        store.setPhase(key, "merging", d.reason, d.notes, "github");
         return;
       case "ready":
         store.setPhase(key, "ready", "checks green, no conflicts, feedback handled, review clean", d.notes);

@@ -30,6 +30,7 @@ const PIN_COLOR: Record<PrPatrolPhase, string> = {
   waiting: "#e0a030",
   watching: "#8a8a86",
   ready: "#3fae5a",
+  merging: "#8a5cd6",
   error: "#8e2a24",
   skipped: "#5a5a5a",
 };
@@ -40,6 +41,7 @@ const PHASE_LABEL: Record<PrPatrolPhase, string> = {
   waiting: "Waiting",
   watching: "Queued",
   ready: "Ready to merge",
+  merging: "In merge queue",
   error: "Error",
   skipped: "Skipped",
 };
@@ -86,6 +88,9 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
   const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
   const crew = agents.filter((a) => STATION_BY_AGENT[a.name]);
   const readyPrs = prs.filter((p) => p.phase === "ready");
+  const queuedPrs = prs
+    .filter((p) => p.phase === "merging")
+    .sort((a, b) => (a.snapshot?.mergeQueue?.position ?? 99) - (b.snapshot?.mergeQueue?.position ?? 99));
   const counts = prs.reduce<Partial<Record<PrPatrolPhase, number>>>((acc, p) => {
     acc[p.phase] = (acc[p.phase] ?? 0) + 1;
     return acc;
@@ -104,6 +109,22 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
           title: `${short(job)} · ${ACTION_LABEL[job.agent!.action] ?? job.agent!.action}`,
           line: job.agent!.activity,
           tone: "work" as const,
+        },
+      };
+    }
+    // Gate escorts the PR closest to merging: the head of the merge queue first, then ready PRs.
+    const escort = queuedPrs[0];
+    if (stationKey === "gate" && escort && slots.get(escort.pr_key)) {
+      const pin = slots.get(escort.pr_key)!;
+      const pos = escort.snapshot?.mergeQueue?.position;
+      return {
+        spot: workSpot(pin, 1),
+        working: false,
+        job: escort,
+        bubble: {
+          title: `In merge queue${pos ? ` #${pos}` : ""}`,
+          line: short(escort),
+          tone: "ready" as const,
         },
       };
     }
@@ -180,8 +201,9 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
         {/* wall monitors: one per station */}
         {Object.values(STATIONS).map((st) => {
           const p = placed.find((x) => x.key === st.key);
-          const state = p?.working ? "WORKING" : p?.bubble ? "READY" : p ? "STANDBY" : "OFFLINE";
-          const color = p?.working ? "#8fd0ff" : p?.bubble ? "#8fe39a" : "#9a9a92";
+          const inQueue = p?.job?.phase === "merging";
+          const state = p?.working ? "WORKING" : inQueue ? "QUEUE" : p?.bubble ? "READY" : p ? "STANDBY" : "OFFLINE";
+          const color = p?.working ? "#8fd0ff" : inQueue ? "#c4a8ff" : p?.bubble ? "#8fe39a" : "#9a9a92";
           return (
             <div key={st.key} style={box(s, st.screen.x, st.screen.y, 64, 34, tex("screen.png", "#2b2d31"))}>
               <div
@@ -203,7 +225,13 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
                 </div>
                 <div className="truncate">{p?.job ? short(p.job) : st.role}</div>
                 <div className="truncate" style={{ opacity: 0.85 }}>
-                  {p?.working ? p.job?.agent?.activity : p?.bubble ? "merge when you can" : "—"}
+                  {p?.working
+                    ? p.job?.agent?.activity
+                    : inQueue
+                      ? p?.job?.summary.replace(/^In merge queue: /, "")
+                      : p?.bubble
+                        ? "merge when you can"
+                        : "—"}
                 </div>
               </div>
             </div>
@@ -328,6 +356,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
               ["blocked", "you"],
               ["waiting", "pending"],
               ["ready", "ready"],
+              ["merging", "merge"],
             ] as const
           ).map(([phase, icon]) => (
             <span key={phase} className="flex items-center gap-1" style={{ color: PIN_COLOR[phase] }}>

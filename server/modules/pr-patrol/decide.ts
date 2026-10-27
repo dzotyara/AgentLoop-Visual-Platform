@@ -38,7 +38,16 @@ export type Decision =
     }
   | { kind: "wait"; reason: string; on: WaitingOn; notes: string[] }
   | { kind: "blocked"; reasons: string[]; notes: string[] }
-  | { kind: "ready"; notes: string[] };
+  | { kind: "ready"; notes: string[] }
+  | { kind: "merging"; reason: string; notes: string[] };
+
+const MERGE_QUEUE_STATE: Record<string, string> = {
+  QUEUED: "waiting for its turn",
+  AWAITING_CHECKS: "queue checks running",
+  MERGEABLE: "about to merge",
+  UNMERGEABLE: "failed queue checks",
+  LOCKED: "locked by GitHub",
+};
 
 /** Who or what the PR is waiting for when no agent can act: shown next to the reason in the UI. */
 export type WaitingOn = "ci" | "reviewer" | "github" | "you" | "agent";
@@ -60,6 +69,11 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory): D
   if (s.state !== "OPEN") return { kind: "skip", reason: `PR is ${s.state.toLowerCase()}` };
   if (s.isDraft && !cfg.includeDrafts) return { kind: "skip", reason: "draft" };
   if (s.isCrossRepository) return { kind: "skip", reason: "fork PR: its branch cannot be pushed from here" };
+  // In the merge queue the PR belongs to GitHub: any push would drop it from the queue, so agents stay off.
+  if (s.mergeQueue) {
+    const state = MERGE_QUEUE_STATE[s.mergeQueue.state] ?? s.mergeQueue.state.toLowerCase();
+    return { kind: "merging", reason: `In merge queue: position ${s.mergeQueue.position}, ${state}`, notes: [] };
+  }
 
   const checks = s.checks.filter((c) => !cfg.ignoredChecks.includes(c.name));
   const head = s.headRefOid;

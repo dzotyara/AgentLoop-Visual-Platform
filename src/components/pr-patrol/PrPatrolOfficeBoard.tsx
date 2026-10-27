@@ -24,11 +24,13 @@ export default function PrPatrolOfficeBoard({ agents, onOpenPrs }: { agents: Age
   const prs = useMemo(
     () =>
       (data?.prs ?? [])
-        .filter((p) => p.phase !== "skipped" && p.phase !== "ready")
+        .filter((p) => p.phase !== "skipped" && p.phase !== "ready" && p.phase !== "merging")
         .sort((a, b) => ORDER.indexOf(a.phase) - ORDER.indexOf(b.phase) || b.updated_at - a.updated_at),
     [data],
   );
-  const ready = (data?.prs ?? []).filter((p) => p.phase === "ready");
+  const ready = (data?.prs ?? [])
+    .filter((p) => p.phase === "ready" || p.phase === "merging")
+    .sort((a, b) => Number(b.phase === "merging") - Number(a.phase === "merging"));
   if (!data || prs.length + ready.length === 0) return null;
   const working = prs.filter((p) => p.agent).length;
 

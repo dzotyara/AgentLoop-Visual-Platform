@@ -15,6 +15,11 @@ export const PHASE_META: Record<PrPatrolPhase, { label: string; dot: string; chi
     dot: "bg-emerald-500",
     chip: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
   },
+  merging: {
+    label: "In merge queue",
+    dot: "bg-violet-500",
+    chip: "bg-violet-500/15 text-violet-400 border-violet-500/30",
+  },
   skipped: { label: "Skipped", dot: "bg-slate-600", chip: "bg-slate-600/15 text-slate-500 border-slate-600/30" },
   error: { label: "Error", dot: "bg-rose-600", chip: "bg-rose-600/15 text-rose-500 border-rose-600/30" },
 };

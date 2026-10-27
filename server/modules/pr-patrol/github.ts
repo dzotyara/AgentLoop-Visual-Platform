@@ -26,6 +26,9 @@ export type PrFeedback = {
   createdAt: string;
 };
 
+/** GitHub merge queue entry: state is QUEUED | AWAITING_CHECKS | MERGEABLE | UNMERGEABLE | LOCKED. */
+export type MergeQueueEntry = { state: string; position: number; enqueuedAt: string };
+
 export type PrSnapshot = {
   repo: string; // owner/name
   number: number;
@@ -41,6 +44,8 @@ export type PrSnapshot = {
   mergeable: string; // MERGEABLE | CONFLICTING | UNKNOWN
   mergeStateStatus: string;
   reviewDecision: string | null;
+  /** Set while the PR sits in GitHub's merge queue. */
+  mergeQueue?: MergeQueueEntry | null;
   /** Reviewers whose latest review still requests changes. */
   changesRequestedBy?: string[];
   checks: PrCheck[];
@@ -143,6 +148,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       }
       reviews(last: 50) { nodes { id state body url createdAt author { login } } }
       comments(last: 50) { nodes { id body url createdAt author { login } } }
+      mergeQueueEntry { state position enqueuedAt }
     }
   }
 }`;
@@ -151,6 +157,7 @@ type FeedbackResponse = {
   data: {
     repository: {
       pullRequest: {
+        mergeQueueEntry?: MergeQueueEntry | null;
         reviewThreads: {
           nodes: Array<{
             id: string;
@@ -298,6 +305,7 @@ export async function fetchPrSnapshot(repo: string, number: number, cfg: PrPatro
     mergeStateStatus: view.mergeStateStatus,
     reviewDecision: view.reviewDecision || null,
     changesRequestedBy: extractChangesRequestedBy(feedbackResp),
+    mergeQueue: feedbackResp.data.repository.pullRequest.mergeQueueEntry ?? null,
     checks: normalizeChecks(view.statusCheckRollup),
     feedback: extractFeedback(feedbackResp, me, cfg.ignoredCommenters),
   };

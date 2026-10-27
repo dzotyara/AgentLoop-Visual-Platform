@@ -14,7 +14,16 @@ import ReadyToMergeBlock from "./ReadyToMergeBlock";
 import { takeRequestedPr } from "../warroom/pr-selection";
 import { PHASE_META, TONE_TEXT, WaitReason, checksSummary, timeAgo } from "./pr-ui";
 
-const PHASE_ORDER: PrPatrolPhase[] = ["working", "blocked", "waiting", "watching", "ready", "error", "skipped"];
+const PHASE_ORDER: PrPatrolPhase[] = [
+  "working",
+  "blocked",
+  "waiting",
+  "watching",
+  "ready",
+  "merging",
+  "error",
+  "skipped",
+];
 
 function PrRow({ pr, selected, onSelect }: { pr: PrPatrolPr; selected: boolean; onSelect: () => void }) {
   const meta = PHASE_META[pr.phase] ?? PHASE_META.watching;
@@ -67,7 +76,9 @@ export default function PrPatrolView({
 
   const prs = useMemo(() => {
     // Ready PRs live in their own block above the list.
-    const list = (data?.prs ?? []).filter((p) => p.phase !== "ready" && (showSkipped || p.phase !== "skipped"));
+    const list = (data?.prs ?? []).filter(
+      (p) => p.phase !== "ready" && p.phase !== "merging" && (showSkipped || p.phase !== "skipped"),
+    );
     return list.sort(
       (a, b) => PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase) || b.updated_at - a.updated_at,
     );
@@ -78,7 +89,10 @@ export default function PrPatrolView({
     return c;
   }, [data]);
   const readyPrs = useMemo(
-    () => (data?.prs ?? []).filter((p) => p.phase === "ready").sort((a, b) => b.updated_at - a.updated_at),
+    () =>
+      (data?.prs ?? [])
+        .filter((p) => p.phase === "ready" || p.phase === "merging")
+        .sort((a, b) => Number(b.phase === "merging") - Number(a.phase === "merging") || b.updated_at - a.updated_at),
     [data],
   );
   const selected = (data?.prs ?? []).find((p) => p.pr_key === selectedKey) ?? prs[0] ?? readyPrs[0] ?? null;

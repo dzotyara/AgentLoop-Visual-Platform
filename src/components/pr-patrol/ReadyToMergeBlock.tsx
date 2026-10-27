@@ -27,6 +27,11 @@ export default function ReadyToMergeBlock({
         <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-500">
           {prs.length}
         </span>
+        {prs.some((p) => p.phase === "merging") && (
+          <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] font-medium text-violet-400">
+            {prs.filter((p) => p.phase === "merging").length} in merge queue
+          </span>
+        )}
         <span className="text-[11px]" style={{ color: "var(--th-text-muted)" }}>
           checks green · no conflicts · comments handled · review clean
         </span>
@@ -35,14 +40,20 @@ export default function ReadyToMergeBlock({
         {prs.map((pr) => {
           const checks = checksSummary(pr.snapshot?.checks ?? []);
           const spend = costs?.byPr.find((b) => b.key === pr.pr_key);
+          const queue = pr.phase === "merging" ? pr.snapshot?.mergeQueue : null;
           return (
             <div
               key={pr.pr_key}
               className="flex min-w-0 flex-col gap-1 rounded-lg border px-3 py-2"
-              style={{ borderColor: "rgba(16,185,129,0.35)", background: "var(--th-bg-surface)" }}
+              style={{
+                borderColor: pr.phase === "merging" ? "rgba(139,92,246,0.5)" : "rgba(16,185,129,0.35)",
+                background: "var(--th-bg-surface)",
+              }}
             >
               <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--th-text-muted)" }}>
-                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                <span
+                  className={`h-2 w-2 shrink-0 rounded-full ${pr.phase === "merging" ? "animate-pulse bg-violet-500" : "bg-emerald-500"}`}
+                />
                 {pr.repo} #{pr.number}
                 <span className="ml-auto shrink-0">{timeAgo(pr.updated_at)}</span>
               </div>
@@ -52,6 +63,16 @@ export default function ReadyToMergeBlock({
               >
                 {pr.title}
               </div>
+              {pr.phase === "merging" && (
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <span className="rounded-full border border-violet-500/30 bg-violet-500/15 px-1.5 py-px font-medium text-violet-400">
+                    In merge queue{queue ? ` · #${queue.position}` : ""}
+                  </span>
+                  <span className="truncate" style={{ color: "var(--th-text-secondary)" }}>
+                    {pr.summary.replace(/^In merge queue: position \d+, /, "")}
+                  </span>
+                </div>
+              )}
               {!compact && pr.snapshot && (
                 <div className="truncate font-mono text-[11px]" style={{ color: "var(--th-text-muted)" }}>
                   {pr.snapshot.headRefName} → {pr.snapshot.baseRefName}
