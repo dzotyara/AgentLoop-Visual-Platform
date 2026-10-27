@@ -1,4 +1,4 @@
-import { post, request } from "./core";
+import { post, put, request } from "./core";
 
 export type PrPatrolPhase = "watching" | "working" | "waiting" | "blocked" | "ready" | "merging" | "skipped" | "error";
 
@@ -91,4 +91,41 @@ export function getPrPatrolStatus(): Promise<PrPatrolStatus> {
 
 export function triggerPrPatrolTick(): Promise<{ ok: boolean }> {
   return post<{ ok: boolean }>("/api/pr-patrol/tick");
+}
+
+/** Agent steps of the loop that the pipeline settings can configure (server: pipeline.ts PIPELINE_STEPS). */
+export type PrPatrolStepKind = "fix_conflict" | "fix_ci" | "address_feedback" | "review" | "fix_review";
+
+/** `null` = use the env default (see PrPatrolPipelineDefaults). */
+export type PrPatrolStepSettings = { enabled: boolean; model: string | null; maxAttempts: number | null };
+
+export type PrPatrolPipeline = {
+  steps: Record<PrPatrolStepKind, PrPatrolStepSettings>;
+  maxConcurrent: number | null;
+  maxReviewRounds: number | null;
+};
+
+export type PrPatrolPipelineDefaults = {
+  maxConcurrent: number;
+  maxAttempts: number;
+  maxReviewRounds: number;
+  model: string | null;
+  review: boolean;
+};
+
+export type PrPatrolPipelineResponse = { pipeline: PrPatrolPipeline; defaults: PrPatrolPipelineDefaults };
+
+/** Partial update: unknown keys are rejected with 400 `invalid_pipeline`; model "default" or null clears it. */
+export type PrPatrolPipelineUpdate = {
+  steps?: Partial<Record<PrPatrolStepKind, Partial<PrPatrolStepSettings>>>;
+  maxConcurrent?: number | null;
+  maxReviewRounds?: number | null;
+};
+
+export function getPipeline(): Promise<PrPatrolPipelineResponse> {
+  return request<PrPatrolPipelineResponse>("/api/pr-patrol/pipeline");
+}
+
+export function savePipeline(update: PrPatrolPipelineUpdate): Promise<PrPatrolPipelineResponse> {
+  return put<PrPatrolPipelineResponse>("/api/pr-patrol/pipeline", update);
 }
