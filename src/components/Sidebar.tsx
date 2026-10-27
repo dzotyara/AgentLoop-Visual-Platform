@@ -4,7 +4,7 @@ import { useI18n, localeName } from "../i18n";
 import PixelIcon, { type PixelIconName } from "./pixel/PixelIcon";
 import { iconFor } from "./pixel/emoji-to-icon";
 
-type View = "office" | "agents" | "dashboard" | "tasks" | "prs" | "skills" | "settings";
+type View = "office" | "agents" | "dashboard" | "tasks" | "prs" | "pipeline" | "skills" | "settings";
 
 interface SidebarProps {
   currentView: View;
@@ -22,6 +22,7 @@ const NAV_ITEMS: { view: View; icon: PixelIconName; sprite?: string }[] = [
   { view: "dashboard", icon: "dashboard" },
   { view: "tasks", icon: "tasks" },
   { view: "prs", icon: "prs" },
+  { view: "pipeline", icon: "branch" },
   { view: "settings", icon: "settings" },
 ];
 
@@ -40,6 +41,7 @@ export default function Sidebar({ currentView, onChangeView, departments, agents
     dashboard: tr("대시보드", "Dashboard", "ダッシュボード", "仪表盘"),
     tasks: tr("업무 관리", "Tasks", "タスク管理", "任务管理"),
     prs: tr("PR 순찰", "Pull Requests", "プルリクエスト", "拉取请求"),
+    pipeline: tr("파이프라인", "Pipeline", "パイプライン", "流水线"),
     settings: tr("설정", "Settings", "設定", "设置"),
   };
 

@@ -68,6 +68,13 @@ export function useAppLabels({
           ja: "プルリクエスト",
           zh: "拉取请求",
         })}`;
+      case "pipeline":
+        return `${pickLang(uiLanguage, {
+          ko: "파이프라인",
+          en: "Pipeline",
+          ja: "パイプライン",
+          zh: "流水线",
+        })}`;
       case "agents":
         return `${pickLang(uiLanguage, {
           ko: "직원관리",

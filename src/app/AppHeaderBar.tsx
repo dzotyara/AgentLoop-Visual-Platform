@@ -8,6 +8,7 @@ const VIEW_ICONS: Record<View, PixelIconName | null> = {
   dashboard: "dashboard",
   tasks: "tasks",
   prs: "prs",
+  pipeline: "branch",
   skills: "library",
   settings: "settings",
 };

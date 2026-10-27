@@ -41,11 +41,13 @@ import OfficeHub from "../components/warroom/OfficeHub";
 import CommandPalette, { type PaletteView } from "../components/shell/CommandPalette";
 import { useLoopNotifications } from "../components/shell/loop-notifications";
 import { requestPrSelection } from "../components/warroom/pr-selection";
+import PipelineGraph from "../components/pipeline/PipelineGraph";
 
 /** Views reachable from the Command-K palette. */
 const PALETTE_VIEWS: PaletteView[] = [
   { view: "office", label: "War room", icon: "office" },
   { view: "prs", label: "Pull requests", icon: "prs" },
+  { view: "pipeline", label: "Pipeline", icon: "branch" },
   { view: "tasks", label: "Tasks", icon: "tasks" },
   { view: "agents", label: "Agents", icon: "agents" },
   { view: "dashboard", label: "Dashboard", icon: "dashboard" },
@@ -595,6 +597,12 @@ export default function AppMainLayout({
             )}
 
             {view === "prs" && <PrPatrolView agents={agents} onOpenTerminal={onOpenTerminal} />}
+
+            {view === "pipeline" && (
+              <div className="h-[calc(100dvh-140px)] min-h-[560px]">
+                <PipelineGraph agents={agents} onOpenRun={onOpenTerminal} />
+              </div>
+            )}
 
             {view === "skills" && <SkillsLibrary agents={agents} />}
 
