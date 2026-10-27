@@ -1,0 +1,243 @@
+/*
+ * AgentLoop shell in the Apple liquid-glass language: cool grey ground, white (light) / graphite (dark)
+ * surfaces with hairline dividers, system type with negative tracking on titles, one blue accent, and glass
+ * only where layers overlap (sticky header, sidebar, overlays). Loaded last so it re-points the stock
+ * --th-* theme tokens; the pixel war room keeps its own look.
+ */
+
+:root,
+[data-theme="dark"] {
+  --th-font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+  --th-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --th-font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --th-bg-primary: #0b0b0c;
+  --th-bg-secondary: #0b0b0c;
+  --th-bg-surface: #1c1c1e;
+  --th-bg-surface-hover: #242426;
+  --th-bg-header: rgba(22, 22, 24, 0.72);
+  --th-bg-sidebar: rgba(22, 22, 24, 0.72);
+  --th-border: rgba(255, 255, 255, 0.08);
+  --th-border-strong: rgba(255, 255, 255, 0.14);
+  --th-text-primary: #f5f5f7;
+  --th-text-secondary: #a1a1a6;
+  --th-text-muted: #6e6e73;
+  --th-text-heading: #f5f5f7;
+  --th-card-bg: #1c1c1e;
+  --th-card-border: rgba(255, 255, 255, 0.08);
+  --th-card-bg-hover: #242426;
+  --th-panel-bg: #1c1c1e;
+  --th-panel-border: rgba(255, 255, 255, 0.08);
+  --th-input-bg: #1c1c1e;
+  --th-input-border: rgba(255, 255, 255, 0.12);
+  --th-focus-ring: #0a84ff;
+  --th-focus-ring-shadow: rgba(10, 132, 255, 0.3);
+  --al-accent: #0a84ff;
+  --al-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --al-shadow-overlay: 0 2px 8px rgba(0, 0, 0, 0.35), 0 30px 80px rgba(0, 0, 0, 0.5);
+  --al-glass: rgba(28, 28, 30, 0.72);
+  --al-ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+[data-theme="light"] {
+  --th-bg-primary: #f5f5f7;
+  --th-bg-secondary: #f5f5f7;
+  --th-bg-surface: #ffffff;
+  --th-bg-surface-hover: #fbfbfd;
+  --th-bg-header: rgba(245, 245, 247, 0.72);
+  --th-bg-sidebar: rgba(245, 245, 247, 0.72);
+  --th-border: rgba(0, 0, 0, 0.07);
+  --th-border-strong: rgba(0, 0, 0, 0.12);
+  --th-text-primary: #1d1d1f;
+  --th-text-secondary: #6e6e73;
+  --th-text-muted: #86868b;
+  --th-text-heading: #1d1d1f;
+  --th-card-bg: #ffffff;
+  --th-card-border: rgba(0, 0, 0, 0.07);
+  --th-card-bg-hover: #fbfbfd;
+  --th-panel-bg: #ffffff;
+  --th-panel-border: rgba(0, 0, 0, 0.07);
+  --th-input-bg: #ffffff;
+  --th-input-border: rgba(0, 0, 0, 0.12);
+  --th-focus-ring: #0071e3;
+  --th-focus-ring-shadow: rgba(0, 113, 227, 0.25);
+  --al-accent: #0071e3;
+  --al-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
+  --al-shadow-overlay: 0 2px 8px rgba(0, 0, 0, 0.1), 0 30px 80px rgba(0, 0, 0, 0.24);
+  --al-glass: rgba(255, 255, 255, 0.72);
+}
+
+/* flat cool ground, no washes */
+body,
+[data-theme="light"] body {
+  background: var(--th-bg-primary);
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+/* glass only where layers overlap: sticky header and the sidebar over the scrolling page */
+header.sticky,
+aside {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* sidebar: quiet rows, a soft pill for the current view */
+.sidebar-nav-item {
+  border-radius: 10px;
+  border-color: transparent;
+  font-weight: 500;
+}
+.sidebar-nav-item.active,
+[data-theme="light"] .sidebar-nav-item.active {
+  background: color-mix(in srgb, var(--al-accent) 12%, transparent);
+  color: var(--al-accent);
+  border-color: transparent;
+}
+.sidebar-nav-item.active::before {
+  display: none;
+}
+
+/* buttons: pills, one solid accent, hairline secondary */
+.header-action-btn {
+  border-radius: 999px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  transition:
+    background 0.2s var(--al-ease-spring),
+    box-shadow 0.2s var(--al-ease-spring),
+    transform 0.12s ease;
+}
+.header-action-btn:active {
+  transform: scale(0.97);
+}
+.header-action-btn-primary,
+[data-theme="light"] .header-action-btn-primary {
+  background: var(--al-accent);
+  border: 1px solid transparent;
+  color: #fff;
+  box-shadow: none;
+}
+.header-action-btn-primary:hover,
+[data-theme="light"] .header-action-btn-primary:hover {
+  background: color-mix(in srgb, var(--al-accent) 88%, #000);
+  transform: none;
+  box-shadow: none;
+}
+.header-action-btn-secondary,
+[data-theme="light"] .header-action-btn-secondary {
+  background: var(--th-bg-surface);
+  border: 1px solid var(--th-border);
+  color: var(--th-text-primary);
+}
+.header-action-btn-secondary:hover,
+[data-theme="light"] .header-action-btn-secondary:hover {
+  background: var(--th-bg-surface-hover);
+  transform: none;
+  box-shadow: none;
+}
+
+/* cards and panels: solid surfaces, card radius, two-layer soft shadow */
+.game-panel,
+.dash-card {
+  border-radius: 18px;
+  border-color: var(--th-card-border);
+  box-shadow: var(--al-shadow-card);
+}
+
+/* numbers that line up */
+.tabular,
+[class*="tabular-nums"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- overlays: slide-over inspector and command palette ---------- */
+
+.al-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.3s var(--al-ease-spring);
+}
+.al-scrim[data-open="true"] {
+  opacity: 1;
+}
+
+.al-sheet {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 61;
+  width: min(560px, calc(100vw - 24px));
+  overflow-y: auto;
+  border-radius: 22px;
+  border: 1px solid var(--th-border);
+  background: var(--al-glass);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: var(--al-shadow-overlay);
+  transform: translateX(calc(100% + 24px)) scale(0.98);
+  opacity: 0;
+  filter: blur(6px);
+  transition:
+    transform 0.42s var(--al-ease-spring),
+    opacity 0.3s var(--al-ease-spring),
+    filter 0.3s var(--al-ease-spring);
+}
+.al-sheet[data-open="true"] {
+  transform: none;
+  opacity: 1;
+  filter: none;
+}
+
+.al-palette {
+  position: fixed;
+  left: 50%;
+  top: 14vh;
+  z-index: 71;
+  width: min(640px, calc(100vw - 24px));
+  border-radius: 18px;
+  border: 1px solid var(--th-border);
+  background: var(--al-glass);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: var(--al-shadow-overlay);
+  transform: translateX(-50%) scale(0.97);
+  opacity: 0;
+  transition:
+    transform 0.32s var(--al-ease-spring),
+    opacity 0.2s var(--al-ease-spring);
+  overflow: hidden;
+}
+.al-palette[data-open="true"] {
+  transform: translateX(-50%);
+  opacity: 1;
+}
+.al-palette-row[aria-selected="true"] {
+  background: color-mix(in srgb, var(--al-accent) 14%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .al-sheet,
+  .al-palette,
+  .al-scrim {
+    transition-duration: 0.01ms;
+    filter: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .al-sheet,
+  .al-palette,
+  header.sticky,
+  aside {
+    background: var(--th-bg-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

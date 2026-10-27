@@ -155,7 +155,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
     <div ref={wrapRef} className="w-full">
       <div
         className="relative mx-auto overflow-hidden rounded-lg"
-        style={{ width: SCENE_W * s, height: SCENE_H * s, background: "#2a2a2e" }}
+        style={{ width: SCENE_W * s, height: SCENE_H * s, background: "#2a2a2e", isolation: "isolate" }}
       >
         {/* bunker shell */}
         <div

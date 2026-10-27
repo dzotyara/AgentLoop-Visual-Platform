@@ -4,6 +4,7 @@ import OfficeView from "../OfficeView";
 import CliUsagePanel from "../office-view/CliUsagePanel";
 import { useCliUsage } from "../office-view/useCliUsage";
 import PrPatrolOfficeBoard from "../pr-patrol/PrPatrolOfficeBoard";
+import PrSlideOver from "../shell/PrSlideOver";
 import { requestPrSelection } from "./pr-selection";
 import WarRoom from "./WarRoom";
 
@@ -22,8 +23,11 @@ function readLayout(): "warroom" | "classic" {
  * The Office tab: the war room (default) or the stock Claw-Empire office, with the PR board and
  * CLI usage under the war room. The choice is remembered per browser.
  */
-export default function OfficeHub(props: OfficeViewProps & { onOpenPrs: () => void }) {
+export default function OfficeHub(
+  props: OfficeViewProps & { onOpenPrs: () => void; onOpenTerminal: (taskId: string) => void },
+) {
   const [layout, setLayout] = useState(readLayout);
+  const [inspected, setInspected] = useState<string | null>(null);
   const { language, t } = useI18n();
   const { cliStatus, cliUsage, refreshing, handleRefreshUsage } = useCliUsage(props.tasks);
 
@@ -63,9 +67,14 @@ export default function OfficeHub(props: OfficeViewProps & { onOpenPrs: () => vo
   return (
     <div className="w-full">
       {toggle}
-      <WarRoom
+      <WarRoom agents={props.agents} onOpenPr={setInspected} />
+      <PrSlideOver
+        prKey={inspected}
         agents={props.agents}
-        onOpenPr={(prKey) => {
+        onClose={() => setInspected(null)}
+        onOpenTerminal={props.onOpenTerminal}
+        onOpenFullPage={(prKey) => {
+          setInspected(null);
           requestPrSelection(prKey);
           props.onOpenPrs();
         }}

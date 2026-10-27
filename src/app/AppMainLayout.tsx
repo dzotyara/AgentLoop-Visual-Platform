@@ -38,6 +38,20 @@ import { resolvePackAgentViews, resolvePackDepartmentsForDisplay } from "./offic
 import { applyOfficePackToTaskInput, filterTasksByOfficePack, type TaskCreateInput } from "./task-workflow-pack";
 import { setPackSpriteSkin } from "../components/pack-sprite-skin";
 import OfficeHub from "../components/warroom/OfficeHub";
+import CommandPalette, { type PaletteView } from "../components/shell/CommandPalette";
+import { useLoopNotifications } from "../components/shell/loop-notifications";
+import { requestPrSelection } from "../components/warroom/pr-selection";
+
+/** Views reachable from the Command-K palette. */
+const PALETTE_VIEWS: PaletteView[] = [
+  { view: "office", label: "War room", icon: "office" },
+  { view: "prs", label: "Pull requests", icon: "prs" },
+  { view: "tasks", label: "Tasks", icon: "tasks" },
+  { view: "agents", label: "Agents", icon: "agents" },
+  { view: "dashboard", label: "Dashboard", icon: "dashboard" },
+  { view: "skills", label: "Library", icon: "library" },
+  { view: "settings", label: "Settings", icon: "settings" },
+];
 
 interface AppMainLayoutLabels {
   uiLanguage: string;
@@ -356,8 +370,23 @@ export default function AppMainLayout({
     [onCreateTask, officePackKey],
   );
 
+  const openPrPage = useCallback(
+    (prKey: string) => {
+      requestPrSelection(prKey);
+      setView("prs");
+    },
+    [setView],
+  );
+  useLoopNotifications(openPrPage);
+
   return (
     <I18nProvider language={labels.uiLanguage}>
+      <CommandPalette
+        views={PALETTE_VIEWS}
+        onNavigate={(v) => setView(v as View)}
+        onOpenPr={openPrPage}
+        onToggleTheme={toggleTheme}
+      />
       <div className="app-shell flex h-[100dvh] min-h-[100dvh] overflow-hidden">
         <div className="hidden lg:flex lg:flex-shrink-0">
           <Sidebar
@@ -512,6 +541,7 @@ export default function AppMainLayout({
                 onSelectAgent={onSelectAgent}
                 onSelectDepartment={onSelectDepartment}
                 onOpenPrs={() => setView("prs")}
+                onOpenTerminal={onOpenTerminal}
               />
             )}
 
