@@ -1,4 +1,5 @@
 import type { TFunction } from "./model";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface SkillsHeaderProps {
   t: TFunction;
@@ -24,7 +25,7 @@ export default function SkillsHeader({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <span className="text-2xl">📚</span>
+            <PixelIcon name="library" size={24} />
             {t({
               ko: "Agent Skills 문서고",
               en: "Agent Skills Library",
@@ -52,7 +53,7 @@ export default function SkillsHeader({
               zh: "添加自定义技能",
             })}
           >
-            <span className="text-base">✏️</span>
+            <PixelIcon name="edit" size={16} />
             {t({ ko: "커스텀 스킬 추가", en: "Add Custom Skill", ja: "カスタムスキル追加", zh: "添加自定义技能" })}
           </button>
           <div className="text-right">

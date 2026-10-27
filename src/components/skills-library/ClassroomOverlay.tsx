@@ -3,6 +3,7 @@ import type { SkillLearnProvider } from "../../api";
 import type { Agent } from "../../types";
 import AgentAvatar from "../AgentAvatar";
 import { pickRepresentativeForProvider, providerLabel, type TFunction } from "./model";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface ClassroomOverlayProps {
   t: TFunction;
@@ -20,23 +21,25 @@ export default function ClassroomOverlay({ t, show, skillName, providers, agents
       <div className="w-full max-w-2xl">
         <div className="classroom-scene">
           <div className="classroom-blackboard">
-            <div className="classroom-chalk-text">skills!! ✨</div>
+            <div className="classroom-chalk-text">
+              skills!! <PixelIcon name="sparkle" size={16} />
+            </div>
           </div>
 
           <div className="classroom-claw-teacher">
             <img src="/claw-empire.png" alt="Teacher" />
-            <span className="classroom-chalk-pointer">✏️</span>
+            <PixelIcon name="edit" size={16} className="classroom-chalk-pointer" />
           </div>
 
           <div className="classroom-sparkle-group">
-            <span className="classroom-sparkle">✨</span>
-            <span className="classroom-sparkle">⭐</span>
-            <span className="classroom-sparkle">💫</span>
+            <PixelIcon name="sparkle" size={16} className="classroom-sparkle" />
+            <PixelIcon name="star" size={16} className="classroom-sparkle" />
+            <PixelIcon name="sparkle" size={16} className="classroom-sparkle" />
           </div>
 
           <div className="absolute top-[125px] left-1/2 -translate-x-1/2 z-20">
             <div className="px-3 py-1 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-xs font-medium animate-in slide-in-from-top-2 duration-500">
-              📝 {skillName}
+              <PixelIcon name="edit" size={12} /> {skillName}
             </div>
           </div>
 
@@ -53,8 +56,8 @@ export default function ClassroomOverlay({ t, show, skillName, providers, agents
                       rounded="xl"
                       imagePosition="center top"
                     />
-                    <span className="classroom-student-notebook">📓</span>
-                    <span className="classroom-student-pencil">✏️</span>
+                    <PixelIcon name="book" size={16} className="classroom-student-notebook" />
+                    <PixelIcon name="edit" size={16} className="classroom-student-pencil" />
                     <span
                       className="classroom-stars"
                       style={{
@@ -64,7 +67,7 @@ export default function ClassroomOverlay({ t, show, skillName, providers, agents
                         animationDelay: `${Math.random() * 2}s`,
                       }}
                     >
-                      ⭐
+                      <PixelIcon name="star" size={12} />
                     </span>
                   </div>
                   <div className="classroom-desk-surface" />
@@ -87,10 +90,10 @@ export default function ClassroomOverlay({ t, show, skillName, providers, agents
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
             {t({
-              ko: "CLI 대표자들이 열심히 학습하고 있습니다 📖",
-              en: "CLI representatives are studying hard 📖",
-              ja: "CLI代表が一生懸命学習しています 📖",
-              zh: "CLI代表们正在努力学习 📖",
+              ko: "CLI 대표자들이 열심히 학습하고 있습니다",
+              en: "CLI representatives are studying hard",
+              ja: "CLI代表が一生懸命学習しています",
+              zh: "CLI代表们正在努力学习",
             })}
           </div>
         </div>

@@ -1,6 +1,7 @@
 import type { SkillEntry, SkillHistoryProvider, SkillLearnJob, SkillLearnProvider } from "../../api";
 import type { UiLanguage } from "../../i18n";
 import type { Agent, AgentRole } from "../../types";
+import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
 
 export interface CategorizedSkill extends SkillEntry {
   category: string;
@@ -196,19 +197,19 @@ export const CATEGORIES = [
   "Other",
 ];
 
-export const CATEGORY_ICONS: Record<string, string> = {
-  All: "📚",
-  Frontend: "🎨",
-  Backend: "🔧",
-  Design: "✨",
-  "AI & Agent": "🤖",
-  Marketing: "📈",
-  "Testing & QA": "🧪",
-  DevOps: "🚀",
-  Productivity: "📝",
-  Architecture: "🏗️",
-  Security: "🔒",
-  Other: "📦",
+export const CATEGORY_ICONS: Record<string, PixelIconName> = {
+  All: "library",
+  Frontend: "palette",
+  Backend: "wrench",
+  Design: "design",
+  "AI & Agent": "robot",
+  Marketing: "chart",
+  "Testing & QA": "test",
+  DevOps: "rocket",
+  Productivity: "edit",
+  Architecture: "office",
+  Security: "lock",
+  Other: "folder",
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -256,13 +257,13 @@ export function categoryLabel(category: string, t: TFunction) {
   }
 }
 
-export function getRankBadge(rank: number) {
-  if (rank === 1) return { icon: "🥇", color: "text-yellow-400" };
-  if (rank === 2) return { icon: "🥈", color: "text-slate-300" };
-  if (rank === 3) return { icon: "🥉", color: "text-amber-600" };
-  if (rank <= 10) return { icon: "🏆", color: "text-amber-400" };
-  if (rank <= 50) return { icon: "⭐", color: "text-blue-400" };
-  return { icon: "", color: "text-slate-500" };
+export function getRankBadge(rank: number): { icon: PixelIconName | null; color: string } {
+  if (rank === 1) return { icon: "crown", color: "text-yellow-400" };
+  if (rank === 2) return { icon: "medal", color: "text-slate-300" };
+  if (rank === 3) return { icon: "medal", color: "text-amber-600" };
+  if (rank <= 10) return { icon: "trophy", color: "text-amber-400" };
+  if (rank <= 50) return { icon: "star", color: "text-blue-400" };
+  return { icon: null, color: "text-slate-500" };
 }
 
 export function formatFirstSeen(value: string, localeTag: string): string {
@@ -378,10 +379,10 @@ export function cliProviderIcon(provider: SkillHistoryProvider) {
   if (provider === "codex") return <CliCodexLogo />;
   if (provider === "gemini") return <CliGeminiLogo />;
   if (provider === "kimi") return <CliKimiLogo />;
-  if (provider === "opencode") return <span className="text-[11px] text-slate-200">⚪</span>;
-  if (provider === "copilot") return <span className="text-[11px] text-slate-200">🚀</span>;
-  if (provider === "antigravity") return <span className="text-[11px] text-slate-200">🌌</span>;
-  return <span className="text-[11px] text-slate-200">🔌</span>;
+  if (provider === "opencode") return <PixelIcon name="code" size={16} />;
+  if (provider === "copilot") return <PixelIcon name="github" size={16} />;
+  if (provider === "antigravity") return <PixelIcon name="globe" size={16} />;
+  return <PixelIcon name="link" size={16} />;
 }
 
 export function learningStatusLabel(status: SkillLearnJob["status"] | null, t: TFunction): string {

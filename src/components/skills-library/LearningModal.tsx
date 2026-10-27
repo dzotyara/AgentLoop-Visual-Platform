@@ -9,6 +9,7 @@ import {
   type TFunction,
   type UnlearnEffect,
 } from "./model";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface LearningModalProps {
   t: TFunction;
@@ -171,7 +172,7 @@ export default function LearningModal({
                           className="learn-book-drop"
                           style={{ left: `${8 + idx * 15}%`, animationDelay: `${idx * 0.15}s` }}
                         >
-                          {idx % 2 === 0 ? "📘" : "📙"}
+                          <PixelIcon name="book" size={16} />
                         </span>
                       ))}
                     </div>
@@ -182,9 +183,9 @@ export default function LearningModal({
                       className={`relative ${isAnimating ? "learn-avatar-reading" : ""} ${isHitAnimating ? "unlearn-avatar-hit" : ""}`}
                     >
                       <AgentAvatar agent={row.agent ?? undefined} agents={agents} size={50} rounded="xl" />
-                      {isAnimating && <span className="learn-reading-book">📖</span>}
-                      {unlearnEffect === "pot" && <span className="unlearn-pot-drop">🪴</span>}
-                      {unlearnEffect === "hammer" && <span className="unlearn-hammer-swing">🔨</span>}
+                      {isAnimating && <PixelIcon name="book" size={16} className="learn-reading-book" />}
+                      {unlearnEffect === "pot" && <PixelIcon name="break" size={16} className="unlearn-pot-drop" />}
+                      {unlearnEffect === "hammer" && <PixelIcon name="wrench" size={16} className="unlearn-hammer-swing" />}
                       {isHitAnimating && (
                         <span className="unlearn-hit-text">
                           {t({ ko: "깡~", en: "Bonk!", ja: "ゴン!", zh: "咣~" })}

@@ -1,5 +1,6 @@
 import type { CustomSkillEntry, SkillLearnProvider } from "../../api";
 import { providerLabel, type TFunction } from "./model";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface CustomSkillSectionProps {
   t: TFunction;
@@ -15,7 +16,7 @@ export default function CustomSkillSection({ t, customSkills, localeTag, onDelet
     <div className="custom-skill-list rounded-xl border border-violet-500/30 bg-violet-500/5 p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm font-semibold text-violet-200 flex items-center gap-2">
-          <span>✏️</span>
+          <PixelIcon name="edit" size={16} />
           {t({ ko: "커스텀 스킬", en: "Custom Skills", ja: "カスタムスキル", zh: "自定义技能" })}
           <span className="text-[11px] text-slate-500 font-normal">({customSkills.length})</span>
         </div>

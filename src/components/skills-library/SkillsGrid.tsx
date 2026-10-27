@@ -14,6 +14,7 @@ import {
   type CategorizedSkill,
   type TFunction,
 } from "./model";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface SkillsGridProps {
   t: TFunction;
@@ -75,7 +76,7 @@ export default function SkillsGrid({
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-start gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900/60 text-sm font-bold">
-                    {badge.icon ? <span>{badge.icon}</span> : <span className={badge.color}>#{skill.rank}</span>}
+                    {badge.icon ? <PixelIcon name={badge.icon} size={16} /> : <span className={badge.color}>#{skill.rank}</span>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold text-white">{skill.name}</div>
@@ -108,7 +109,8 @@ export default function SkillsGrid({
 
               <div className="flex items-center justify-between gap-2">
                 <span className={`text-[10px] px-2 py-0.5 rounded-full border ${catColor}`}>
-                  {CATEGORY_ICONS[skill.category]} {categoryLabel(skill.category, t)}
+                  <PixelIcon name={CATEGORY_ICONS[skill.category] ?? "folder"} size={12} />{" "}
+                  {categoryLabel(skill.category, t)}
                 </span>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs text-slate-400">
@@ -266,7 +268,9 @@ export default function SkillsGrid({
 
       {filtered.length === 0 && (
         <div className="text-center py-16">
-          <div className="text-4xl mb-3">🔍</div>
+          <div className="mb-3 flex justify-center">
+            <PixelIcon name="search" size={32} />
+          </div>
           <div className="text-slate-400 text-sm">
             {t({ ko: "검색 결과가 없습니다", en: "No search results", ja: "検索結果はありません", zh: "没有搜索结果" })}
           </div>

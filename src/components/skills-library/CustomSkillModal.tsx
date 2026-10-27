@@ -4,6 +4,7 @@ import type { SkillLearnProvider } from "../../api";
 import type { Agent } from "../../types";
 import AgentAvatar from "../AgentAvatar";
 import { providerLabel, type TFunction } from "./model";
+import PixelIcon from "../pixel/PixelIcon";
 
 interface CustomSkillModalProps {
   t: TFunction;
@@ -52,7 +53,7 @@ export default function CustomSkillModal({
         <div className="flex items-start justify-between gap-4 border-b border-slate-700/60 px-5 py-4">
           <div>
             <h3 className="text-base font-semibold text-white flex items-center gap-2">
-              <span>✏️</span>
+              <PixelIcon name="edit" size={16} />
               {t({ ko: "커스텀 스킬 추가", en: "Add Custom Skill", ja: "カスタムスキル追加", zh: "添加自定义技能" })}
             </h3>
             <div className="mt-1 text-xs text-slate-400">
@@ -109,7 +110,7 @@ export default function CustomSkillModal({
                 onClick={() => customFileInputRef.current?.click()}
                 className="flex items-center gap-1.5 px-3 py-2 text-xs bg-slate-800/60 border border-slate-600/50 rounded-lg text-slate-300 hover:bg-slate-700/60 transition-all"
               >
-                <span>📎</span>
+                <PixelIcon name="link" size={12} />
                 {t({ ko: "파일 선택", en: "Choose File", ja: "ファイル選択", zh: "选择文件" })}
               </button>
               <input
@@ -120,7 +121,7 @@ export default function CustomSkillModal({
                 className="hidden"
               />
               {customSkillFileName && (
-                <span className="text-xs text-emerald-300 truncate max-w-[200px]">📄 {customSkillFileName}</span>
+                <span className="text-xs text-emerald-300 truncate max-w-[200px]"><PixelIcon name="file" size={12} /> {customSkillFileName}</span>
               )}
             </div>
             {customSkillContent && (
@@ -176,7 +177,7 @@ export default function CustomSkillModal({
                           : "border-slate-600 bg-slate-800/60"
                       }`}
                     >
-                      {isSelected && "✓"}
+                      {isSelected && <PixelIcon name="check" size={12} />}
                     </div>
                   </button>
                 );
@@ -219,7 +220,7 @@ export default function CustomSkillModal({
                 </>
               ) : (
                 <>
-                  <span>🎓</span>
+                  <PixelIcon name="graduation" size={16} />
                   {t({ ko: "학습 시작", en: "Start Training", ja: "学習開始", zh: "开始培训" })}
                 </>
               )}

@@ -1,3 +1,4 @@
+import PixelIcon from "../pixel/PixelIcon";
 import { CATEGORIES, CATEGORY_ICONS, categoryLabel, type TFunction } from "./model";
 
 interface SkillsCategoryBarProps {
@@ -30,7 +31,7 @@ export default function SkillsCategoryBar({
                 : "bg-slate-800/40 text-slate-400 border-slate-700/50 hover:bg-slate-700/40 hover:text-slate-300"
             }`}
           >
-            {CATEGORY_ICONS[category]} {categoryLabel(category, t)}
+            <PixelIcon name={CATEGORY_ICONS[category] ?? "folder"} size={12} /> {categoryLabel(category, t)}
             <span className="ml-1 text-slate-500">{categoryCounts[category] || 0}</span>
           </button>
         ))}
