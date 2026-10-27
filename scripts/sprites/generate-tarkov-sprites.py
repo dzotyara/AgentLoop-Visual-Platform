@@ -124,6 +124,28 @@ OPERATORS = {
             "m": "#b8505a", "b": "#e59a8a", "Y": "#d9b200",
             "V": "#2f3136", "P": "#44474d", "A": "#3a3d42", "B": "#1f2024", "L": "#2c2e33", "K": "#18181b",
         },
+        # a baby dragon perched on her left shoulder, facing out so her face stays clear
+        "pet": {
+            "grid": [
+                ".......W.",
+                "..h.h..WW",
+                ".xxxxx.WW",
+                "xDkDDDxWW",
+                "xDDDDDxWW",
+                ".xxDDDxW.",
+                "...xDDxW.",
+                "..xDBDDx.",
+                "..xDBBDx.",
+                "..xDBBDx.",
+                "...xDDDxx",
+                "...xx.xDx",
+                "........x",
+            ],
+            "colors": {"x": "#163d22", "D": "#3fae55", "B": "#d9e86a", "W": "#8fdc6a", "k": "#111111", "h": "#efe2b8"},
+            # left edge of the sprite, feet one sub-pixel onto the shoulder (first body row)
+            "x": 0,
+            "feet_row": 11,
+        },
     },
     # Gate — checkpoint sentry (declares PRs ready): ushanka, track suit with stripes
     105: {
@@ -272,11 +294,35 @@ def render(op: dict, grid: list[list[str]]) -> Image.Image:
     return img
 
 
+PET_SUB = CELL // 3  # pets are drawn at three times the sprite's resolution
+
+
+def render_pet(pet: dict) -> tuple[Image.Image, tuple[int, int]]:
+    """A pet overlay (finer grid than the operator) and where it goes: feet resting on `feet_row`."""
+    grid = pet["grid"]
+    img = Image.new("RGBA", (len(grid[0]) * PET_SUB, len(grid) * PET_SUB), (0, 0, 0, 0))
+    px = img.load()
+    for r, row in enumerate(grid):
+        for c, ch in enumerate(row):
+            if ch == ".":
+                continue
+            color = hexc(pet["colors"][ch])
+            for y in range(r * PET_SUB, (r + 1) * PET_SUB):
+                for x in range(c * PET_SUB, (c + 1) * PET_SUB):
+                    px[x, y] = color
+    top = pet["feet_row"] * CELL + PET_SUB - len(grid) * PET_SUB
+    return img, (pet["x"], top)
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     for num, op in OPERATORS.items():
+        pet = render_pet(op["pet"]) if "pet" in op else None
         for frame in ("D-1", "D-2", "D-3", "L-1"):
-            render(op, frame_grid(op, frame)).save(OUT / f"{num}-{frame}.png")
+            img = render(op, frame_grid(op, frame))
+            if pet:
+                img.alpha_composite(*pet)
+            img.save(OUT / f"{num}-{frame}.png")
         left = Image.open(OUT / f"{num}-L-1.png")
         left.transpose(Image.FLIP_LEFT_RIGHT).save(OUT / f"{num}-R-1.png")
     print(f"wrote {len(OPERATORS) * 5} sprites to {OUT}")

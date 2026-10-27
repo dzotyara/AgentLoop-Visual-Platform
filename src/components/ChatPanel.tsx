@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { Agent, Message, Project } from "../types";
-import { buildSpriteMap } from "./AgentAvatar";
+import { useSpriteMap } from "./AgentAvatar";
 import { useI18n } from "../i18n";
 import { createProject, getProjects } from "../api";
 import { parseDecisionRequest } from "./chat/decision-request";
@@ -64,7 +64,7 @@ export function ChatPanel({
   const [mode, setMode] = useState<ChatMode>(selectedAgent ? "task" : "announcement");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
+  const spriteMap = useSpriteMap(agents);
   const { t, locale } = useI18n();
   const isKorean = locale.startsWith("ko");
 

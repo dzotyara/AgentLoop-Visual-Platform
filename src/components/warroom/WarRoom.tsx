@@ -3,7 +3,7 @@ import type { Agent } from "../../types";
 import { formatUsd, getClaudeCosts, getPrPatrolStatus, type PrPatrolPhase, type PrPatrolPr } from "../../api";
 import { crewSeatOf, useCrewSeats } from "../../api/crew-seats";
 import { usePolling } from "../../hooks/usePolling";
-import { buildSpriteMap } from "../AgentAvatar";
+import { useSpriteMap } from "../AgentAvatar";
 import PixelIcon, { type PixelIconName } from "../pixel/PixelIcon";
 import { setLiveFromStatus } from "../pr-patrol/live-store";
 import { ACTION_LABEL, checksSummary } from "../pr-patrol/pr-ui";
@@ -88,7 +88,7 @@ export default function WarRoom({ agents, onOpenPr }: { agents: Agent[]; onOpenP
 
   const prs = useMemo(() => (data?.prs ?? []).filter((p) => p.phase !== "skipped"), [data]);
   const slots = useMemo(() => pinSlots(prs.map((p) => p.pr_key)), [prs]);
-  const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
+  const spriteMap = useSpriteMap(agents);
   useCrewSeats(); // re-place the crew once the seat map arrives
   // Crew members by seat, not by name: agents renamed in the office keep their station, sprite and plate.
   const seated = agents.flatMap((agent) => {

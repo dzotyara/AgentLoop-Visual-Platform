@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { UiLanguage } from "../i18n";
 import { pickLang } from "../i18n";
 import type { Agent } from "../types";
-import AgentAvatar, { buildSpriteMap } from "./AgentAvatar";
+import AgentAvatar, { useSpriteMap } from "./AgentAvatar";
 import MessageContent from "./MessageContent";
 import type { DecisionInboxItem } from "./chat/decision-inbox";
 import { formatDecisionInboxTime as formatTime, type DecisionInboxModalProps } from "./chat/decision-inbox-modal.meta";
@@ -23,7 +23,7 @@ export default function DecisionInboxModal({
 }: DecisionInboxModalProps) {
   const t = (text: { ko: string; en: string; ja?: string; zh?: string }) => pickLang(uiLanguage, text);
   const isKorean = uiLanguage.startsWith("ko");
-  const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
+  const spriteMap = useSpriteMap(agents);
   const agentById = useMemo(() => {
     const map = new Map<string, Agent>();
     for (const agent of agents) map.set(agent.id, agent);

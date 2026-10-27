@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { Agent } from "../types";
+import { useCrewSeats } from "../api/crew-seats";
 import { packSkinSpriteFor } from "./pack-sprite-skin";
 import PixelIcon from "./pixel/PixelIcon";
 import { iconFor } from "./pixel/emoji-to-icon";
@@ -26,9 +27,14 @@ export function buildSpriteMap(agents: Agent[]): Map<string, number> {
   return map;
 }
 
-/** Hook: memoized sprite map from agents array */
+/**
+ * Hook: memoized sprite map from agents array. Also rebuilt when the crew seat map arrives: skins are keyed by
+ * seat, and agents usually load before the pr-patrol status that carries the seats.
+ */
 export function useSpriteMap(agents: Agent[]): Map<string, number> {
-  return useMemo(() => buildSpriteMap(agents), [agents]);
+  const seats = useCrewSeats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- seats: packSkinSpriteFor reads the seat store
+  return useMemo(() => buildSpriteMap(agents), [agents, seats]);
 }
 
 /** Get the sprite number for an agent by ID */

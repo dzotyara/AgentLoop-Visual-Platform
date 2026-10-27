@@ -1,6 +1,7 @@
 import { useEffect, type MutableRefObject } from "react";
 import { Application, Assets, TextureStyle, type Texture } from "pixi.js";
 import type { Agent, Department, SubAgent, Task } from "../../types";
+import { useCrewSeats } from "../../api/crew-seats";
 import { buildSpriteMap } from "../AgentAvatar";
 import { type Delivery, MIN_OFFICE_W, findScrollContainer } from "./model";
 import { runOfficeTickerStep, type OfficeTickerContext } from "./officeTicker";
@@ -63,6 +64,8 @@ export function useOfficePixiRuntime({
   decorStyle,
   currentTheme,
 }: UseOfficePixiRuntimeParams): void {
+  // skins are keyed by crew seat; rebuild the scene once the seat map arrives (agents usually load first)
+  const seats = useCrewSeats();
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
@@ -256,6 +259,7 @@ export function useOfficePixiRuntime({
     customDeptThemes,
     decorStyle,
     currentTheme,
+    seats,
     buildScene,
     initDoneRef,
     appRef,

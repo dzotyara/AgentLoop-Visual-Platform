@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getRun, listRuns, type PrPatrolRunDetail, type PrPatrolRunList } from "../../api";
 import { crewSeatOf } from "../../api/crew-seats";
 import type { Agent } from "../../types";
-import { buildSpriteMap } from "../AgentAvatar";
+import { useSpriteMap } from "../AgentAvatar";
 import PixelIcon from "../pixel/PixelIcon";
 import { Section } from "../pr-patrol/pr-ui";
 import DiffView from "./DiffView";
@@ -155,7 +155,7 @@ export default function RunInspector({ initialTaskId, agents }: { initialTaskId?
   const [detailError, setDetailError] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [knownAgents, setKnownAgents] = useState<string[]>([]);
-  const spriteMap = useMemo(() => buildSpriteMap(agents), [agents]);
+  const spriteMap = useSpriteMap(agents);
 
   useEffect(() => {
     if (initialTaskId) {
