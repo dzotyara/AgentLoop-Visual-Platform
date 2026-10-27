@@ -10,6 +10,7 @@ const VIEW_ICONS: Record<View, PixelIconName | null> = {
   prs: "prs",
   pipeline: "branch",
   metrics: "chart",
+  runs: "terminal",
   skills: "library",
   settings: "settings",
 };

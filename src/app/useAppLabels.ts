@@ -82,6 +82,13 @@ export function useAppLabels({
           ja: "メトリクス",
           zh: "指标",
         })}`;
+      case "runs":
+        return `${pickLang(uiLanguage, {
+          ko: "에이전트 실행",
+          en: "Agent runs",
+          ja: "エージェント実行",
+          zh: "代理运行",
+        })}`;
       case "agents":
         return `${pickLang(uiLanguage, {
           ko: "직원관리",

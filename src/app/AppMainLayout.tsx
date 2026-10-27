@@ -43,6 +43,7 @@ import { useLoopNotifications } from "../components/shell/loop-notifications";
 import { requestPrSelection } from "../components/warroom/pr-selection";
 import PipelineGraph from "../components/pipeline/PipelineGraph";
 import MetricsPage from "../components/metrics/MetricsPage";
+import RunInspector, { openRunRequest } from "../components/run-inspector/RunInspector";
 
 /** Views reachable from the Command-K palette. */
 const PALETTE_VIEWS: PaletteView[] = [
@@ -50,6 +51,7 @@ const PALETTE_VIEWS: PaletteView[] = [
   { view: "prs", label: "Pull requests", icon: "prs" },
   { view: "pipeline", label: "Pipeline", icon: "branch" },
   { view: "metrics", label: "Metrics", icon: "chart" },
+  { view: "runs", label: "Agent runs", icon: "terminal" },
   { view: "tasks", label: "Tasks", icon: "tasks" },
   { view: "agents", label: "Agents", icon: "agents" },
   { view: "dashboard", label: "Dashboard", icon: "dashboard" },
@@ -382,6 +384,13 @@ export default function AppMainLayout({
     [setView],
   );
   useLoopNotifications(openPrPage);
+  const openRun = useCallback(
+    (taskId: string) => {
+      openRunRequest(taskId);
+      setView("runs");
+    },
+    [setView],
+  );
 
   return (
     <I18nProvider language={labels.uiLanguage}>
@@ -602,9 +611,11 @@ export default function AppMainLayout({
 
             {view === "metrics" && <MetricsPage />}
 
+            {view === "runs" && <RunInspector agents={agents} />}
+
             {view === "pipeline" && (
               <div className="h-[calc(100dvh-140px)] min-h-[560px]">
-                <PipelineGraph agents={agents} onOpenRun={onOpenTerminal} />
+                <PipelineGraph agents={agents} onOpenRun={openRun} />
               </div>
             )}
 
