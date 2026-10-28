@@ -30,6 +30,13 @@ export function useLoopNotifications(onOpenPr: (prKey: string) => void): void {
 
   useEffect(() => {
     let stopped = false;
+    const notify = (title: string, body: string, prKey: string, tag = `agentloop:${prKey}`) => {
+      const n = new Notification(title, { body, tag, icon: "/pixel/icons/ready.png" });
+      n.onclick = () => {
+        window.focus();
+        openRef.current(prKey);
+      };
+    };
     const poll = async () => {
       try {
         const status = await getPrPatrolStatus();
@@ -37,21 +44,30 @@ export function useLoopNotifications(onOpenPr: (prKey: string) => void): void {
         const prev = seen.current;
         seen.current = next;
         if (!prev || notificationsState() !== "granted") return;
+        // "Needs you" is one notification per poll for all PRs that entered it, not a ping per PR.
+        const needYou: typeof status.prs = [];
         for (const pr of status.prs) {
           const before = prev.get(pr.pr_key);
           if (before === pr.phase) continue;
+          if (pr.phase === "blocked") {
+            needYou.push(pr);
+            continue;
+          }
           const merged = before === "merging" && pr.phase === "skipped" && /merged/i.test(pr.summary);
           const title = merged ? "Merged" : NOTIFY[pr.phase];
           if (!title) continue;
-          const n = new Notification(`${title}: ${pr.repo.split("/")[1]} #${pr.number}`, {
-            body: pr.title,
-            tag: `agentloop:${pr.pr_key}`,
-            icon: "/pixel/icons/ready.png",
-          });
-          n.onclick = () => {
-            window.focus();
-            openRef.current(pr.pr_key);
-          };
+          notify(`${title}: ${pr.repo.split("/")[1]} #${pr.number}`, pr.title, pr.pr_key);
+        }
+        if (needYou.length === 1) {
+          const pr = needYou[0];
+          notify(`Needs you: ${pr.repo.split("/")[1]} #${pr.number}`, pr.title, pr.pr_key);
+        } else if (needYou.length > 1) {
+          notify(
+            `Needs you: ${needYou.length} PRs`,
+            needYou.map((pr) => `${pr.repo.split("/")[1]} #${pr.number}`).join(", "),
+            needYou[0].pr_key,
+            "agentloop:needs-you",
+          );
         }
       } catch {
         // the next poll retries

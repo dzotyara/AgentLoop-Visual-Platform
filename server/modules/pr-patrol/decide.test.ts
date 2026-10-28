@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PrPatrolConfig } from "./config.ts";
-import { ciKey, decide, type PatrolMemory } from "./decide.ts";
+import { checkId, ciKey, decide, type BaseBreak, type PatrolMemory } from "./decide.ts";
 import {
   classifyFeedback,
   extractChangesRequestedBy,
@@ -30,6 +30,14 @@ const cfg: PrPatrolConfig = {
   ignoredChecks: ["merge-gate"],
   releaseHeads: ["release-cut"],
   maxCiRoundsPerHead: 3,
+  // the escalation chain has its own tests below; off here so exhausted CI blocks as before
+  escalate: false,
+  maxBaseSyncs: 1,
+  needsYouAfterMs: 24 * 3_600_000,
+  autoEnqueue: true,
+  maxEnqueuesPerHead: 2,
+  baseFix: true,
+  baseFixMinPrs: 2,
   workdir: "/tmp/pr-loop-test",
   model: undefined,
 };
@@ -594,5 +602,71 @@ describe("CI rounds and release PRs", () => {
     expect(decide(titled, cfg, mem()).kind).toBe("skip");
     // a feature PR into main in another repo is still patrolled
     expect(decide(snap({ baseRefName: "main", title: "R5: exact typing" }), cfg, mem()).kind).not.toBe("skip");
+  });
+});
+
+describe("self-resolving CI: base breakages and escalation", () => {
+  const shard0 = {
+    name: "Tests (shard 0)",
+    workflow: "test",
+    state: "failure" as const,
+    rawConclusion: "FAILURE",
+    detailsUrl: "https://github.com/o/r/actions/runs/1/job/10",
+  };
+  const typecheck = { ...shard0, name: "Type-check", workflow: "CI", detailsUrl: "https://github.com/o/r/actions/runs/2/job/20" };
+  const brk: BaseBreak = { id: "b1", checks: [checkId(shard0)], fixPr: 42, fixUrl: "u" };
+  const esc = { ...cfg, escalate: true };
+  const capped = (failing: typeof shard0[]) =>
+    new Map([
+      ["ci:head1:a", { status: "done" as const, attempts: 1 }],
+      ["ci:head1:b", { status: "done" as const, attempts: 1 }],
+      ["ci:head1:c", { status: "done" as const, attempts: 1 }],
+      [ciKey("head1", failing), { status: "failed" as const, attempts: 2 }],
+    ]);
+
+  it("holds a PR whose only failures are a known base breakage, without an agent run and without going ready", () => {
+    const d = decide(snap({ checks: [shard0] }), cfg, mem(), {}, { baseBreaks: [brk] });
+    expect(d).toMatchObject({ kind: "wait", on: "base" });
+    if (d.kind === "wait") expect(d.reason).toContain("waiting for the base fix #42");
+  });
+
+  it("still fixes the PR's own failures next to a base breakage", () => {
+    const d = decide(snap({ checks: [shard0, typecheck] }), cfg, mem(), {}, { baseBreaks: [brk] });
+    expect(d).toMatchObject({ kind: "run", action: "fix_ci", failingChecks: [typecheck] });
+  });
+
+  it("waits on CI, not on you, while a rerun of a handled failure runs", () => {
+    const actions = new Map([[ciKey("head1", [shard0]), { status: "done" as const, attempts: 1 }]]);
+    const d = decide(snap({ checks: [shard0, { ...typecheck, state: "pending" as const }] }), cfg, mem({ actions }));
+    expect(d).toMatchObject({ kind: "wait", on: "ci" });
+  });
+
+  it("escalates when a handled failure set is not re-running instead of waiting forever", () => {
+    const actions = new Map([[ciKey("head1", [shard0]), { status: "done" as const, attempts: 1 }]]);
+    expect(decide(snap({ checks: [shard0] }), esc, mem({ actions }), {}, { now: 1, redSince: 1 })).toMatchObject({
+      kind: "run",
+      escalated: true,
+    });
+  });
+
+  it("escalates to a fixer, then merges the base in, then waits; needs you only after a day red", () => {
+    const s = snap({ checks: [shard0] });
+    const now = 1_000_000_000;
+    const ctx = { now, redSince: now - 3_600_000 };
+    expect(decide(s, esc, mem({ actions: capped([shard0]) }), {}, ctx)).toMatchObject({
+      kind: "run",
+      action: "fix_ci",
+      key: "ci-esc:head1",
+      escalated: true,
+    });
+    const escalated = capped([shard0]);
+    escalated.set("ci-esc:head1", { status: "done", attempts: 1 });
+    expect(decide(s, esc, mem({ actions: escalated }), {}, ctx)).toMatchObject({ kind: "sync", key: "sync:head1" });
+    escalated.set("sync:head0", { status: "done", attempts: 1 }); // the one allowed base merge was spent earlier
+    const waiting = decide(s, esc, mem({ actions: escalated }), {}, ctx);
+    expect(waiting).toMatchObject({ kind: "wait", on: "retry" });
+    if (waiting.kind === "wait") expect(waiting.reason).toContain("needs you in ~23h");
+    const dayLater = decide(s, esc, mem({ actions: escalated }), {}, { now, redSince: now - 25 * 3_600_000 });
+    expect(dayLater.kind).toBe("blocked");
   });
 });

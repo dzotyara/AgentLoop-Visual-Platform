@@ -62,7 +62,7 @@ export type MetricsInput = {
 
 export type Distribution = { medianMs: number | null; p90Ms: number | null; n: number };
 
-export const WAIT_BUCKETS = ["ci", "reviewer", "github", "you", "agent", "ready"] as const;
+export const WAIT_BUCKETS = ["ci", "reviewer", "github", "you", "agent", "base", "retry", "ready"] as const;
 export type WaitBucket = (typeof WAIT_BUCKETS)[number];
 
 export type LoopMetrics = {

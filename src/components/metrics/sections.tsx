@@ -13,6 +13,8 @@ const WAIT_META: Record<LoopMetricsWaitBucket, { label: string; icon: PixelIconN
   github: { label: "GitHub", icon: "github" },
   you: { label: "You", icon: "you" },
   agent: { label: "Agent slot", icon: "queue" },
+  base: { label: "Base broken", icon: "ci" },
+  retry: { label: "Retrying later", icon: "queue" },
   ready: { label: "Ready, not merged", icon: "ready" },
 };
 

@@ -172,6 +172,32 @@ export default function PrPatrolView({
         </div>
       )}
 
+      {(data.baseBreaks ?? []).map((b) => (
+        <div
+          key={b.id}
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-slate-500/30 bg-slate-500/10 px-4 py-2 text-sm"
+          style={{ color: "var(--th-text-secondary)" }}
+        >
+          <PixelIcon name="ci" size={14} />
+          <b style={{ color: "var(--th-text-heading)" }}>
+            {b.repo.split("/")[1]}:{b.base} is broken
+          </b>
+          <span className="truncate">{b.checks.join(", ")}</span>
+          <span style={{ color: "var(--th-text-muted)" }}>
+            · holds {b.prs.length} PR(s) ·{" "}
+            {b.fixUrl ? (
+              <a href={b.fixUrl} target="_blank" rel="noreferrer" className="hover:underline">
+                fix #{b.fixPr} open
+              </a>
+            ) : b.status === "abandoned" ? (
+              `no fix found${b.note ? `: ${b.note}` : ""}`
+            ) : (
+              "fix pending"
+            )}
+          </span>
+        </div>
+      ))}
+
       <ReadyToMergeBlock prs={readyPrs} costs={costs} onSelect={setSelectedKey} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(260px,340px)_1fr]">

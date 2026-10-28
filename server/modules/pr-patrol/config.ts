@@ -34,6 +34,20 @@ export type PrPatrolConfig = {
   releaseHeads: string[];
   /** CI fix rounds per head: a rerun that fails again gets another look, up to this many, then the PR waits on you. */
   maxCiRoundsPerHead: number;
+  /**
+   * When the CI rounds run out: one escalated round by a fixer, then the base is merged in (up to maxBaseSyncs
+   * per PR); the PR waits on you only once CI has been red for needsYouAfterMs. Off = it waits on you at once.
+   */
+  escalate: boolean;
+  maxBaseSyncs: number;
+  needsYouAfterMs: number;
+  /** Gate puts a ready PR (final review approved) into the merge queue, and back after an ejection. */
+  autoEnqueue: boolean;
+  /** Enqueues per head: the first one plus re-enqueues after ejections. */
+  maxEnqueuesPerHead: number;
+  /** Medic opens one fix PR against the base when a base breakage holds at least baseFixMinPrs PRs. */
+  baseFix: boolean;
+  baseFixMinPrs: number;
   workdir: string;
   model: string | undefined;
 };
@@ -88,6 +102,13 @@ export function loadPrPatrolConfig(): PrPatrolConfig {
     ignoredChecks: envList("PR_PATROL_IGNORE_CHECKS"),
     releaseHeads: envList("PR_PATROL_RELEASE_HEADS", ["release-cut"]),
     maxCiRoundsPerHead: envInt("PR_PATROL_MAX_CI_ROUNDS_PER_HEAD", 3, 1),
+    escalate: envFlag("PR_PATROL_ESCALATE", true),
+    maxBaseSyncs: envInt("PR_PATROL_MAX_BASE_SYNCS", 1, 0),
+    needsYouAfterMs: envInt("PR_PATROL_NEEDS_YOU_AFTER_H", 24, 0) * 3_600_000,
+    autoEnqueue: envFlag("PR_PATROL_AUTO_ENQUEUE", true),
+    maxEnqueuesPerHead: envInt("PR_PATROL_MAX_ENQUEUES_PER_HEAD", 2, 1),
+    baseFix: envFlag("PR_PATROL_BASE_FIX", true),
+    baseFixMinPrs: envInt("PR_PATROL_BASE_FIX_MIN_PRS", 2, 1),
     workdir: process.env.PR_PATROL_WORKDIR?.trim() || path.join(os.homedir(), ".pr-loop"),
     model: process.env.PR_PATROL_MODEL?.trim() || undefined,
   };

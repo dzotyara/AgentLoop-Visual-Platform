@@ -52,7 +52,11 @@ export type Decision =
       findings?: ReviewFinding[];
       /** The review of the final head, run once everything else is clean: it authorises the merge. */
       final?: boolean;
+      /** fix_ci after the CI rounds ran out: a fixer (not Medic) takes over with the earlier rounds' notes. */
+      escalated?: boolean;
     }
+  /** Merge the base branch into the PR (GitHub "update branch"): a new head gets fresh CI rounds. */
+  | { kind: "sync"; key: string; reason: string }
   | { kind: "wait"; reason: string; on: WaitingOn; notes: string[] }
   | { kind: "blocked"; reasons: string[]; notes: string[] }
   | {
@@ -72,7 +76,28 @@ const MERGE_QUEUE_STATE: Record<string, string> = {
 };
 
 /** Who or what the PR is waiting for when no agent can act: shown next to the reason in the UI. */
-export type WaitingOn = "ci" | "reviewer" | "github" | "you" | "agent";
+/** base: a breakage of the base branch · retry: agents ran out of ideas for now, the next push or base fix restarts them. */
+export type WaitingOn = "ci" | "reviewer" | "github" | "you" | "agent" | "base" | "retry";
+
+/**
+ * A breakage of a base branch: checks that fail there too, so no commit on a PR can fix them. Recorded when Medic
+ * classifies a failure as "base"; resolved when the fix lands (see base-breaks.ts).
+ */
+export type BaseBreak = { id: string; checks: string[]; fixPr: number | null; fixUrl: string | null };
+
+/** What decide() knows beyond the PR itself. */
+export type DecideContext = {
+  /** Open breakages of this PR's repo + base branch. */
+  baseBreaks?: BaseBreak[];
+  now?: number;
+  /** Since when CI on this PR has been red without going green (null = not red). */
+  redSince?: number | null;
+};
+
+/** Check identity across PRs: "workflow / name". */
+export function checkId(c: Pick<PrCheck, "name" | "workflow">): string {
+  return c.workflow ? `${c.workflow} / ${c.name}` : c.name;
+}
 
 export const BLOCKING_SEVERITIES = new Set<Severity>(["P0", "P1"]);
 
@@ -127,7 +152,13 @@ function shortHash(parts: string[]): string {
  * One step of the auto-fix loop for a single PR, in Auto-fix priority order:
  * merge conflict → failing CI → unhandled review feedback → own review (+ fixing its findings) → wait for CI → ready.
  */
-export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, steps: StepPolicy = {}): Decision {
+export function decide(
+  s: PrSnapshot,
+  cfg: PrPatrolConfig,
+  mem: PatrolMemory,
+  steps: StepPolicy = {},
+  ctx: DecideContext = {},
+): Decision {
   if (s.state !== "OPEN") return { kind: "skip", reason: `PR is ${s.state.toLowerCase()}` };
   if (s.isDraft && !cfg.includeDrafts) return { kind: "skip", reason: "draft" };
   if (s.isCrossRepository) return { kind: "skip", reason: "fork PR: its branch cannot be pushed from here" };
@@ -170,25 +201,60 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
     };
   }
 
-  // One CI round per set of failed jobs: a rerun gives the jobs new ids, so when a "flaky, re-ran it" round fails
-  // again on the same head Medic looks again, up to cfg.maxCiRoundsPerHead rounds; then the PR waits on you.
+  // CI, in order: checks that fail on the base too wait for the base fix (no PR commit can fix them); the rest get
+  // one Medic round per set of failed jobs (a rerun gives the jobs new ids, so a rerun that fails again is looked
+  // at again), up to cfg.maxCiRoundsPerHead; then one escalated round by a fixer; then the base is merged in (a new
+  // head starts over); only when all that failed for cfg.needsYouAfterMs does the PR wait on you.
+  let ciHold: { reason: string; on: WaitingOn } | null = null;
   const failing = checks.filter((c) => c.state === "failure");
-  if (failing.length > 0) {
-    const key = ciKey(head, failing);
+  const breaks = (ctx.baseBreaks ?? []).filter((b) => failing.some((c) => b.checks.includes(checkId(c))));
+  const baseFailing = new Set(breaks.flatMap((b) => b.checks));
+  const own = failing.filter((c) => !baseFailing.has(checkId(c)));
+  if (own.length > 0) {
+    const key = ciKey(head, own);
     const rounds = [...mem.actions].filter(([k, a]) => k.startsWith(`ci:${head}`) && a.status === "done").length;
     const g = gate(key, "fix_ci");
-    const names = failing.map((c) => c.name).join(", ");
-    if (g === "go" && rounds < cfg.maxCiRoundsPerHead)
-      return { kind: "run", action: "fix_ci", key, failingChecks: failing };
-    blocked.push(
-      g === "go"
-        ? `CI failing (${names}) after ${rounds} fix round(s) on this head: likely broken on the base, needs you`
-        : g === "done"
-          ? `CI failing (${names}); fix done, waiting for a new head or rerun`
-          : g === "disabled"
-            ? `CI failing (${names}): ${DISABLED_LABEL.fix_ci}`
-            : `CI failing (${names}): fix attempts exhausted`,
-    );
+    const names = own.map((c) => c.name).join(", ");
+    if (g === "go" && rounds < cfg.maxCiRoundsPerHead) return { kind: "run", action: "fix_ci", key, failingChecks: own };
+    // A handled set with nothing re-running (no push, rerun refused) is a round that did not help: escalate.
+    if (g === "done" && checks.some((c) => c.state === "pending")) {
+      ciHold = { reason: `CI failing (${names}); fix done, waiting for the rerun`, on: "ci" };
+    } else if (g === "disabled") {
+      blocked.push(`CI failing (${names}): ${DISABLED_LABEL.fix_ci}`);
+    } else {
+      const escKey = `ci-esc:${head}`;
+      const syncKey = `sync:${head}`;
+      const syncs = [...mem.actions].filter(([k, a]) => k.startsWith("sync:") && a.status === "done").length;
+      const esc = cfg.escalate ? gate(escKey, "fix_ci") : "disabled";
+      const sync = cfg.escalate && syncs < cfg.maxBaseSyncs ? gate(syncKey, "fix_conflict") : "disabled";
+      const now = ctx.now ?? Date.now();
+      if (esc === "go")
+        return { kind: "run", action: "fix_ci", key: escKey, failingChecks: own, escalated: true };
+      if (sync === "go")
+        return { kind: "sync", key: syncKey, reason: `CI still failing (${names}) after ${rounds} round(s) and an escalation` };
+      const tried = `after ${rounds} fix round(s) on this head${esc === "done" ? ", an escalation" : ""}${syncs ? " and a base merge" : ""}`;
+      const since = ctx.redSince ?? now;
+      if (cfg.escalate && now - since < cfg.needsYouAfterMs) {
+        const left = Math.ceil((cfg.needsYouAfterMs - (now - since)) / 3_600_000);
+        ciHold = {
+          reason: `CI failing (${names}) ${tried}; the next push or base fix restarts the rounds (needs you in ~${left}h)`,
+          on: "retry",
+        };
+      } else {
+        blocked.push(
+          g === "exhausted" && !cfg.escalate
+            ? `CI failing (${names}): fix attempts exhausted`
+            : `CI failing (${names}) ${tried}: likely broken on the base, needs you`,
+        );
+      }
+    }
+  }
+  if (!ciHold && breaks.length > 0) {
+    const fix = breaks.find((b) => b.fixPr);
+    ciHold = {
+      reason: `Base broken: ${[...baseFailing].filter((id) => failing.some((c) => checkId(c) === id)).join(", ")} fail on ${s.baseRefName} too; ${fix ? `waiting for the base fix #${fix.fixPr}` : "waiting for the base fix"}, then the base is merged in`,
+      on: "base",
+    };
   }
 
   // P0/P1 (and every human comment) are always fixed; P2/P3 get at most cfg.maxNitRounds rounds per PR (P3-only
@@ -261,6 +327,7 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
   if (s.mergeStateStatus === "BEHIND") notes.push("branch is behind its base");
 
   if (blocked.length > 0) return { kind: "blocked", reasons: blocked, notes };
+  if (ciHold) return { kind: "wait", reason: ciHold.reason, on: ciHold.on, notes };
   const running = checks.filter((c) => c.state === "pending");
   if (running.length > 0) return { kind: "wait", reason: `CI running (${running.length} check(s))`, on: "ci", notes };
   if (s.mergeable === "UNKNOWN")

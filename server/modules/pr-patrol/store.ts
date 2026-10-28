@@ -21,6 +21,8 @@ export type PrRow = {
   ready_sha: string | null;
   snapshot_json: string | null;
   waiting_on: string | null;
+  /** Since when CI on the PR has been red without going green; null while not red. */
+  red_since: number | null;
   updated_at: number;
 };
 
@@ -69,6 +71,7 @@ CREATE TABLE IF NOT EXISTS pr_patrol_actions (
   const cols = db.prepare("PRAGMA table_info(pr_patrol_prs)").all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "snapshot_json")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN snapshot_json TEXT");
   if (!cols.some((c) => c.name === "waiting_on")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN waiting_on TEXT");
+  if (!cols.some((c) => c.name === "red_since")) db.exec("ALTER TABLE pr_patrol_prs ADD COLUMN red_since INTEGER");
   ensurePipelineSchema(db); // pipeline settings edited from the loop graph (pipeline.ts)
   ensurePrPatrolHistorySchema(db);
   countLegacyNitRounds(db);
@@ -202,6 +205,38 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     }
   }
 
+  /** Starts the red clock when CI goes red, stops it when nothing fails any more; returns since when it is red. */
+  function trackRed(key: string, red: boolean): number | null {
+    const row = getPr(key);
+    if (!red) {
+      if (row?.red_since != null) db.prepare("UPDATE pr_patrol_prs SET red_since = NULL WHERE pr_key = ?").run(key);
+      return null;
+    }
+    if (row?.red_since != null) return row.red_since;
+    const t = nowMs();
+    db.prepare("UPDATE pr_patrol_prs SET red_since = ? WHERE pr_key = ?").run(t, key);
+    return t;
+  }
+
+  /** Notes of finished actions whose key starts with `prefix`, oldest first (escalation history). */
+  function actionNotes(key: string, prefix: string): string[] {
+    return (
+      db
+        .prepare(
+          "SELECT result_json FROM pr_patrol_actions WHERE pr_key = ? AND action_key LIKE ? AND status != 'running' ORDER BY updated_at",
+        )
+        .all(key, `${prefix}%`) as Array<{ result_json: string | null }>
+    )
+      .map((r) => {
+        try {
+          return (JSON.parse(r.result_json ?? "null")?.note as string | undefined) ?? "";
+        } catch {
+          return "";
+        }
+      })
+      .filter(Boolean);
+  }
+
   function listActions(key: string, limit = 20): ActionRow[] {
     return db
       .prepare("SELECT * FROM pr_patrol_actions WHERE pr_key = ? ORDER BY updated_at DESC LIMIT ?")
@@ -316,6 +351,8 @@ export function createPrPatrolStore(db: DatabaseSync, nowMs: () => number) {
     setPhase,
     markReady,
     setSnapshot,
+    trackRed,
+    actionNotes,
     listActions,
     memory,
     startAction,

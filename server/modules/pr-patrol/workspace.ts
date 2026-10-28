@@ -62,6 +62,32 @@ export async function preparePrWorktree(workdir: string, s: PrSnapshot): Promise
   return { path: wt, startSha: await git(wt, ["rev-parse", "HEAD"]), branch };
 }
 
+/**
+ * A worktree on a new local branch cut from origin/<base>, for a fix of the base itself (no PR yet). The loop
+ * pushes it to `branch` and opens the PR.
+ */
+export async function prepareBranchWorktree(
+  workdir: string,
+  repo: string,
+  base: string,
+  branch: string,
+): Promise<PrWorkspace> {
+  const clone = await ensureClone(workdir, repo);
+  await git(clone, ["fetch", "--no-tags", "origin", `+refs/heads/${base}:refs/remotes/origin/${base}`]);
+  const wt = path.join(workdir, "worktrees", `${slug(repo)}__${branch.replaceAll("/", "_")}`);
+  if (!fs.existsSync(path.join(wt, ".git"))) {
+    fs.mkdirSync(path.dirname(wt), { recursive: true });
+    await git(clone, ["worktree", "prune"]);
+    await git(clone, ["worktree", "add", "-f", "-B", branch, wt, `origin/${base}`]);
+  } else {
+    await git(wt, ["merge", "--abort"]).catch(() => undefined);
+    await git(wt, ["checkout", "-f", "-B", branch, `origin/${base}`]);
+    await git(wt, ["reset", "--hard", `origin/${base}`]);
+    await git(wt, ["clean", "-fd"]);
+  }
+  return { path: wt, startSha: await git(wt, ["rev-parse", "HEAD"]), branch };
+}
+
 export type PushOutcome =
   | { status: "no_changes" }
   | { status: "dirty"; files: string }
@@ -90,7 +116,7 @@ export async function ensureCommitPrefix(ws: PrWorkspace, prefix: string): Promi
 /** Fast-forward-only push of the agent's commits to the PR branch. Never forces. */
 export async function pushAgentCommits(
   ws: PrWorkspace,
-  s: PrSnapshot,
+  s: Pick<PrSnapshot, "repo" | "headRefName">,
   write: boolean,
   prefix: string,
 ): Promise<PushOutcome> {

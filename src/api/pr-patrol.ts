@@ -85,7 +85,23 @@ export type PrPatrolStatus = {
   lastTick: { at: number; error: string | null; prs: number };
   /** Agent id -> crew seat (Argus, Patch, Rivet, Splice, Medic, Weaver, Gate); stable when agents are renamed. */
   crew?: Record<string, string>;
+  /** Base branches broken for every PR into them; PRs wait on these instead of on you. */
+  baseBreaks?: PrPatrolBaseBreak[];
   prs: PrPatrolPr[];
+};
+
+export type PrPatrolBaseBreak = {
+  id: string;
+  repo: string;
+  base: string;
+  checks: string[];
+  prs: string[];
+  /** open: waiting for a fix · fixing: Medic's fix PR is open · abandoned: no fix PR could be made. */
+  status: "open" | "fixing" | "abandoned";
+  fixPr: number | null;
+  fixUrl: string | null;
+  note: string;
+  since: number;
 };
 
 export async function getPrPatrolStatus(): Promise<PrPatrolStatus> {
@@ -136,7 +152,7 @@ export function savePipeline(update: PrPatrolPipelineUpdate): Promise<PrPatrolPi
 }
 
 export type LoopMetricsDistribution = { medianMs: number | null; p90Ms: number | null; n: number };
-export type LoopMetricsWaitBucket = "ci" | "reviewer" | "github" | "you" | "agent" | "ready";
+export type LoopMetricsWaitBucket = "ci" | "reviewer" | "github" | "you" | "agent" | "base" | "retry" | "ready";
 
 /** GET /api/pr-patrol/metrics: see server/modules/pr-patrol/metrics.ts. */
 export type LoopMetrics = {

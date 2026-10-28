@@ -148,7 +148,7 @@ describe("loop metric helpers", () => {
       5,
       100,
     );
-    expect(Object.fromEntries(w)).toEqual({ ci: 5, reviewer: 0, github: 0, you: 30, agent: 40, ready: 20 });
+    expect(Object.fromEntries(w)).toEqual({ ci: 5, reviewer: 0, github: 0, base: 0, retry: 0, you: 30, agent: 40, ready: 20 });
   });
 });
 

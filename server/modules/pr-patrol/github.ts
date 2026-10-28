@@ -48,6 +48,8 @@ export type MergeQueueEntry = { state: string; position: number; enqueuedAt: str
 
 export type PrSnapshot = {
   repo: string; // owner/name
+  /** GraphQL node id (merge queue mutations); absent in tests. */
+  nodeId?: string;
   number: number;
   title: string;
   url: string;
@@ -320,6 +322,7 @@ export function extractChangesRequestedBy(resp: FeedbackResponse): string[] {
 export async function fetchPrSnapshot(repo: string, number: number, cfg: PrPatrolConfig): Promise<PrSnapshot> {
   const [owner, name] = repo.split("/");
   const view = await ghJson<{
+    id: string;
     number: number;
     title: string;
     url: string;
@@ -341,7 +344,7 @@ export async function fetchPrSnapshot(repo: string, number: number, cfg: PrPatro
     "-R",
     repo,
     "--json",
-    "number,title,url,state,isDraft,isCrossRepository,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup",
+    "id,number,title,url,state,isDraft,isCrossRepository,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup",
   ]);
   const feedbackResp = await ghJson<FeedbackResponse>([
     "api",
@@ -358,6 +361,7 @@ export async function fetchPrSnapshot(repo: string, number: number, cfg: PrPatro
   const me = await viewerLogin();
   return {
     repo,
+    nodeId: view.id,
     number: view.number,
     title: view.title,
     url: view.url,
@@ -422,4 +426,74 @@ export async function replyAndResolveThread(threadId: string, body: string): Pro
     "-f",
     `id=${threadId}`,
   ]);
+}
+
+/** Merges the base branch into the PR branch on GitHub (the "Update branch" button). Throws on conflict. */
+export async function updateBranch(repo: string, number: number, expectedHead: string): Promise<void> {
+  await gh([
+    "api",
+    "-X",
+    "PUT",
+    `repos/${repo}/pulls/${number}/update-branch`,
+    "-f",
+    `expected_head_sha=${expectedHead}`,
+  ]);
+}
+
+/** Adds the PR to its base branch's merge queue; throws when the repo has no merge queue or GitHub refuses. */
+export async function enqueuePr(nodeId: string): Promise<number | null> {
+  const out = await gh([
+    "api",
+    "graphql",
+    "-f",
+    "query=mutation($id: ID!) { enqueuePullRequest(input: {pullRequestId: $id}) { mergeQueueEntry { position } } }",
+    "-f",
+    `id=${nodeId}`,
+    "--jq",
+    ".data.enqueuePullRequest.mergeQueueEntry.position",
+  ]);
+  const n = Number.parseInt(out.trim(), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Opens a PR as the gh user; returns its number and URL. */
+export async function createPr(
+  repo: string,
+  input: { base: string; head: string; title: string; body: string },
+): Promise<{ number: number; url: string }> {
+  const out = await gh([
+    "api",
+    `repos/${repo}/pulls`,
+    "-f",
+    `base=${input.base}`,
+    "-f",
+    `head=${input.head}`,
+    "-f",
+    `title=${input.title}`,
+    "-f",
+    `body=${input.body}`,
+    "--jq",
+    "[.number, .html_url] | @tsv",
+  ]);
+  const [num, url] = out.trim().split("\t");
+  return { number: Number(num), url };
+}
+
+export async function prState(repo: string, number: number): Promise<{ state: string; merged: boolean }> {
+  const v = await ghJson<{ state: string; mergedAt: string | null }>([
+    "pr",
+    "view",
+    String(number),
+    "-R",
+    repo,
+    "--json",
+    "state,mergedAt",
+  ]);
+  return { state: v.state, merged: Boolean(v.mergedAt) };
+}
+
+/** Whether `head` contains commit `sha` (compare status ahead / identical). */
+export async function containsCommit(repo: string, sha: string, head: string): Promise<boolean> {
+  const status = (await gh(["api", `repos/${repo}/compare/${sha}...${head}`, "--jq", ".status"])).trim();
+  return status === "ahead" || status === "identical";
 }

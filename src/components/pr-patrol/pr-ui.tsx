@@ -31,6 +31,9 @@ export const ACTION_LABEL: Record<string, string> = {
   address_feedback: "Address comments",
   fix_ci: "Fix CI",
   fix_conflict: "Resolve conflict",
+  sync_base: "Merge base in",
+  fix_base: "Fix the base",
+  enqueue: "Enqueue",
   ready: "Ready",
 };
 
@@ -128,6 +131,8 @@ const WAITING_ON: Record<string, { label: string; icon: PixelIconName; chip: str
   github: { label: "GitHub", icon: "github", chip: "bg-slate-500/15 text-slate-400 border-slate-500/30" },
   you: { label: "You", icon: "you", chip: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
   agent: { label: "Agent queue", icon: "queue", chip: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
+  retry: { label: "Retrying later", icon: "queue", chip: "bg-slate-500/15 text-slate-400 border-slate-500/30" },
+  base: { label: "Base broken", icon: "ci", chip: "bg-slate-500/15 text-slate-400 border-slate-500/30" },
 };
 
 /** "Waiting on X — reason" for PRs no agent is working on; null when there is nothing to wait for. */
