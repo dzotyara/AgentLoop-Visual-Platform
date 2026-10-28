@@ -27,6 +27,13 @@ export type PrPatrolConfig = {
   ignoredCommenters: string[];
   /** Check names that never count as failing or pending (e.g. merge-queue gates no commit can fix). */
   ignoredChecks: string[];
+  /**
+   * Head branches of release PRs the loop never touches (no review, no fixes, no comments): a release is cut
+   * from staging as is, and any commit on it breaks the release-head verification.
+   */
+  releaseHeads: string[];
+  /** CI fix rounds per head: a rerun that fails again gets another look, up to this many, then the PR waits on you. */
+  maxCiRoundsPerHead: number;
   workdir: string;
   model: string | undefined;
 };
@@ -79,6 +86,8 @@ export function loadPrPatrolConfig(): PrPatrolConfig {
       "changeset-bot[bot]",
     ]),
     ignoredChecks: envList("PR_PATROL_IGNORE_CHECKS"),
+    releaseHeads: envList("PR_PATROL_RELEASE_HEADS", ["release-cut"]),
+    maxCiRoundsPerHead: envInt("PR_PATROL_MAX_CI_ROUNDS_PER_HEAD", 3, 1),
     workdir: process.env.PR_PATROL_WORKDIR?.trim() || path.join(os.homedir(), ".pr-loop"),
     model: process.env.PR_PATROL_MODEL?.trim() || undefined,
   };

@@ -91,13 +91,16 @@ export async function listPatrolledPrs(cfg: PrPatrolConfig): Promise<Array<{ rep
   const rows = await ghJson<Array<{ repository: { nameWithOwner: string }; number: number; isDraft: boolean }>>([
     "search",
     "prs",
-    cfg.searchQuery,
     "--state",
     "open",
     "--limit",
     "100",
     "--json",
     "repository,number,isDraft",
+    // One argument per term: gh quotes an argument holding a space as a phrase,
+    // and `--` keeps a negated qualifier such as `-head:release-cut` from parsing as a flag.
+    "--",
+    ...cfg.searchQuery.split(/\s+/).filter(Boolean),
   ]);
   return rows
     .filter((r) => cfg.includeDrafts || !r.isDraft)

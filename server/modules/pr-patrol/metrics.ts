@@ -314,7 +314,8 @@ export function computeLoopMetrics(
   const flakyHeads = new Set<string>();
   const headOfTask = new Map<string, string>();
   for (const a of input.actions) {
-    if (a.task_id && a.action_key.startsWith("ci:")) headOfTask.set(a.task_id, a.action_key.slice(3));
+    // keys are ci:<head> (older) or ci:<head>:<failed-jobs hash>
+    if (a.task_id && a.action_key.startsWith("ci:")) headOfTask.set(a.task_id, a.action_key.split(":")[1]);
   }
   for (const r of runsInRange) {
     if (r.status !== "done") continue;

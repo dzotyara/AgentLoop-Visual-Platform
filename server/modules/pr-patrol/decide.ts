@@ -105,6 +105,17 @@ function nitCapLabel(mem: PatrolMemory, cfg: Pick<PrPatrolConfig, "maxNitRounds"
     : `P3-only round cap (${cfg.maxP3Rounds}) reached`;
 }
 
+/** Action key of a CI round: the head plus the failed jobs (a rerun gives them new ids, so a new key). */
+export function ciKey(head: string, failing: PrCheck[]): string {
+  return `ci:${head}:${shortHash(failing.map((c) => c.detailsUrl ?? c.name))}`;
+}
+
+/** A release PR: its head is a release branch, or it is titled "release: ..." and targets main/master. */
+export function isReleasePr(s: PrSnapshot, cfg: Pick<PrPatrolConfig, "releaseHeads">): boolean {
+  if (cfg.releaseHeads.includes(s.headRefName)) return true;
+  return /^release\b/i.test(s.title.trim()) && (s.baseRefName === "main" || s.baseRefName === "master");
+}
+
 function shortHash(parts: string[]): string {
   return createHash("sha1")
     .update([...parts].sort().join("\n"))
@@ -120,6 +131,9 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
   if (s.state !== "OPEN") return { kind: "skip", reason: `PR is ${s.state.toLowerCase()}` };
   if (s.isDraft && !cfg.includeDrafts) return { kind: "skip", reason: "draft" };
   if (s.isCrossRepository) return { kind: "skip", reason: "fork PR: its branch cannot be pushed from here" };
+  // Release PRs (staging -> main) are cut as is: a review comment or a [fix] commit on them is never wanted, and a
+  // commit breaks the release-head verification. Hands off entirely.
+  if (isReleasePr(s, cfg)) return { kind: "skip", reason: "release PR: the loop never touches releases" };
   // In the merge queue the PR belongs to GitHub: any push would drop it from the queue, so agents stay off.
   if (s.mergeQueue) {
     const state = MERGE_QUEUE_STATE[s.mergeQueue.state] ?? s.mergeQueue.state.toLowerCase();
@@ -156,18 +170,24 @@ export function decide(s: PrSnapshot, cfg: PrPatrolConfig, mem: PatrolMemory, st
     };
   }
 
+  // One CI round per set of failed jobs: a rerun gives the jobs new ids, so when a "flaky, re-ran it" round fails
+  // again on the same head Medic looks again, up to cfg.maxCiRoundsPerHead rounds; then the PR waits on you.
   const failing = checks.filter((c) => c.state === "failure");
   if (failing.length > 0) {
-    const key = `ci:${head}`;
+    const key = ciKey(head, failing);
+    const rounds = [...mem.actions].filter(([k, a]) => k.startsWith(`ci:${head}`) && a.status === "done").length;
     const g = gate(key, "fix_ci");
-    if (g === "go") return { kind: "run", action: "fix_ci", key, failingChecks: failing };
     const names = failing.map((c) => c.name).join(", ");
+    if (g === "go" && rounds < cfg.maxCiRoundsPerHead)
+      return { kind: "run", action: "fix_ci", key, failingChecks: failing };
     blocked.push(
-      g === "done"
-        ? `CI failing (${names}); fix done, waiting for a new head or rerun`
-        : g === "disabled"
-          ? `CI failing (${names}): ${DISABLED_LABEL.fix_ci}`
-          : `CI failing (${names}): fix attempts exhausted`,
+      g === "go"
+        ? `CI failing (${names}) after ${rounds} fix round(s) on this head: likely broken on the base, needs you`
+        : g === "done"
+          ? `CI failing (${names}); fix done, waiting for a new head or rerun`
+          : g === "disabled"
+            ? `CI failing (${names}): ${DISABLED_LABEL.fix_ci}`
+            : `CI failing (${names}): fix attempts exhausted`,
     );
   }
 

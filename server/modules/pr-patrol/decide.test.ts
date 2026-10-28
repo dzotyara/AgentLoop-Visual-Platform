@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PrPatrolConfig } from "./config.ts";
-import { decide, type PatrolMemory } from "./decide.ts";
+import { ciKey, decide, type PatrolMemory } from "./decide.ts";
 import {
   classifyFeedback,
   extractChangesRequestedBy,
@@ -28,6 +28,8 @@ const cfg: PrPatrolConfig = {
   repoDenylist: [],
   ignoredCommenters: [],
   ignoredChecks: ["merge-gate"],
+  releaseHeads: ["release-cut"],
+  maxCiRoundsPerHead: 3,
   workdir: "/tmp/pr-loop-test",
   model: undefined,
 };
@@ -538,18 +540,59 @@ describe("decide with pipeline step overrides", () => {
 
   it("uses the per-step max attempts instead of the global cap", () => {
     const s = snap({ checks: [failingCheck] });
-    const tried = mem({ actions: new Map([["ci:head1", { status: "failed" as const, attempts: 2 }]]) });
+    const key = ciKey("head1", [failingCheck]);
+    const tried = mem({ actions: new Map([[key, { status: "failed" as const, attempts: 2 }]]) });
     // global cap is 2: exhausted
     expect(decide(s, cfg, tried).kind).toBe("blocked");
     // step cap 4: retry
     expect(decide(s, cfg, tried, { fix_ci: { maxAttempts: 4 } })).toMatchObject({ kind: "run", action: "fix_ci" });
     // step cap 1 on a fresh-ish action: exhausted after one attempt
-    const once = mem({ actions: new Map([["ci:head1", { status: "failed" as const, attempts: 1 }]]) });
+    const once = mem({ actions: new Map([[key, { status: "failed" as const, attempts: 1 }]]) });
     expect(decide(s, cfg, once).kind).toBe("run");
     const d = decide(s, cfg, once, { fix_ci: { maxAttempts: 1 } });
     expect(d.kind).toBe("blocked");
     if (d.kind === "blocked") expect(d.reasons[0]).toContain("fix attempts exhausted");
     // a null override keeps the global cap
     expect(decide(s, cfg, once, { fix_ci: { maxAttempts: null } }).kind).toBe("run");
+  });
+});
+
+describe("CI rounds and release PRs", () => {
+  const job = (id: number) => ({
+    name: "Tests (shard 0)",
+    workflow: "CI",
+    state: "failure" as const,
+    rawConclusion: "FAILURE",
+    detailsUrl: `https://github.com/o/r/actions/runs/1/job/${id}`,
+  });
+
+  it("looks again when a rerun of a flaky failure fails again, up to the per-head cap", () => {
+    const first = decide(snap({ checks: [job(10)] }), cfg, mem());
+    expect(first).toMatchObject({ kind: "run", action: "fix_ci", key: ciKey("head1", [job(10)]) });
+    // Medic called it flaky and re-ran it; the rerun (new job id) failed again on the same head
+    const afterRerun = mem({
+      actions: new Map([[ciKey("head1", [job(10)]), { status: "done" as const, attempts: 1 }]]),
+    });
+    expect(decide(snap({ checks: [job(11)] }), cfg, afterRerun)).toMatchObject({ kind: "run", action: "fix_ci" });
+    // three rounds done on this head: stop and hand it to the author with the reason
+    const capped = mem({
+      actions: new Map([
+        ["ci:head1", { status: "done" as const, attempts: 1 }], // pre-hash key from before this change
+        [ciKey("head1", [job(10)]), { status: "done" as const, attempts: 1 }],
+        [ciKey("head1", [job(11)]), { status: "done" as const, attempts: 1 }],
+      ]),
+    });
+    const d = decide(snap({ checks: [job(12)] }), cfg, capped);
+    expect(d.kind).toBe("blocked");
+    if (d.kind === "blocked") expect(d.reasons[0]).toContain("after 3 fix round(s) on this head");
+  });
+
+  it("never touches a release PR into main", () => {
+    const release = snap({ headRefName: "release-cut", baseRefName: "main", title: "release: staging -> main" });
+    expect(decide(release, cfg, mem())).toMatchObject({ kind: "skip", reason: expect.stringContaining("release PR") });
+    const titled = snap({ headRefName: "cut-2026-10-28", baseRefName: "main", title: "Release: staging -> main" });
+    expect(decide(titled, cfg, mem()).kind).toBe("skip");
+    // a feature PR into main in another repo is still patrolled
+    expect(decide(snap({ baseRefName: "main", title: "R5: exact typing" }), cfg, mem()).kind).not.toBe("skip");
   });
 });
