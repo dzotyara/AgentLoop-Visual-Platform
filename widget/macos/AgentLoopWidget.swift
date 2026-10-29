@@ -160,6 +160,8 @@ enum Palette {
     static let amber = Color(red: 0.96, green: 0.72, blue: 0.24)
     static let green = Color(red: 0.25, green: 0.70, blue: 0.50)
     static let gray = Color.white.opacity(0.42)
+    static let ember = Color(red: 0.98, green: 0.52, blue: 0.12)
+    static let flame = Color(red: 0.91, green: 0.20, blue: 0.22)
 
     static func phase(_ pr: Pr) -> Color {
         switch pr.phase {
@@ -241,6 +243,58 @@ struct PrRow: View {
     }
 }
 
+/** PRs ready to merge: an orange-red block that shimmers while there is anything in it. */
+struct ReadyBlock: View {
+    let prs: [Pr]
+    let open: (String) -> Void
+    @State private var glow = false
+
+    var body: some View {
+        let live = !prs.isEmpty
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text("Готовы к мержу").font(.system(size: 11.5, weight: .semibold)).lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: 2)
+                Text(verbatim: "\(prs.count)").font(.system(size: 15, weight: .bold, design: .rounded)).monospacedDigit()
+            }
+            if live {
+                LazyVGrid(columns: [GridItem(.flexible(), alignment: .leading), GridItem(.flexible(), alignment: .leading)],
+                          alignment: .leading, spacing: 3) {
+                    ForEach(Array(prs.prefix(4))) { pr in
+                        Button { open(pr.url) } label: {
+                            Text(verbatim: "#\(pr.number)").font(.system(size: 11, weight: .semibold)).monospacedDigit()
+                        }
+                        .buttonStyle(.plain)
+                        .help(pr.title)
+                    }
+                }
+                if prs.count > 4 {
+                    Text(verbatim: "+\(prs.count - 4)").font(.system(size: 10.5, weight: .medium)).opacity(0.85)
+                }
+            }
+        }
+        .foregroundStyle(live ? Color.white : Palette.muted)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background {
+            if live {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .fill(LinearGradient(colors: [Palette.ember, Palette.flame, Palette.ember],
+                                         startPoint: glow ? .topLeading : .bottomLeading,
+                                         endPoint: glow ? .bottomTrailing : .topTrailing))
+                    .hueRotation(.degrees(glow ? 0 : -14))
+                    .shadow(color: Palette.flame.opacity(glow ? 0.65 : 0.2), radius: glow ? 9 : 3)
+            } else {
+                RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Color.white.opacity(0.07))
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) { glow = true }
+        }
+    }
+}
+
 struct WidgetView: View {
     @ObservedObject var model: WidgetModel
 
@@ -249,6 +303,7 @@ struct WidgetView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             rings
+            ReadyBlock(prs: model.openPrs.filter { $0.phase == "ready" }.sorted { $0.number < $1.number }, open: open)
             if let breaks = model.status?.baseBreaks, !breaks.isEmpty { ForEach(breaks) { baseBanner($0) } }
             prList
             footer
@@ -291,7 +346,7 @@ struct WidgetView: View {
     }
 
     var prList: some View {
-        let prs = model.openPrs.sorted {
+        let prs = model.openPrs.filter { $0.phase != "ready" }.sorted {
             (PHASE_ORDER.firstIndex(of: $0.phase) ?? 99, $0.number) < (PHASE_ORDER.firstIndex(of: $1.phase) ?? 99, $1.number)
         }
         return VStack(alignment: .leading, spacing: 0) {
