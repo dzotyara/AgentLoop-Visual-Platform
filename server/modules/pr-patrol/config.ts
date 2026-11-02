@@ -41,9 +41,9 @@ export type PrPatrolConfig = {
   escalate: boolean;
   maxBaseSyncs: number;
   needsYouAfterMs: number;
-  /** Gate puts a ready PR (final review approved) into the merge queue, and back after an ejection. */
+  /** Gate puts every PR the Review agent approved into the merge queue, and back after an ejection. */
   autoEnqueue: boolean;
-  /** Enqueues per head: the first one plus re-enqueues after ejections. */
+  /** Enqueues per head: the first one plus re-enqueues after ejections; a head the queue keeps dropping stops here. */
   maxEnqueuesPerHead: number;
   /** Medic opens one fix PR against the base when a base breakage holds at least baseFixMinPrs PRs. */
   baseFix: boolean;

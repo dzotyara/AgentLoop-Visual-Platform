@@ -7,6 +7,7 @@ import {
   BLOCKING_SEVERITIES,
   checkId,
   decide,
+  enqueueHold,
   nitRoundOpen,
   type ActionKind,
   type Decision,
@@ -18,6 +19,7 @@ import {
   createPr,
   enqueuePr,
   fetchPrSnapshot,
+  hasMergeQueue,
   listPatrolledPrs,
   postPrComment,
   prState,
@@ -89,6 +91,9 @@ export function createPrPatrol(ctx: RuntimeContext) {
   const probed = new Set<string>();
   /** Last enqueue per PR: GitHub shows the queue entry a moment later, so do not enqueue twice meanwhile. */
   const lastEnqueue = new Map<string, number>();
+  /** Why GitHub last refused to enqueue a PR, shown on it until the retry goes through. */
+  const enqueueRefusals = new Map<string, string>();
+  const mergeQueues = new Map<string, { has: boolean; at: number }>();
   let timer: ReturnType<typeof setInterval> | null = null;
   let ticking = false;
   let lastTick: { at: number; error: string | null; prs: number } = { at: 0, error: null, prs: 0 };
@@ -489,7 +494,8 @@ export function createPrPatrol(ctx: RuntimeContext) {
     const eff = effectiveConfig(cfg, pipe);
     const baseBreaks = breaks.forDecide(s.repo, s.baseRefName, s.headRefName);
     const mem = store.memory(key);
-    const d = decide(s, eff, mem, stepPolicy(pipe), { baseBreaks, now: nowMs(), redSince });
+    const hasQueue = await mergeQueueOn(s.repo, s.baseRefName);
+    const d = decide(s, eff, mem, stepPolicy(pipe), { baseBreaks, now: nowMs(), redSince, hasMergeQueue: hasQueue });
     switch (d.kind) {
       case "skip":
         store.setPhase(key, "skipped", d.reason);
@@ -510,15 +516,11 @@ export function createPrPatrol(ctx: RuntimeContext) {
       case "merging":
         store.setPhase(key, "merging", d.reason, d.notes, "github");
         return;
-      case "ready":
-        store.setPhase(
-          key,
-          "ready",
-          d.approval
-            ? "checks green, no conflicts, feedback handled, final review approved"
-            : "checks green, no conflicts, feedback handled",
-          d.notes,
-        );
+      case "ready": {
+        const summary = d.approval
+          ? "checks green, no conflicts, feedback handled, final review approved"
+          : "checks green, no conflicts, feedback handled";
+        store.setPhase(key, "ready", summary, d.notes);
         if (store.markReady(key, s.headRefOid)) {
           if (d.approval && cfg.write) {
             const body = formatReviewComment({
@@ -543,8 +545,9 @@ export function createPrPatrol(ctx: RuntimeContext) {
           );
           notifyCeo?.(`[ready] ${repo}#${number} is ready to merge — ${s.title}`);
         }
-        if (cfg.autoEnqueue && (d.approval || !eff.review)) await autoEnqueue(key, s, mem, d.notes);
+        if (cfg.autoEnqueue && (d.approval || !eff.review)) await autoEnqueue(key, s, mem, summary, d.notes, hasQueue);
         return;
+      }
       case "run": {
         if (running.size >= eff.maxConcurrent) {
           store.setPhase(key, "watching", `queued: ${ACTION_LABEL[d.action]} (all agent slots busy)`, [], "agent");
@@ -591,38 +594,69 @@ export function createPrPatrol(ctx: RuntimeContext) {
     store.setPhase(key, "waiting", note, [], ok ? "ci" : "agent");
   }
 
+  /** Whether a base branch has a merge queue; cached, since every PR of a repo asks on every tick. */
+  async function mergeQueueOn(repo: string, branch: string): Promise<boolean> {
+    const key = `${repo}:${branch}`;
+    const known = mergeQueues.get(key);
+    if (known && nowMs() - known.at < 3_600_000) return known.has;
+    try {
+      const has = await hasMergeQueue(repo, branch);
+      mergeQueues.set(key, { has, at: nowMs() });
+      return has;
+    } catch {
+      return known?.has ?? false; // a failed lookup is not an answer: asked again next tick
+    }
+  }
+
   /**
-   * Gate puts a ready PR into the merge queue, and back in after an ejection that left the head unchanged
-   * (up to cfg.maxEnqueuesPerHead per head). Repos without a merge queue refuse; the PR then stays "ready".
+   * Gate puts every PR the Review agent approved into the merge queue, and back in after an ejection that left the
+   * head unchanged. GitHub refusing (a required check still settling) is retried every 10 minutes, with the reason on
+   * the PR. What holds a PR out for good is in enqueueHold.
    */
-  async function autoEnqueue(key: string, s: PrSnapshot, mem: ReturnType<typeof store.memory>, notes: string[]) {
+  async function autoEnqueue(
+    key: string,
+    s: PrSnapshot,
+    mem: ReturnType<typeof store.memory>,
+    summary: string,
+    notes: string[],
+    hasQueue: boolean,
+  ): Promise<void> {
     if (!cfg.write || !s.nodeId) return;
-    if (nowMs() - (lastEnqueue.get(key) ?? 0) < 10 * 60_000) return;
     const head = s.headRefOid;
     const done = [...mem.actions].filter(([k, a]) => k.startsWith(`enqueue:${head}:`) && a.status === "done").length;
-    if (done >= cfg.maxEnqueuesPerHead) return;
-    const actionKey = `enqueue:${head}:${done}`;
-    if ((mem.actions.get(actionKey)?.attempts ?? 0) >= cfg.maxAttempts) return;
+    const hold = enqueueHold(s, done, cfg, hasQueue);
+    if (hold) {
+      store.setPhase(key, "ready", summary, [...notes, hold]);
+      return;
+    }
+    if (nowMs() - (lastEnqueue.get(key) ?? 0) < 10 * 60_000) {
+      const refused = enqueueRefusals.get(key);
+      if (refused) store.setPhase(key, "ready", summary, [...notes, refused]);
+      return;
+    }
     lastEnqueue.set(key, nowMs());
-    const taskId = createTask(
-      s,
-      `[ready] [${s.repo.split("/")[1]}#${s.number}] Enqueue: ${s.title}`.slice(0, 200),
-      "gate",
-      "in_progress",
-      s.url,
-      "enqueue",
-    );
-    store.startAction(key, actionKey, "enqueue", taskId);
     try {
       const position = await enqueuePr(s.nodeId);
       const note = `${done ? "re-added" : "added"} to the merge queue${position ? ` (position ${position})` : ""}`;
+      const taskId = createTask(
+        s,
+        `[ready] [${s.repo.split("/")[1]}#${s.number}] Enqueue: ${s.title}`.slice(0, 200),
+        "gate",
+        "done",
+        note,
+        "enqueue",
+      );
+      const actionKey = `enqueue:${head}:${done}`;
+      store.startAction(key, actionKey, "enqueue", taskId);
       store.finishAction(key, actionKey, "done", { note });
-      finishTask(taskId, true, note);
+      enqueueRefusals.delete(key);
       store.setPhase(key, "merging", `Gate ${note}`, notes, "github");
     } catch (err) {
-      const note = `enqueue failed: ${(err as Error).message.slice(0, 300)}`;
-      store.finishAction(key, actionKey, "failed", { note });
-      finishTask(taskId, false, note);
+      // gh's message ends with GitHub's reason; the start is only the command line
+      const reason = (err as Error).message.trim().split("\n").pop()?.replace(/^gh: /, "") ?? "unknown error";
+      const refused = `enqueue refused, retrying in 10 min: ${reason.slice(0, 200)}`;
+      enqueueRefusals.set(key, refused);
+      store.setPhase(key, "ready", summary, [...notes, refused]);
     }
   }
 

@@ -92,7 +92,29 @@ export type DecideContext = {
   now?: number;
   /** Since when CI on this PR has been red without going green (null = not red). */
   redSince?: number | null;
+  /** The PR's base branch has a merge queue, so its required checks are what decides the merge. */
+  hasMergeQueue?: boolean;
 };
+
+/** GitHub's own verdict that the required checks passed and no rule blocks the merge. */
+const REQUIRED_CHECKS_PASSED = new Set(["CLEAN", "UNSTABLE", "HAS_HOOKS"]);
+
+/**
+ * Why a PR the Review agent approved stays out of the merge queue, or null to enqueue it. `[no auto-merge]` is a
+ * human hold in the title. The cap stops a head the queue keeps ejecting from being re-enqueued forever.
+ */
+export function enqueueHold(
+  s: Pick<PrSnapshot, "title" | "baseRefName">,
+  enqueuedOnHead: number,
+  cfg: Pick<PrPatrolConfig, "maxEnqueuesPerHead">,
+  hasMergeQueue: boolean,
+): string | null {
+  if (/\[no auto-merge\]/i.test(s.title)) return "[no auto-merge] in the title: left for a human merge";
+  if (!hasMergeQueue) return `no merge queue on ${s.baseRefName}: merge it yourself`;
+  if (enqueuedOnHead >= cfg.maxEnqueuesPerHead)
+    return `the merge queue dropped this head ${enqueuedOnHead} time(s): needs a look`;
+  return null;
+}
 
 /** Check identity across PRs: "workflow / name". */
 export function checkId(c: Pick<PrCheck, "name" | "workflow">): string {
@@ -329,7 +351,13 @@ export function decide(
   if (blocked.length > 0) return { kind: "blocked", reasons: blocked, notes };
   if (ciHold) return { kind: "wait", reason: ciHold.reason, on: ciHold.on, notes };
   const running = checks.filter((c) => c.state === "pending");
-  if (running.length > 0) return { kind: "wait", reason: `CI running (${running.length} check(s))`, on: "ci", notes };
+  // With a merge queue only the required checks gate the merge (the queue reruns CI anyway): optional ones never
+  // hold a PR back. Without one a repo may require nothing, so there "clean" says nothing about running checks.
+  if (running.length > 0) {
+    if (!ctx.hasMergeQueue || !REQUIRED_CHECKS_PASSED.has(s.mergeStateStatus))
+      return { kind: "wait", reason: `CI running (${running.length} check(s))`, on: "ci", notes };
+    notes.push(`${running.length} optional check(s) still running`);
+  }
   if (s.mergeable === "UNKNOWN")
     return { kind: "wait", reason: "GitHub is still computing mergeability", on: "github", notes };
   // A standing "changes requested" review keeps the PR in work until the reviewer lifts it, even when the

@@ -440,6 +440,26 @@ export async function updateBranch(repo: string, number: number, expectedHead: s
   ]);
 }
 
+/** Whether the branch has a GitHub merge queue. */
+export async function hasMergeQueue(repo: string, branch: string): Promise<boolean> {
+  const [owner, name] = repo.split("/");
+  const out = await gh([
+    "api",
+    "graphql",
+    "-f",
+    "query=query($o: String!, $n: String!, $b: String!) { repository(owner: $o, name: $n) { mergeQueue(branch: $b) { id } } }",
+    "-F",
+    `o=${owner}`,
+    "-F",
+    `n=${name}`,
+    "-F",
+    `b=${branch}`,
+    "--jq",
+    ".data.repository.mergeQueue.id",
+  ]);
+  return out.trim() !== "" && out.trim() !== "null";
+}
+
 /** Adds the PR to its base branch's merge queue; throws when the repo has no merge queue or GitHub refuses. */
 export async function enqueuePr(nodeId: string): Promise<number | null> {
   const out = await gh([

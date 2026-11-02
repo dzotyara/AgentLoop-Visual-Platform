@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PrPatrolConfig } from "./config.ts";
-import { checkId, ciKey, decide, type BaseBreak, type PatrolMemory } from "./decide.ts";
+import { checkId, ciKey, decide, enqueueHold, type BaseBreak, type PatrolMemory } from "./decide.ts";
 import {
   classifyFeedback,
   extractChangesRequestedBy,
@@ -668,5 +668,37 @@ describe("self-resolving CI: base breakages and escalation", () => {
     if (waiting.kind === "wait") expect(waiting.reason).toContain("needs you in ~23h");
     const dayLater = decide(s, esc, mem({ actions: escalated }), {}, { now, redSince: now - 25 * 3_600_000 });
     expect(dayLater.kind).toBe("blocked");
+  });
+});
+
+describe("merge queue after the Review agent's OK", () => {
+  const optional = { name: "e2e", workflow: "CI", state: "pending" as const, rawConclusion: null, detailsUrl: null };
+
+  it("does not wait for optional checks once GitHub says the required ones passed, in a merge-queue repo", () => {
+    const s = snap({ mergeStateStatus: "UNSTABLE", checks: [optional] });
+    const d = decide(s, cfg, mem(), {}, { hasMergeQueue: true });
+    expect(d).toMatchObject({ kind: "ready", approval: { sha: "head1" } });
+    if (d.kind === "ready") expect(d.notes).toContain("1 optional check(s) still running");
+  });
+
+  it("still waits while required checks run, and in a repo with no queue", () => {
+    const blocked = snap({ mergeStateStatus: "BLOCKED", checks: [optional] });
+    expect(decide(blocked, cfg, mem(), {}, { hasMergeQueue: true })).toMatchObject({ kind: "wait", on: "ci" });
+    const noQueue = snap({ mergeStateStatus: "CLEAN", checks: [optional] });
+    expect(decide(noQueue, cfg, mem(), {}, { hasMergeQueue: false })).toMatchObject({ kind: "wait", on: "ci" });
+  });
+
+  it("never goes ready on an unreviewed head", () => {
+    const s = snap({ headRefOid: "head2", mergeStateStatus: "UNSTABLE", checks: [optional] });
+    expect(decide(s, cfg, mem(), {}, { hasMergeQueue: true })).toMatchObject({ kind: "run", action: "review" });
+  });
+
+  it("holds a PR out only for a human hold, a repo with no queue, or a head the queue keeps dropping", () => {
+    const pr = { title: "CI: fix", baseRefName: "staging" };
+    expect(enqueueHold(pr, 0, cfg, true)).toBeNull();
+    expect(enqueueHold(pr, 1, cfg, true)).toBeNull(); // one re-enqueue after an ejection
+    expect(enqueueHold(pr, 2, cfg, true)).toContain("dropped this head 2 time(s)");
+    expect(enqueueHold(pr, 0, cfg, false)).toContain("no merge queue on staging");
+    expect(enqueueHold({ ...pr, title: "[No Auto-Merge] feat: x" }, 0, cfg, true)).toContain("human merge");
   });
 });
