@@ -460,6 +460,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: "Refresh", action: #selector(refresh), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Open AgentLoop", action: #selector(openUI), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Stop AgentLoop", action: #selector(stopLoop), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit widget", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         hosting.menu = menu
@@ -479,4 +480,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func refresh() { Task { await model.refresh() } }
     @objc func openUI() { NSWorkspace.shared.open(model.cfg.ui) }
+
+    /** Stops AgentLoop and its agents (see the launcher's stop); interrupted runs retry on the next start. */
+    @objc func stopLoop() {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: NSHomeDirectory() + "/Applications/AgentLoop.app/Contents/MacOS/AgentLoop")
+        p.arguments = ["stop"]
+        try? p.run()
+    }
 }
