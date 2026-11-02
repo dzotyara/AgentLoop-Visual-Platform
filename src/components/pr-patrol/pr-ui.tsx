@@ -33,6 +33,7 @@ export const ACTION_LABEL: Record<string, string> = {
   fix_conflict: "Resolve conflict",
   sync_base: "Merge base in",
   fix_base: "Fix the base",
+  follow_up: "Follow-up PR",
   enqueue: "Enqueue",
   ready: "Ready",
 };

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { PrPatrolConfig } from "./config.ts";
-import { checkId, ciKey, decide, enqueueHold, type BaseBreak, type PatrolMemory } from "./decide.ts";
+import {
+  checkId,
+  ciKey,
+  decide,
+  enqueueHold,
+  FOLLOWUP_BRANCH_PREFIX,
+  type BaseBreak,
+  type PatrolMemory,
+} from "./decide.ts";
 import {
   classifyFeedback,
   extractChangesRequestedBy,
@@ -21,8 +29,8 @@ const cfg: PrPatrolConfig = {
   reviewers: 3,
   maxAttempts: 2,
   maxReviewRounds: 3,
-  maxNitRounds: 5,
-  maxP3Rounds: 2,
+  followUp: true,
+  followUpExcludeRepos: [],
   searchQuery: "author:@me",
   repoAllowlist: [],
   repoDenylist: [],
@@ -149,7 +157,7 @@ describe("decide", () => {
 
   it("is ready only with an approving review of this exact head", () => {
     const minor = [{ severity: "P3" as const, title: "nit" }];
-    const d = decide(snap(), { ...cfg, maxNitRounds: 0 }, mem({ lastReview: { sha: "head1", blocking: [], minor } }));
+    const d = decide(snap(), cfg, mem({ lastReview: { sha: "head1", blocking: [], minor } }));
     expect(d).toMatchObject({ kind: "ready", approval: { sha: "head1", minor } });
     const blocked = decide(
       snap(),
@@ -284,66 +292,39 @@ describe("P0/P1 always, P2/P3 within a round budget", () => {
   it("fixes blocking feedback right away, even while CI runs", () => {
     const d = decide(snap({ checks: [pendingCheck], feedback: [fb("A", "blocking"), fb("B", "minor")] }), cfg, mem());
     expect(d).toMatchObject({ kind: "run", action: "address_feedback" });
-    if (d.kind === "run") expect(d.feedback?.map((f) => f.id)).toEqual(["A", "B"]);
+    if (d.kind === "run") expect(d.feedback?.map((f) => f.id)).toEqual(["A"]);
   });
 
-  it("waits for CI before a minor round, then runs it as a nit round", () => {
-    expect(decide(snap({ checks: [pendingCheck], feedback: [fb("B", "minor")] }), cfg, mem()).kind).toBe("wait");
-    const d = decide(snap({ feedback: [fb("B", "minor")] }), cfg, mem());
-    expect(d).toMatchObject({ kind: "run", action: "address_feedback" });
-    if (d.kind === "run") expect(d.key.startsWith("feedback-nit:")).toBe(true);
-  });
-
-  it("stops minor rounds at the cap and lets the PR become ready", () => {
-    const actions = new Map(
-      Array.from({ length: 5 }, (_, i) => [`feedback-nit:h${i}:x`, { status: "done" as const, attempts: 1 }]),
-    );
-    const d = decide(snap({ feedback: [fb("B", "minor")] }), cfg, mem({ actions }));
-    expect(d.kind).toBe("ready");
-    if (d.kind === "ready") expect(d.notes.join()).toContain("P2/P3 round cap (5)");
-  });
-
-  it("fixes minor own-review findings within the budget once CI is done", () => {
-    const d = decide(
-      snap(),
-      cfg,
-      mem({ lastReview: { sha: "head1", blocking: [], minor: [{ severity: "P3", title: "nit" }] } }),
-    );
-    expect(d).toMatchObject({ kind: "run", action: "fix_review", key: "fixreview-p3-nit:head1" });
-    const p2 = decide(
-      snap(),
-      cfg,
-      mem({ lastReview: { sha: "head1", blocking: [], minor: [{ severity: "P2", title: "edge case" }] } }),
-    );
-    expect(p2).toMatchObject({ kind: "run", action: "fix_review", key: "fixreview-nit:head1" });
-  });
-
-  it("reviews a head a fix produced before the next P2/P3 round lands on it", () => {
-    // head2 came from a [fix] push; the bot already posted a nit on it, Argus has not looked yet
-    const s = snap({ headRefOid: "head2", feedback: [fb("B", "minor")] });
-    expect(decide(s, cfg, mem({ reviewRounds: 5 }))).toMatchObject({
-      kind: "run",
-      action: "review",
-      key: "review:head2",
+  it("never spends a round on P2/P3: they are left for the follow-up PR", () => {
+    const reviewed = mem({
+      reviewRounds: 1,
+      lastReview: { sha: "head1", blocking: [], minor: [{ severity: "P2", title: "edge case" }] },
     });
-    const reviewed = mem({ reviewRounds: 6, lastReview: { sha: "head2", blocking: [] } });
-    expect(decide(s, cfg, reviewed)).toMatchObject({ kind: "run", action: "address_feedback" });
+    const d = decide(snap({ feedback: [fb("B", "minor")] }), cfg, reviewed);
+    expect(d.kind).toBe("ready");
+    if (d.kind === "ready") {
+      expect(d.notes).toContain("1 P2/P3 comment(s) left for the follow-up PR");
+      expect(d.notes).toContain("1 P2/P3 review finding(s) left for the follow-up PR");
+    }
   });
 
-  it("gives P3-only rounds a smaller budget than P2 rounds", () => {
-    const actions = new Map([
-      ["feedback-p3-nit:h0:x", { status: "done" as const, attempts: 1 }],
-      ["fixreview-p3-nit:h1", { status: "done" as const, attempts: 1 }],
-    ]);
-    const p3 = decide(snap({ feedback: [fb("B", "minor", false, true)] }), cfg, mem({ actions }));
-    expect(p3.kind).toBe("ready");
-    if (p3.kind === "ready") expect(p3.notes.join()).toContain("P3-only round cap (2)");
-    // a P2 still gets a round: 2 of 5 P2/P3 rounds used
-    const p2 = decide(snap({ feedback: [fb("C", "minor")] }), cfg, mem({ actions }));
-    expect(p2).toMatchObject({ kind: "run", action: "address_feedback" });
-    if (p2.kind === "run") expect(p2.key.startsWith("feedback-nit:")).toBe(true);
-    const first = decide(snap({ feedback: [fb("B", "minor", false, true)] }), cfg, mem());
-    if (first.kind === "run") expect(first.key.startsWith("feedback-p3-nit:")).toBe(true);
+  it("drops the P2/P3 of a follow-up PR, so one follow-up never spawns another", () => {
+    const reviewed = mem({
+      lastReview: { sha: "head1", blocking: [], minor: [{ severity: "P3", title: "nit" }] },
+    });
+    const d = decide(snap({ headRefName: `${FOLLOWUP_BRANCH_PREFIX}12-1` }), cfg, reviewed);
+    expect(d.kind).toBe("ready");
+    if (d.kind === "ready") expect(d.notes).toContain("1 P2/P3 review finding(s) dropped: this PR is the follow-up");
+  });
+
+  it("still fixes P0/P1 findings on a follow-up PR", () => {
+    const reviewed = mem({
+      lastReview: { sha: "head1", blocking: [{ severity: "P1", title: "bug" }] },
+    });
+    expect(decide(snap({ headRefName: `${FOLLOWUP_BRANCH_PREFIX}12-1` }), cfg, reviewed)).toMatchObject({
+      kind: "run",
+      action: "fix_review",
+    });
   });
 });
 

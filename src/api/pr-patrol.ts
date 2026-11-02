@@ -87,6 +87,7 @@ export type PrPatrolStatus = {
   crew?: Record<string, string>;
   /** Base branches broken for every PR into them; PRs wait on these instead of on you. */
   baseBreaks?: PrPatrolBaseBreak[];
+  followUps?: PrPatrolFollowUp[];
   prs: PrPatrolPr[];
 };
 
@@ -102,6 +103,17 @@ export type PrPatrolBaseBreak = {
   fixUrl: string | null;
   note: string;
   since: number;
+};
+
+export type PrPatrolFollowUp = {
+  pr: string;
+  url: string;
+  /** pending: waiting for an agent · opened: follow-up PR open · nothing: no finding still applied · failed: gave up. */
+  status: "pending" | "opened" | "nothing" | "failed";
+  findings: number;
+  fixPr: number | null;
+  fixUrl: string | null;
+  note: string;
 };
 
 export async function getPrPatrolStatus(): Promise<PrPatrolStatus> {

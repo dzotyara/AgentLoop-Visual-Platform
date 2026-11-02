@@ -8,7 +8,9 @@ import {
   checkId,
   decide,
   enqueueHold,
-  nitRoundOpen,
+  FOLLOWUP_BRANCH_PREFIX,
+  isFollowUpPr,
+  isReleasePr,
   type ActionKind,
   type Decision,
   type ReviewFinding,
@@ -30,7 +32,8 @@ import {
 } from "./github.ts";
 import { breakChecks, breakPrs, createBaseBreakStore, type BaseBreakRow } from "./base-breaks.ts";
 import { activityFromStreamLines, createLineSplitter } from "./activity.ts";
-import { ACTION_PREFIX, buildBaseFixPrompt, buildPatrolPrompt } from "./prompts.ts";
+import { createFollowUpStore, followUpFindings, followUpItems, type FollowUpRow } from "./followups.ts";
+import { ACTION_PREFIX, buildBaseFixPrompt, buildFollowUpPrompt, buildPatrolPrompt } from "./prompts.ts";
 import { createPipelineStore, effectiveConfig, registerPipelineRoutes, stepPolicy } from "./pipeline.ts";
 import { registerMetricsRoutes } from "./metrics.ts";
 import { createPrPatrolStore, ensurePrPatrolSchema, prKey } from "./store.ts";
@@ -81,6 +84,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
   const cfg = loadPrPatrolConfig();
   ensurePrPatrolSchema(db);
   const store = createPrPatrolStore(db, nowMs);
+  const followups = createFollowUpStore(db, nowMs);
   const pipeline = createPipelineStore(db, nowMs);
   const breaks = createBaseBreakStore(db, nowMs);
   /** Runs in flight, by PR key (and `base:<id>` for a base fix). */
@@ -223,16 +227,8 @@ export function createPrPatrol(ctx: RuntimeContext) {
       const blocking = findings.filter((f) => BLOCKING_SEVERITIES.has(f.severity));
       const minor = findings.filter((f) => !BLOCKING_SEVERITIES.has(f.severity));
       // An approving final review gets its card from Gate on "ready" (one card per head, with the verdict);
-      // a final review with P0/P1 posts "Not approved" now, and one whose P2/P3 still get a round posts as usual.
-      const approving =
-        d.final === true &&
-        blocking.length === 0 &&
-        (minor.length === 0 ||
-          !nitRoundOpen(
-            store.memory(key),
-            cfg,
-            minor.every((f) => f.severity === "P3"),
-          ));
+      // a final review with P0/P1 posts "Not approved" now.
+      const approving = d.final === true && blocking.length === 0;
       store.recordReview(key, ws.startSha, blocking, minor);
       const list = findings
         .map((f) => `- [${f.severity}] ${f.file ?? ""}${f.line ? `:${f.line}` : ""} ${f.title}`)
@@ -499,6 +495,7 @@ export function createPrPatrol(ctx: RuntimeContext) {
     switch (d.kind) {
       case "skip":
         store.setPhase(key, "skipped", d.reason);
+        if (s.state === "MERGED") recordFollowUp(key, s);
         return;
       case "wait":
         store.setPhase(key, "waiting", d.reason, d.notes, d.on);
@@ -660,26 +657,26 @@ export function createPrPatrol(ctx: RuntimeContext) {
     }
   }
 
-  /** Medic opens one fix PR against the base for a breakage that holds enough PRs; the loop then patrols it. */
-  async function launchBaseFix(b: BaseBreakRow, prs: string[]): Promise<void> {
-    const runKey = `base:${b.id}`;
-    const crew = pickAgent("ci");
-    if (!crew || running.has(runKey) || running.size >= effectiveConfig(cfg, pipeline.get()).maxConcurrent) return;
-    const branch = `pr-loop/base-fix-${b.id}-${b.fix_attempts + 1}`;
-    const checks = breakChecks(b);
-    const pseudo = { repo: b.repo, number: 0, url: `https://github.com/${b.repo}/tree/${b.base}` };
-    const taskId = createTask(
-      pseudo,
-      `[fix] [${b.repo.split("/")[1]}:${b.base}] Fix the base: ${checks.join(", ")}`.slice(0, 200),
-      "ci",
-      "in_progress",
-      `${checks.join("\n")}\nholding: ${prs.join(", ")}`,
-      "fix_base",
-      crew.id,
-    );
+  /**
+   * An agent on a new branch cut from `base`, for work that has no PR yet. `finish` gets the result and the
+   * worktree, pushes, opens the PR and says how it went; every failed run ends in `failed`.
+   */
+  async function runBranchAgent(input: {
+    runKey: string;
+    crew: CrewMember;
+    taskId: string;
+    action: ActionKind;
+    repo: string;
+    base: string;
+    branch: string;
+    prompt: (resultPath: string) => string;
+    finish: (result: any, ws: PrWorkspace) => Promise<{ ok: boolean; note: string }>;
+    failed: (note: string) => void;
+  }): Promise<void> {
+    const { runKey, crew, taskId } = input;
     running.set(runKey, {
       taskId,
-      action: "fix_ci",
+      action: input.action,
       agentId: crew.id,
       agentName: crew.name,
       activity: "Preparing the worktree",
@@ -688,14 +685,14 @@ export function createPrPatrol(ctx: RuntimeContext) {
     });
     setAgent(crew.id, true, taskId);
     const done = (ok: boolean, note: string) => {
-      if (!ok) breaks.fixFailed(b.id, note);
+      if (!ok) input.failed(note);
       finishTask(taskId, ok, note);
       setAgent(crew.id, false, null, ok);
       running.delete(runKey);
     };
     let ws: PrWorkspace;
     try {
-      ws = await prepareBranchWorktree(cfg.workdir, b.repo, b.base, branch);
+      ws = await prepareBranchWorktree(cfg.workdir, input.repo, input.base, input.branch);
     } catch (err) {
       done(false, `worktree setup failed: ${(err as Error).message}`);
       return;
@@ -704,9 +701,15 @@ export function createPrPatrol(ctx: RuntimeContext) {
     const resultDir = path.join(cfg.workdir, "results");
     fs.mkdirSync(resultDir, { recursive: true });
     const resultPath = path.join(resultDir, `${taskId}.json`);
-    const prompt = buildBaseFixPrompt({ repo: b.repo, base: b.base, branch, checks, detail: b.detail, prs, resultPath });
-    const model = resolveModel(crew.id, "fix_ci");
-    const child = spawnCliAgent(taskId, "claude", prompt, ws.path, path.join(logsDir, `${taskId}.log`), model);
+    const model = resolveModel(crew.id, input.action);
+    const child = spawnCliAgent(
+      taskId,
+      "claude",
+      input.prompt(resultPath),
+      ws.path,
+      path.join(logsDir, `${taskId}.log`),
+      model,
+    );
     child.stdout?.on(
       "data",
       createLineSplitter((lines) => {
@@ -732,8 +735,43 @@ export function createPrPatrol(ctx: RuntimeContext) {
       void (async () => {
         const result = readResult(resultPath);
         if (!result) return done(false, `agent exited with code ${code ?? 1} and wrote no result`);
+        const outcome = await input.finish(result, ws);
+        done(outcome.ok, outcome.note);
+      })().catch((err) => done(false, `run failed: ${(err as Error).message}`));
+    });
+  }
+
+  /** Medic opens one fix PR against the base for a breakage that holds enough PRs; the loop then patrols it. */
+  async function launchBaseFix(b: BaseBreakRow, prs: string[]): Promise<void> {
+    const runKey = `base:${b.id}`;
+    const crew = pickAgent("ci");
+    if (!crew || running.has(runKey) || running.size >= effectiveConfig(cfg, pipeline.get()).maxConcurrent) return;
+    const branch = `pr-loop/base-fix-${b.id}-${b.fix_attempts + 1}`;
+    const checks = breakChecks(b);
+    const pseudo = { repo: b.repo, number: 0, url: `https://github.com/${b.repo}/tree/${b.base}` };
+    const taskId = createTask(
+      pseudo,
+      `[fix] [${b.repo.split("/")[1]}:${b.base}] Fix the base: ${checks.join(", ")}`.slice(0, 200),
+      "ci",
+      "in_progress",
+      `${checks.join("\n")}\nholding: ${prs.join(", ")}`,
+      "fix_base",
+      crew.id,
+    );
+    await runBranchAgent({
+      runKey,
+      crew,
+      taskId,
+      action: "fix_ci",
+      repo: b.repo,
+      base: b.base,
+      branch,
+      prompt: (resultPath) =>
+        buildBaseFixPrompt({ repo: b.repo, base: b.base, branch, checks, detail: b.detail, prs, resultPath }),
+      failed: (note) => breaks.fixFailed(b.id, note),
+      finish: async (result, ws) => {
         const push = await pushAgentCommits(ws, { repo: b.repo, headRefName: branch }, cfg.write, "[fix]");
-        if (push.status !== "pushed") return done(false, `${pushNote(push)}. ${result.summary ?? ""}`);
+        if (push.status !== "pushed") return { ok: false, note: `${pushNote(push)}. ${result.summary ?? ""}` };
         const links = prs.map((k) => `- ${k}`).join("\n");
         const body = `${String(result.body ?? result.summary ?? "").trim()}
 
@@ -746,11 +784,96 @@ ${links}
         try {
           const pr = await createPr(b.repo, { base: b.base, head: branch, title, body });
           breaks.setFix(b.id, { pr: pr.number, url: pr.url, branch });
-          done(true, `opened ${pr.url}. ${result.summary ?? ""}`);
+          return { ok: true, note: `opened ${pr.url}. ${result.summary ?? ""}` };
         } catch (err) {
-          done(false, `branch ${branch} pushed, opening the PR failed: ${(err as Error).message.slice(0, 300)}`);
+          return { ok: false, note: `branch ${branch} pushed, opening the PR failed: ${(err as Error).message.slice(0, 300)}` };
         }
-      })().catch((err) => done(false, `base fix failed: ${(err as Error).message}`));
+      },
+    });
+  }
+
+  /** A merged PR leaves its P2/P3 for the follow-up PR. A follow-up PR's own are dropped, so there is no chain. */
+  function recordFollowUp(key: string, s: PrSnapshot): void {
+    if (!cfg.followUp || isFollowUpPr(s) || isReleasePr(s, cfg) || cfg.followUpExcludeRepos.includes(s.repo)) return;
+    const mem = store.memory(key);
+    const comments = s.feedback.filter(
+      (f) => f.severity === "minor" && !f.inProgress && !mem.handledFeedbackIds.has(f.key),
+    );
+    const items = followUpItems(mem.lastReview?.minor ?? [], comments);
+    if (items.length === 0) return;
+    followups.record({ prKey: key, repo: s.repo, number: s.number, title: s.title, url: s.url, base: s.baseRefName, items });
+  }
+
+  /**
+   * PRs gone from the open list since the last tick: the merged ones go through recordFollowUp. Returns the PRs that
+   * could not be read, so they are looked at again next tick instead of being forgotten with their findings.
+   */
+  async function collectMerged(open: Set<string>): Promise<Set<string>> {
+    const unread = new Set<string>();
+    if (!cfg.followUp) return unread;
+    for (const row of store.listPrs()) {
+      if (open.has(row.pr_key) || row.phase === "skipped") continue;
+      try {
+        const s = await fetchPrSnapshot(row.repo, row.number, cfg);
+        if (s.state === "MERGED") recordFollowUp(row.pr_key, s);
+      } catch (err) {
+        console.warn(`[pr-patrol] could not read ${row.pr_key}: ${(err as Error).message.slice(0, 200)}`);
+        unread.add(row.pr_key);
+      }
+    }
+    return unread;
+  }
+
+  /** A fixer opens the follow-up PR from a fresh base; the loop then patrols it like any other PR. */
+  async function launchFollowUp(f: FollowUpRow): Promise<void> {
+    const runKey = `followup:${f.pr_key}`;
+    const crew = pickAgent("fixer");
+    if (!crew || running.has(runKey) || running.size >= effectiveConfig(cfg, pipeline.get()).maxConcurrent) return;
+    const branch = `${FOLLOWUP_BRANCH_PREFIX}${f.number}-${f.attempts + 1}`;
+    const findings = followUpFindings(f);
+    const taskId = createTask(
+      { repo: f.repo, number: f.number, url: f.url },
+      `[fix] [${f.repo.split("/")[1]}#${f.number}] Follow-up: ${findings.length} P2/P3 finding(s)`.slice(0, 200),
+      "fixer",
+      "in_progress",
+      findings.map((x) => `[${x.severity}] ${x.title}`).join("\n"),
+      "follow_up",
+      crew.id,
+    );
+    await runBranchAgent({
+      runKey,
+      crew,
+      taskId,
+      action: "fix_review",
+      repo: f.repo,
+      base: f.base,
+      branch,
+      prompt: (resultPath) =>
+        buildFollowUpPrompt({ repo: f.repo, base: f.base, branch, number: f.number, title: f.title, findings, resultPath }),
+      failed: (note) => followups.fail(f.pr_key, note),
+      finish: async (result, ws) => {
+        const summary = String(result.summary ?? "");
+        const push = await pushAgentCommits(ws, { repo: f.repo, headRefName: branch }, cfg.write, "[fix]");
+        if (push.status === "no_changes") {
+          followups.setNothing(f.pr_key, summary);
+          return { ok: true, note: `nothing worth a PR. ${summary}` };
+        }
+        if (push.status !== "pushed") return { ok: false, note: `${pushNote(push)}. ${summary}` };
+        const body = `${String(result.body ?? result.summary ?? "").trim()}
+
+---
+Opened by AgentLoop pr-patrol: follow-up to #${f.number} with the P2/P3 review findings left on it.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)`;
+        const title = String(result.title ?? "").trim() || `Follow-up to #${f.number}: P2/P3 review findings`;
+        try {
+          const pr = await createPr(f.repo, { base: f.base, head: branch, title, body });
+          followups.setOpened(f.pr_key, { pr: pr.number, url: pr.url });
+          return { ok: true, note: `opened ${pr.url}. ${summary}` };
+        } catch (err) {
+          return { ok: false, note: `branch ${branch} pushed, opening the PR failed: ${(err as Error).message.slice(0, 300)}` };
+        }
+      },
     });
   }
 
@@ -849,8 +972,14 @@ ${links}
       }
       const open = new Set(prs.map((p) => prKey(p.repo, p.number)));
       for (const k of snapshots.keys()) if (!open.has(k)) snapshots.delete(k);
-      store.forgetMissing(open);
+      const unread = await collectMerged(open);
+      store.forgetMissing(new Set([...open, ...unread]));
       await maintainBreaks().catch((err) => console.warn(`[pr-patrol] base breakages: ${(err as Error).message}`));
+      if (cfg.followUp && cfg.write) {
+        for (const f of followups.pending()) {
+          await launchFollowUp(f).catch((err) => console.warn(`[pr-patrol] follow-up: ${(err as Error).message}`));
+        }
+      }
       needsYouDigest();
       lastTick = { at: nowMs(), error: null, prs: prs.length };
     } catch (err) {
@@ -885,6 +1014,16 @@ ${links}
         fixUrl: b.fix_url,
         note: b.note,
         since: b.first_seen,
+      })),
+      /** Latest follow-ups to merged PRs: their P2/P3 and the follow-up PR, if any. */
+      followUps: followups.recent(20).map((f) => ({
+        pr: f.pr_key,
+        url: f.url,
+        status: f.status,
+        findings: followUpFindings(f).length,
+        fixPr: f.fix_pr,
+        fixUrl: f.fix_url,
+        note: f.note,
       })),
       prs: store.listPrs().map((r) => {
         const run = running.get(r.pr_key);

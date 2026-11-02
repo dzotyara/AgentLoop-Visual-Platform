@@ -123,33 +123,12 @@ export function checkId(c: Pick<PrCheck, "name" | "workflow">): string {
 
 export const BLOCKING_SEVERITIES = new Set<Severity>(["P0", "P1"]);
 
-/** P2/P3 fix rounds already spent on this PR (comment and review nits together). */
-export function nitRoundsUsed(mem: PatrolMemory): number {
-  return [...mem.actions].filter(([k, a]) => k.includes("-nit:") && a.status === "done").length;
-}
+/** Head branches of the follow-up PRs the loop opens after a merge (followups.ts). */
+export const FOLLOWUP_BRANCH_PREFIX = "pr-loop/followup-";
 
-/** Of those, rounds that fixed P3-only items (keys `*-p3-nit:*`). */
-export function p3RoundsUsed(mem: PatrolMemory): number {
-  return [...mem.actions].filter(([k, a]) => k.includes("-p3-nit:") && a.status === "done").length;
-}
-
-/**
- * Whether one more P2/P3 round may run: within the P2/P3 budget, and for a P3-only round also within the
- * smaller P3 budget (review bots re-review every push and always find one more nit).
- */
-export function nitRoundOpen(
-  mem: PatrolMemory,
-  cfg: Pick<PrPatrolConfig, "maxNitRounds" | "maxP3Rounds">,
-  p3Only: boolean,
-): boolean {
-  return nitRoundsUsed(mem) < cfg.maxNitRounds && (!p3Only || p3RoundsUsed(mem) < cfg.maxP3Rounds);
-}
-
-/** "P2/P3 round cap (5) reached" / "P3-only round cap (2) reached", for notes. */
-function nitCapLabel(mem: PatrolMemory, cfg: Pick<PrPatrolConfig, "maxNitRounds" | "maxP3Rounds">): string {
-  return nitRoundsUsed(mem) >= cfg.maxNitRounds
-    ? `P2/P3 round cap (${cfg.maxNitRounds}) reached`
-    : `P3-only round cap (${cfg.maxP3Rounds}) reached`;
+/** A follow-up PR's own P2/P3 get no follow-up: that is what ends the chain. */
+export function isFollowUpPr(s: Pick<PrSnapshot, "headRefName">): boolean {
+  return s.headRefName.startsWith(FOLLOWUP_BRANCH_PREFIX);
 }
 
 /** Action key of a CI round: the head plus the failed jobs (a rerun gives them new ids, so a new key). */
@@ -279,52 +258,33 @@ export function decide(
     };
   }
 
-  // P0/P1 (and every human comment) are always fixed; P2/P3 get at most cfg.maxNitRounds rounds per PR (P3-only
-  // ones cfg.maxP3Rounds), and a round starts only once CI on the head has finished and Argus has reviewed it, so
-  // every push gets a full CI run and no fix lands on top of an unreviewed one.
+  // On the PR the loop fixes conflicts, red CI, P0/P1 and every human comment, nothing else: a fix is a new head, a
+  // new head gets a new review, and a review always finds one more nit, so P2/P3 rounds would never settle. They go
+  // to the follow-up PR opened after the merge (followups.ts).
   // Bot placeholders and status summaries with nothing to act on never cost a run.
   // A disabled own review behaves like PR_PATROL_REVIEW=0 (its stale findings no longer block either).
   const reviewOn = cfg.review && steps.review?.enabled !== false;
-  const headReviewed = !reviewOn || mem.lastReview?.sha === head;
-  const ciRunning = checks.some((c) => c.state === "pending");
+  const deferred = isFollowUpPr(s) ? "dropped: this PR is the follow-up" : "left for the follow-up PR";
   const pending = s.feedback.filter(
     (f) => !mem.handledFeedbackIds.has(f.key) && !f.inProgress && f.severity !== "none",
   );
-  const minorFeedback = pending.filter((f) => f.severity === "minor");
-  if (pending.some((f) => f.severity === "blocking")) {
-    const key = `feedback:${head}:${shortHash(pending.map((f) => f.key))}`;
+  const blockingFeedback = pending.filter((f) => f.severity === "blocking");
+  if (blockingFeedback.length > 0) {
+    const key = `feedback:${head}:${shortHash(blockingFeedback.map((f) => f.key))}`;
     const g = gate(key, "address_feedback");
-    if (g === "go") return { kind: "run", action: "address_feedback", key, feedback: pending };
+    if (g === "go") return { kind: "run", action: "address_feedback", key, feedback: blockingFeedback };
     blocked.push(
-      `${pending.length} review comment(s) unhandled: ${g === "disabled" ? DISABLED_LABEL.address_feedback : "fix attempts exhausted"}`,
+      `${blockingFeedback.length} review comment(s) unhandled: ${g === "disabled" ? DISABLED_LABEL.address_feedback : "fix attempts exhausted"}`,
     );
-  } else if (minorFeedback.length > 0) {
-    const p3Only = minorFeedback.every((f) => f.p3Only);
-    if (!nitRoundOpen(mem, cfg, p3Only)) {
-      notes.push(`${nitCapLabel(mem, cfg)}: ${minorFeedback.length} minor comment(s) left for the author`);
-    } else if (!ciRunning && headReviewed) {
-      const key = `feedback-${p3Only ? "p3-" : ""}nit:${head}:${shortHash(minorFeedback.map((f) => f.key))}`;
-      const g = gate(key, "address_feedback");
-      if (g === "go") return { kind: "run", action: "address_feedback", key, feedback: minorFeedback };
-      if (g !== "done") notes.push(`${minorFeedback.length} minor comment(s) not fixed (${g})`);
-    }
   }
+  const minorComments = pending.length - blockingFeedback.length;
+  if (minorComments > 0) notes.push(`${minorComments} P2/P3 comment(s) ${deferred}`);
 
   if (cfg.review && !reviewOn) notes.push(DISABLED_LABEL.review);
   if (reviewOn) {
     if (mem.lastReview?.sha === head) {
-      const minorFindings = mem.lastReview.minor ?? [];
-      if (mem.lastReview.blocking.length === 0 && minorFindings.length > 0) {
-        const p3Only = minorFindings.every((f) => f.severity === "P3");
-        if (!nitRoundOpen(mem, cfg, p3Only)) {
-          notes.push(`${nitCapLabel(mem, cfg)}: ${minorFindings.length} review finding(s) left for the author`);
-        } else if (!ciRunning) {
-          const key = `fixreview-${p3Only ? "p3-" : ""}nit:${head}`;
-          const g = gate(key, "fix_review");
-          if (g === "go") return { kind: "run", action: "fix_review", key, findings: minorFindings };
-          if (g !== "done") notes.push(`${minorFindings.length} minor review finding(s) not fixed (${g})`);
-        }
-      }
+      const minorFindings = mem.lastReview.minor?.length ?? 0;
+      if (minorFindings > 0) notes.push(`${minorFindings} P2/P3 review finding(s) ${deferred}`);
       if (mem.lastReview.blocking.length > 0) {
         const key = `fixreview:${head}`;
         const g = gate(key, "fix_review");

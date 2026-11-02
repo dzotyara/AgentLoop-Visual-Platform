@@ -17,10 +17,10 @@ export type PrPatrolConfig = {
   maxAttempts: number;
   /** Own reviews per PR. High on purpose: every head a fix produces gets reviewed before more fixes land. */
   maxReviewRounds: number;
-  /** P2/P3 fix rounds per PR (bot comments + own review). P0/P1 are always fixed, outside this budget. */
-  maxNitRounds: number;
-  /** Of those, rounds for P3-only findings (no P2): stops nit ping-pong with review bots that re-review each push. */
-  maxP3Rounds: number;
+  /** After a merge, open one follow-up PR with the P2/P3 the loop left on the merged PR. */
+  followUp: boolean;
+  /** Repos that never get an automatic follow-up PR (say, where every PR needs a human approval). */
+  followUpExcludeRepos: string[];
   searchQuery: string;
   repoAllowlist: string[];
   repoDenylist: string[];
@@ -85,8 +85,8 @@ export function loadPrPatrolConfig(): PrPatrolConfig {
     reviewers: Math.min(3, envInt("PR_PATROL_REVIEWERS", 3, 1)),
     maxAttempts: envInt("PR_PATROL_MAX_ATTEMPTS", 2, 1),
     maxReviewRounds: envInt("PR_PATROL_MAX_REVIEW_ROUNDS", 12, 0),
-    maxNitRounds: envInt("PR_PATROL_MAX_NIT_ROUNDS", 5, 0),
-    maxP3Rounds: envInt("PR_PATROL_MAX_P3_ROUNDS", 2, 0),
+    followUp: envFlag("PR_PATROL_FOLLOWUP", true),
+    followUpExcludeRepos: envList("PR_PATROL_FOLLOWUP_EXCLUDE_REPOS", ["xsolla/mini-apps"]),
     searchQuery: process.env.PR_PATROL_QUERY?.trim() || "author:@me",
     repoAllowlist: envList("PR_PATROL_REPOS"),
     repoDenylist: envList("PR_PATROL_EXCLUDE_REPOS"),
